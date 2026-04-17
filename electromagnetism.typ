@@ -40,7 +40,7 @@
 #align(center + horizon)[
   #text(size: 35pt, weight: "bold")[Physics Note]
   #v(0em)
-  #text(size: 13pt)[Matsumotofukashi High School 240620 Tsuyoshi Kobayashi]
+  #text(size: 13pt)[Matsumotofukashi High School\ 240620 Tsuyoshi Kobayashi]
   #v(0em)
   #text(size: 15pt)[2026-04-14  --]
   #v(1em)
@@ -99,8 +99,161 @@ $
 
 //2026-04-14
 
+== Mechanism of Electrification
 
 
+#align(center,box(width:10cm, height:6cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+      let r = 3
+      circle((0,0), radius:r, fill:gray)
+
+      circle((0,0), radius:0.8)
+      content((0,0.0), $11+$)
+
+      content((0,-1.8), $10-$)
+
+      circle((4,2), radius:1/8)
+      content((4,2.06), "-")
+
+      line((2.5,1.0),(4,2), mark:(end:"stealth", fill:black))
+
+    })
+  ]
+])
+
+
+Total amount of charge is saved.
+
+- *Coulomd's law*
+
+
+#align(center,box(width:6cm, height:3cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      let y = -1
+      circle((0,y), radius:1/4)
+      content((0,y + 0.05), $+$)
+      line((1/5,y),(1,y), mark:(end:"stealth", fill:black))
+      circle((3,y), radius:1/4)
+      content((3,y + 0.05), $-$)
+      line((3 - 1/5,y),(3 -1,y), mark:(end:"stealth", fill:black))
+      y = 0
+      circle((0,y), radius:1/4)
+      content((0,y + 0.05), $+$)
+      line((1/5,y),(-1,y), mark:(end:"stealth", fill:black))
+      circle((3,y), radius:1/4)
+      content((3,y + 0.05), $+$)
+      line((3 - 1/5,y),(3 +1,y), mark:(end:"stealth", fill:black))
+      y = 1
+      circle((0,y), radius:1/4)
+      content((0,y + 0.05), $-$)
+      line((1/5,y),(-1,y), mark:(end:"stealth", fill:black))
+      circle((3,y), radius:1/4)
+      content((3,y + 0.05), $-$)
+      line((3 - 1/5,y),(3 +1,y), mark:(end:"stealth", fill:black))
+
+    })
+  ]
+])
+#align(center,box(width:6cm, height:6cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      let x = -2;
+      let y = -2;
+      circle((x+0,y+0), radius:1/5)
+      content((x - 0.2,y+0.6), "charge")
+      content((x+0,y - 0.5), $q_1$)
+      content((x+1/2+0.3,y+1/2 - 0.1), $F$)
+      line((x,y),(x+1,y+1), mark:(end:"stealth", fill:black))
+
+      x = 2;
+      y = 2;
+      circle((x+0,y+0), radius:1/5)
+      content((x+0,y+0.6), "charge")
+      content((x+0,y - 0.5), $q_2$)
+      content((x - 1/2 - 0.3,y - 1/2 + 0.1), $F$)
+      line((x,y),(x - 1,y - 1), mark:(end:"stealth", fill:black))
+    })
+  ]
+])
+\
+
+  $
+    F = k (q_1 q_2)/ r^2
+  $
+
+  $k$ depends on type of surrounding substance.\
+  In bacum, $k approx  num("9.0e9") unit("N  m^2/C^2")$
+
+
+== Electrostatic Indcuction
+
+- *Conductor* - Substances which can conduct electricity.\
+  ex) metal, carbon
+
+- *Nonconductor* - Substances which cannot conduct electricity.
+
+- *Semiconductor* - ?????? quite difficult... 中間ってなんだよ
+
+#align(center,box(width:15cm, height:4cm, clip:true)[
+  #place(horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      rect((-7.5,-1),(-0.5,1),stroke:(paint: black, thickness:1pt))
+      let x = -2;
+      let y = -2;
+
+      content((-1,-0.5), $+$)
+      content((-1,-0), $+$)
+      content((-1,+0.5), $+$)
+      content((2.5,-0.5), $+$)
+      content((2.7,-0), $+$)
+      content((2.5,+0.5), $+$)
+      content((1.6,-0.5), $-$)
+      content((1.3,-0), $-$)
+      content((1.6,+0.5), $-$)
+      circle((2,0), radius:1)
+      line((1,0),(-0.2,0), mark:(end:"stealth", fill:black))
+      line((3,0),(3.5,0), mark:(end:"stealth", fill:black))
+      line((2.2,1),(2.6,2))
+      content((2,-1.6), "conductor")
+    })
+  ]
+])
+
+=== Dielectric Polarization
+
+#align(center,box(width:15cm, height:4cm, clip:true)[
+  #place(horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      rect((-7.5,-1),(-0.5,1),stroke:(paint: black, thickness:1pt))
+      rect((0.5,-1),(4,1),stroke:(paint: black, thickness:1pt))
+
+      ellipse((1,0.5),width:0.4cm, height:0.3cm)
+      content((-1,-0.5), $+$)
+      content((-1,-0), $+$)
+      content((-1,+0.5), $+$)
+      content((1.4,-0.5), $+$)
+      content((1.4,-0), $+$)
+      content((1.4,+0.5), $+$)
+      content((1.0,-0.5), $-$)
+      content((1.0,-0), $-$)
+      content((1.0,+0.5), $-$)
+      content((2.5,-1.6), "nonconductor")
+    })
+  ]
+])
+
+== Electric Field
 
 /*
 
