@@ -284,6 +284,76 @@ Total amount of charge is saved.
 
 == Electric Field
 
+#align(center,box(width:15cm, height:4cm, clip:true)[
+  #place(horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+
+      //square(fill: gradient.radial(..color.map.rainbow))
+      circle((-1,0),radius:0.2)
+      content((-1,-0.7), "charge "+$q_1 unit("C")$)
+
+      line((2,0),(4,0), mark:(end:"stealth", fill:gray), stroke:(paint:gray,thickness:0.1))
+      content((4,-0.6), "electric field "+$bold(E(r)) unit("N/C")$)
+      /*
+      let fieldvec(p,q) = {
+        let (x1,y1) = p
+        let (x2,y2) = q
+        let x3 = x1 - x2
+        let y3 = y1 - y2)
+
+        let r = sqrt(x3*x3 + y3*y3)
+        let f = 2.0 / (x3*x3 + y3*y3)
+
+        line((2,0),(4,0), mark:(end:"stealth", fill:gray), stroke:(paint:gray,thickness:0.1))
+      }
+      */
+    })
+  ]
+])
+
+== Electric line of force 電気力線
+
+(it was difficult to draw figure...)
+
+- *the direction of tangent of line is the same as the direction of the field.*
+- *the line appears with plus charge and disappear with minus charge.*
+- *$E$ line drawn per $1 unit("m^2")$ , as strength of electric field is $E unit("E/C")$.*
+
+#align(center,box(width:8cm, height:8cm, clip:true)[
+  #place(horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+
+      let l = 4
+      let r = 2
+      line((0,0,0),(l,0,0), mark: (end: ">", fill:black), name: "x")
+      line((0,0,0),(0,l,0), mark: (end: ">", fill:black), name: "y")
+      line((0,0,0),(0,0,l), mark: (end: ">", fill:black), name: "z")
+      circle((0,0,0), radius:r)
+      circle((0,0,0), radius:0.2)
+      line((0,-0.4),(r,-0.4), mark: (start: ">",end: ">", fill:black))
+      content((r/2,-0.7), $r unit("m")$)
+      content((0,0,-0.9), $Q unit("C")$)
+      
+    })
+  ]
+])
+
+
+$
+  N = E dot 4 pi r^2
+$
+
+Mr.Ide "why integrated value equals to $S$?"\
+Me ( Oh.... Does it requires $ε$-$δ$-difinition of limit...? )
+
+
+
+
+
 /*
 
 #let angl = 30deg
