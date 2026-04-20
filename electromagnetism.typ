@@ -350,7 +350,7 @@ align(center,box(width:10cm, height:8cm, clip:true)[
       import cetz.draw: *
 
       let q1 = +1
-      let q2 = -1
+      let q2 = -2
       let d = 4
       let k = 0.6
 
