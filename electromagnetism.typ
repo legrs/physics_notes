@@ -28,6 +28,7 @@
 
 //#set enum(numbering: "1.",)
 #set heading(numbering: "1.1.a ",)
+#set page(numbering: "1")
 #show heading : set align(center)
 #show heading.where(level:1) : set text(size: 30pt)
 #show heading.where(level:2) : set text(size: 20pt)
