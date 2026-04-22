@@ -67,7 +67,7 @@
 
 
 $
-  |bold(F)| = k (q_1 q_2)/ r^2
+  |bb(F)| = k (q_1 q_2)/ r^2
 $
 
 \
@@ -309,7 +309,7 @@ Total amount of charge is saved.
       content((-1.8,-0.2), "charge "+$q_1 unit("C")$)
 
       line((2,0.2),(4,0.2), mark:(end:"stealth", fill:gray), stroke:(paint:gray,thickness:0.1))
-      content((4,-0.2), "electric field "+$bold(E(r)) unit("N/C")$)
+      content((4,-0.2), "electric field "+$bb(E(r)) unit("N/C")$)
     
 
       let fieldvec(p,q) = {
@@ -343,10 +343,10 @@ Total amount of charge is saved.
 ])
 
 Electric field is vector field.\
-Let $1 unit("C")$ charge a test charge at position $bold(r)$,
-$bold(E(r))$ is the electric force which the test charge receive.
+Let $1 unit("C")$ charge be a test charge at position $bb(r)$,
+$bb(E(r))$ is the electric force which the test charge receive.
 $
-  bold(E(r)) = k Q bold(r)/abs(bold(r))^3
+  bb(E(r)) = k Q bb(r)/abs(bb(r))^3
 $
 
 If there are multiple charges, the electric field is equals to sum of each electric fields made by these charges.
@@ -491,7 +491,7 @@ align(center,box(width:10cm, height:8cm, clip:true)[
   ]
 ])
 
-Let $N$ number of lines,$Q$ amount of charge.\
+Let $N$ be number of lines,$Q$ amount of charge.\
 $N = E dot 4 pi r^2 =  k Q/r^2 dot 4 pi r^2$\
 Thus,
 $
@@ -506,6 +506,33 @@ Let $U$ potential energy of charge which have $q$, $V$ electric potential,
 $
   V := U / q
 $
+Thus, $V$ is potential energy per unit charge.
+
+#align(center,box(width:15cm, height:2cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      circle((0,0),radius:0.2)
+      content((0,0.05), $+$)
+      
+      circle((2,0),radius:0.05, fill:black)
+      line((2,-0.2),(0,-0.2), mark:(start:">",end:">",fill:black))
+      content((1,-0.5),$r$)
+      content((0,-0.5),$Q$)
+    })
+  ]
+])
+Let infinity be reference level of potential,
+
+$V(r) = integral_r^infinity d r dot k Q / r^2 = k Q [ -r^(-1) ]_r^infinity = k Q / r$
+$
+  bold(V(r) = k Q / r)
+$
+\
+
+
+
 #align(center,box(width:15cm, height:2cm, clip:true)[
   #place(center + horizon)[
     #cetz.canvas({
@@ -520,7 +547,7 @@ $
     })
   ]
 ])
-$V_("AB") = V_A - V_B $  (base is $B$)\
+$V_("AB") = V_A - V_B $  (reference is $B$)\
 $V_("AB")$ is also called *voltage*.
 
 
@@ -533,12 +560,56 @@ $V_("AB")$ is also called *voltage*.
       content((0,2.05), "+")
       content((0.7,2), $q$)
       line((0,2),(0,0), mark:(end:">", fill:black))
-      content((3.4,1), "electric force (let constant)")
+      content((3.4,1), "electric force (constant)")
       line((-1,-1),(1,-1))
-      content((3,-1), "base of potential")
+      content((3,-1), "reference level of potential")
     })
   ]
 ])
+$W_("AB") = q(V_A - V_B)$\
+
+== Relative of Field and Potential
+
+#align(center,box(width:15cm, height:5cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      circle((0.2,1),radius:0.25)
+      content((0.2,1.05), "+")
+      content((0.6,1.3), $q$)
+      line((0,2),(0,0), mark:(end:">", fill:black))
+      line((0,0),(0,-2))
+      line((-0.9,2),(-0.9,0), mark:(end:">", fill:black))
+      line((-0.9,0),(-0.9,-2))
+      line((0.9,2),(0.9,0), mark:(end:">", fill:black))
+      line((0.2,1),(0.2,-0.2), mark:(end:">", fill:black), stroke:(thickness:0.08))
+      content((0.6,0.5), $bold(q E)$)
+      line((0.9,0),(0.9,-2))
+      content((3.8,1.5), "uniform electric field "+$E$)
+      line((-1,-2),(1,-2))
+      line((-1,2),(1,2))
+      content((-0.9,-2.2), $-$)
+      content((0,-2.2), $-$)
+      content((+0.9,-2.2), $-$)
+      content((-0.9,+2.2), $+$)
+      content((0   ,+2.2), $+$)
+      content((+0.9,+2.2), $+$)
+      line((1.5,1.05),(1.5,-2), mark:(start:">",end:">", fill:black))
+      content((2.8,-0.4), "distance "+$d$)
+    })
+  ]
+])
+
+$
+q E d = q V\
+  <=> V = E d
+$
+
+
+
+
+
 
 
 

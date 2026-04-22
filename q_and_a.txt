@@ -1,0 +1,10 @@
+
+Q.なぜか：potential energyの差 = 場が行った仕事
+
+
+Q.なぜh上がるとmghのpotentialが得られるか
+運動方程式より、$F=ma$だから、上昇に使う力はmg、仕事の定義より、F*h=mgh
+Q.
+
+Q.fieldとpotentialの関係は？
+- 任意のfield内において、electric potentialは位置のみに依存する
