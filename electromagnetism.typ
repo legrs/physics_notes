@@ -364,19 +364,21 @@ align(center,box(width:10cm, height:8cm, clip:true)[
       let q1 = +1
       let q2 = -2
       let d = 4
-      let k = 0.6
+      let k = 0.5
 
       rect((-100 + d/2 ,-100),(100 + d/2,100))
 
-      circle((0,0),radius:0.2)
-      content((-0.4,-0.9), str(q1)+" C")
-      circle((d,0),radius:0.2)
-      content((d+0.6,-0.9), str(q2)+" C")
+      circle((0,0),radius:0.5)
+      //content((0,0), str(q1)+" C", )
+      content((0,0), text(size:9pt,weight:900)[#str(q1) C])
+
+      circle((d,0),radius:0.5)
+      content((d,0), text(size:9pt,weight:900)[#str(q2) C])
 
       let drawel(p,angl,doreverse) = {
         let (x,y) = p
-        x += 0.1 * calc.cos(angl)
-        y += 0.1 * calc.sin(angl)
+        x += 0.5 * calc.cos(angl)
+        y += 0.5 * calc.sin(angl)
         let end = false
         let flag1 = true
         let flag2 = true
@@ -398,19 +400,20 @@ align(center,box(width:10cm, height:8cm, clip:true)[
               fy = k_p * fy
             }
           }
-          if doreverse{
+          if doreverse and q2 < 0{
             fx = -fx
             fy = -fy
           }
           //let fx = x_p / r2
           //let fy = y_p / r2
           if x <= d/2 - 5 or d/2 + 5 <= x{
+          //if (not doreverse and d/2 <= x) or (doreverse and x <= d/2){
             end = true
           }else if y <= -4 or 4 <= y{
             end = true
           }else if (x <= d and d <= x+fx) or (y <= 0 and 0 <= y+fy){
-            fx = x_p * 0.1 / r2
-            fy = y_p * 0.1 / r2
+            fx = x_p * 0.5 / r2
+            fy = y_p * 0.5 / r2
 
             line((x,y),(d + fx, 0 + fy))
             end = true
@@ -454,10 +457,12 @@ align(center,box(width:10cm, height:8cm, clip:true)[
       drawel((0,0),calc.pi * 5 / 4, false)
       drawel((0,0),calc.pi * 6 / 4, false)
       drawel((0,0),calc.pi * 7 / 4, false)
-      drawel((d,0),calc.pi * 1 / 4, true)
-      drawel((d,0),calc.pi * 2 / 4, true)
-      drawel((d,0),calc.pi * 6 / 4, true)
-      drawel((d,0),calc.pi * 7 / 4, true)
+      //drawel((d,0),calc.pi * 1 / 4, true)
+      //drawel((d,0),calc.pi * 2 / 4, true)
+      //drawel((d,0),calc.pi * 3 / 4, true)
+      //drawel((d,0),calc.pi * 5 / 4, true)
+      //drawel((d,0),calc.pi * 6 / 4, true)
+      //drawel((d,0),calc.pi * 7 / 4, true)
       drawel((d,0),calc.pi * 8 / 4, true)
     })
   ]
@@ -606,8 +611,52 @@ q E d = q V\
   <=> V = E d
 $
 
+* electric potential proportional to energy, so it's superposition is calculated by sum.*
 
 
+== Equipotential Surface
+
+
+#figure(
+align(center,box(width:10cm, height:8cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      let q1 = +1
+      let q2 = -2
+      let d = 4
+      let k = 5
+
+      rect((-100 + d/2 ,-100),(100 + d/2,100))
+
+      circle((0,0),radius:0.5)
+      content((0,0), text(size:9pt,weight:900)[#str(q1) C])
+
+      //circle((d,0),radius:0.5)
+      //content((d,0), text(size:9pt,weight:900)[#str(q2) C])
+
+      let drawel(p,m) = {
+        let (x,y) = p
+        circle(p,radius:k*q1/m)
+      }
+      drawel((0,0),1)
+      drawel((0,0),2)
+      drawel((0,0),3)
+      drawel((0,0),4)
+      drawel((0,0),5)
+      drawel((0,0),6)
+      drawel((0,0),7)
+      drawel((0,0),8)
+      drawel((0,0),9)
+    })
+  ]
+])
+  ,caption: [simulator]
+)
+
+- *Equiipotential Surface*  -  A surface which was made by joyning points that have equal electric potential.
+( why surface???? why don't it be line  )
 
 
 
