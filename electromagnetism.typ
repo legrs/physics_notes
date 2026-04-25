@@ -43,7 +43,7 @@
   #v(0em)
   #text(size: 13pt)[Matsumotofukashi High School\ 240620 Tsuyoshi Kobayashi]
   #v(0em)
-  #text(size: 15pt)[2026-04-14  --]
+  #text(size: 15pt)[form 2026-04-14]
   #v(1em)
 ]
 
@@ -63,7 +63,7 @@
 - *electoric charge* - 
 - *point charge* - charge which can be ignored the size
 \
-*Electrostatic force* works between charges.
+*Electrostatic force* is an interraction between charged particles.
 
 
 $
@@ -125,7 +125,7 @@ $
 ])
 
 
-Total amount of charge is saved.
+Total amount of charge is conserved.
 
 - *Coulomd's law*
 
@@ -200,7 +200,7 @@ Total amount of charge is saved.
 
 - *Nonconductor* - Substances which cannot conduct electricity.
 
-- *Semiconductor* - ?????? quite difficult... 中間ってなんだよ
+- *Semiconductor* - Substances which have middle electric resistance between conductor and nonconductor.
 
 \
 
@@ -571,7 +571,9 @@ $V_("AB")$ is also called *voltage*.
     })
   ]
 ])
-$W_("AB") = q(V_A - V_B)$\
+$
+  W_("AB") = q(V_A - V_B)
+$\
 
 == Relative of Field and Potential
 
@@ -591,7 +593,7 @@ $W_("AB") = q(V_A - V_B)$\
       line((0.2,1),(0.2,-0.2), mark:(end:">", fill:black), stroke:(thickness:0.08))
       content((0.6,0.5), $bold(q E)$)
       line((0.9,0),(0.9,-2))
-      content((3.8,1.5), "uniform electric field "+$E$)
+      content((4.2,1.5), [*uniform electric field* $bold(E)$])
       line((-1,-2),(1,-2))
       line((-1,2),(1,2))
       content((-0.9,-2.2), $-$)
@@ -611,7 +613,7 @@ q E d = q V\
   <=> V = E d
 $
 
-* electric potential proportional to energy, so it's superposition is calculated by sum.*
+* electric potential is proportional to energy, so it's superposition is calculated by sum.*
 
 
 == Equipotential Surface
@@ -657,6 +659,8 @@ align(center,box(width:10cm, height:8cm, clip:true)[
 
 - *Equiipotential Surface*  -  A surface which was made by joyning points that have equal electric potential.
 ( why surface???? why don't it be line  )
+
+//0425
 
 
 
