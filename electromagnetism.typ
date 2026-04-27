@@ -620,7 +620,7 @@ $
 
 
 #figure(
-align(center,box(width:10cm, height:8cm, clip:true)[
+align(center,box(width:10cm, height:7cm, clip:true)[
   #place(center + horizon)[
     #cetz.canvas({
       import cetz.draw: *
@@ -658,9 +658,49 @@ align(center,box(width:10cm, height:8cm, clip:true)[
 )
 
 - *Equiipotential Surface*  -  A surface which was made by joyning points that have equal electric potential.
-( why surface???? why don't it be line  )
 
 //0425
+* equipotential surface is perpendicular to electric line of force.*\
+( if test charge move with a direction perpendicular to electric force , work is $W = bb(F dot Delta x)$ $<=>$ potential is same constantly. )
+$
+  1/2 m v^2 + q V = "const."
+$
+
+#pagebreak()
+
+== Substance and Electric Field
+
+#align(center,box(width:15cm, height:5cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      rect((-1,1.8),(1,-1.8))
+      line((-2,2),(2,2), mark:(end:">", fill:black))
+      line((-2,1),(2,1), mark:(end:">", fill:black))
+      line((-2,0),(2,0), mark:(end:">", fill:black))
+      line((-2,-1),(2,-1), mark:(end:">", fill:black))
+      line((-2,-2),(2,-2), mark:(end:">", fill:black))
+      content((-0.7,1.3), $-$)
+      content((-0.7,0.3), $-$)
+      content((-0.7,-0.7), $-$)
+      content((0.7,1.3), $+$)
+      content((0.7,0.3), $+$)
+      content((0.7,-0.7), $+$)
+      line((-0.5,1.3),(0.5,1.3), mark:(end:">", fill:black))
+      line((-0.5,0.5),(0.5,0.5), mark:(end:">", fill:black))
+      line((-0.5,-0.7),(0.5,-0.7), mark:(end:">", fill:black))
+    })
+  ]
+])
+
+In conductor, electric field is $bb(0)$.
+
+//高校物理「仕事は保存される」 
+//大学の古典力学「$integral (dt K(t)-U(t))$が停留点となる経路が実現される」
+
+
+
 
 
 
