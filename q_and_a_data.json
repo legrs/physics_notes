@@ -1,0 +1,50 @@
+[
+    {
+        "id": "00001",
+        "questions": [
+            "物理とは何か？"
+        ],
+        "answer": "物理とは、",
+        "description": "物理そのものについての説明",
+        "keywords": [
+            "物理",
+            "世界"
+        ],
+        "synonyms": [
+            "physics"
+        ],
+        "priority": 2,
+        "related": [
+            "00002"
+        ],
+        "updated_at": "2026-04-28",
+        "search_text": "物理とは何か 物理 世界 physics"
+    },
+    {
+        "id": "00002",
+        "questions": [
+            "力学とは何か？"
+        ],
+        "answer": "力学とは、",
+        "description": "力学という分野についての説明",
+        "keywords": [
+            "物理",
+            "エネルギー",
+            "仕事",
+            "力",
+            "力学"
+        ],
+        "synonyms": [
+            "energy",
+            "work",
+            "force",
+            "mechanics"
+        ],
+        "priority": 2,
+        "related": [
+            "00001"
+        ],
+        "updated_at": "2026-04-28",
+        "search_text": "力学とは何か 力学 エネルギー エネルギー 仕事仕事 力仕事"
+    }
+]
