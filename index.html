@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 
 <head>
     <meta charset="UTF-8">
     <title>Search AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <style>
         body {
             margin: 0;
@@ -17,29 +19,50 @@
 
         .container {
             text-align: center;
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
         }
 
+        /* 👇 タイピングテキスト（等幅フォント） */
         #text {
-            font-size: 32px;
-            font-weight: 500;
+            font-size: 28px;
             margin-bottom: 30px;
             height: 40px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        }
+
+        .search-wrapper {
+            display: flex;
+            gap: 10px;
         }
 
         .search-box {
-            width: 400px;
-            max-width: 80vw;
+            flex: 1;
             padding: 12px 16px;
             font-size: 16px;
             border-radius: 999px;
             border: 1px solid #ddd;
             outline: none;
-            transition: 0.2s;
         }
 
         .search-box:focus {
             border-color: #888;
             box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-button {
+            padding: 12px 18px;
+            border: none;
+            border-radius: 999px;
+            background: #000;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .search-button:active {
+            opacity: 0.8;
         }
     </style>
 </head>
@@ -48,11 +71,15 @@
 
     <div class="container">
         <div id="text"></div>
-        <input class="search-box" type="text" placeholder="Search...">
+
+        <div class="search-wrapper">
+            <input id="search" class="search-box" type="text" placeholder="Search...">
+            <button id="btn" class="search-button">Search</button>
+        </div>
     </div>
 
     <script>
-        // ★ここを書き換えるだけで文言変更OK
+        // ===== テキスト（ここ編集するだけ）=====
         const phrases = [
             "Ask anything",
             "Learn smarter",
@@ -66,22 +93,19 @@
         let isDeleting = false;
 
         function typeLoop() {
-            const currentPhrase = phrases[phraseIndex];
+            const current = phrases[phraseIndex];
 
             if (!isDeleting) {
-                // 文字追加
-                textEl.textContent = currentPhrase.slice(0, charIndex + 1);
+                textEl.textContent = current.slice(0, charIndex + 1);
                 charIndex++;
 
-                if (charIndex === currentPhrase.length) {
-                    // 表示完了 → 1秒待機して削除開始
+                if (charIndex === current.length) {
                     isDeleting = true;
                     setTimeout(typeLoop, 1000);
                     return;
                 }
             } else {
-                // 文字削除
-                textEl.textContent = currentPhrase.slice(0, charIndex - 1);
+                textEl.textContent = current.slice(0, charIndex - 1);
                 charIndex--;
 
                 if (charIndex === 0) {
@@ -94,6 +118,26 @@
         }
 
         typeLoop();
+
+        // ===== 検索処理 =====
+        const input = document.getElementById("search");
+        const button = document.getElementById("btn");
+
+        function goSearch() {
+            const query = input.value.trim();
+            if (!query) return;
+            window.location.href = `search.html?q=${encodeURIComponent(query)}`;
+        }
+
+        // Enterキー対応
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                goSearch();
+            }
+        });
+
+        // ボタン対応（スマホ）
+        button.addEventListener("click", goSearch);
     </script>
 
 </body>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Search Results</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #fff;
+            color: #111;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        /* 検索バー */
+        .search-box {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 16px;
+            border-radius: 999px;
+            border: 1px solid #ddd;
+            outline: none;
+            margin-bottom: 30px;
+        }
+
+        /* AI回答 */
+        .ai-answer {
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            background: #fafafa;
+        }
+
+        .ai-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .ai-text {
+            font-size: 18px;
+            line-height: 1.6;
+        }
+
+        /* 検索結果 */
+        .result {
+            margin-bottom: 20px;
+        }
+
+        .result-title {
+            font-size: 18px;
+            color: #1a0dab;
+            cursor: pointer;
+            margin-bottom: 4px;
+        }
+
+        .result-desc {
+            font-size: 14px;
+            color: #444;
+        }
+
+        .no-results {
+            color: #666;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <input id="search" class="search-box" type="text">
+
+        <div id="ai"></div>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const query = (params.get("q") || "").toLowerCase();
+
+        const input = document.getElementById("search");
+        const aiBox = document.getElementById("ai");
+        const resultsBox = document.getElementById("results");
+
+        input.value = query;
+
+        // Enterで再検索
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                const q = input.value.trim();
+                if (q) {
+                    window.location.href = `search.html?q=${encodeURIComponent(q)}`;
+                }
+            }
+        });
+
+        // データ読み込み
+        fetch("data.json")
+            .then(res => res.json())
+            .then(data => {
+                runSearch(data);
+            });
+
+        function runSearch(data) {
+            const words = query.split(" ").filter(Boolean);
+
+            const results = data.map(item => {
+                let score = 0;
+                const text = item.search_text;
+
+                words.forEach(word => {
+                    if (text.includes(word)) score += 1;
+                });
+
+                score *= item.priority || 1;
+
+                return { ...item, score };
+            })
+                .filter(item => item.score > 0)
+                .sort((a, b) => b.score - a.score);
+
+            render(results);
+        }
+
+        function render(results) {
+            aiBox.innerHTML = "";
+            resultsBox.innerHTML = "";
+
+            if (results.length === 0) {
+                resultsBox.innerHTML = `<div class="no-results">No results found</div>`;
+                return;
+            }
+
+            // 🔝 AI回答（1位）
+            const top = results[0];
+
+            aiBox.innerHTML = `
+        <div class="ai-answer">
+            <div class="ai-label">AI Answer</div>
+            <div class="ai-text">${top.answer}</div>
+        </div>
+    `;
+
+            // 🔽 検索結果一覧
+            results.forEach(item => {
+                const el = document.createElement("div");
+                el.className = "result";
+
+                el.innerHTML = `
+            <div class="result-title">${item.questions[0]}</div>
+            <div class="result-desc">${item.description}</div>
+        `;
+
+                resultsBox.appendChild(el);
+            });
+        }
+    </script>
+
+</body>
+
+</html>

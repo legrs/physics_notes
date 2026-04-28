@@ -23,7 +23,8 @@
             "00002"
         ],
         "updated_at": "2026-04-28T00:00:00Z",
-        "search_text": "what is ai artificial intelligence explain technology"
+        "search_text": "what is ai artificial intelligence explain technology",
+        "_note": "ここにメモを入力"
     }
 ]
 '''
