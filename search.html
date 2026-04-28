@@ -10,57 +10,60 @@
         body {
             margin: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: #fff;
-            color: #111;
         }
 
         .container {
-            max-width: 700px;
+            max-width: 720px;
             margin: 40px auto;
             padding: 0 20px;
         }
 
-        /* 検索バー */
         .search-box {
             width: 100%;
             padding: 12px 16px;
             font-size: 16px;
             border-radius: 999px;
             border: 1px solid #ddd;
-            outline: none;
             margin-bottom: 30px;
         }
 
         /* AI回答 */
         .ai-answer {
-            padding: 20px;
+            padding: 24px;
             border: 1px solid #eee;
-            border-radius: 12px;
-            margin-bottom: 30px;
+            border-radius: 16px;
+            margin-bottom: 20px;
             background: #fafafa;
         }
 
         .ai-label {
             font-size: 12px;
             color: #666;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
 
         .ai-text {
             font-size: 18px;
-            line-height: 1.6;
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+
+        /* 関連 */
+        .related span {
+            color: #1a0dab;
+            cursor: pointer;
+            margin-right: 10px;
         }
 
         /* 検索結果 */
         .result {
-            margin-bottom: 20px;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
         }
 
         .result-title {
             font-size: 18px;
             color: #1a0dab;
-            cursor: pointer;
-            margin-bottom: 4px;
         }
 
         .result-desc {
@@ -68,9 +71,8 @@
             color: #444;
         }
 
-        .no-results {
-            color: #666;
-            margin-top: 40px;
+        mark {
+            background: #fff3a0;
         }
     </style>
 </head>
@@ -79,13 +81,13 @@
 
     <div class="container">
         <input id="search" class="search-box" type="text">
-
         <div id="ai"></div>
         <div id="results"></div>
     </div>
 
     <script>
-        const params = new URLSearchParams(window.location.search);
+        // ===== URL =====
+        const params = new URLSearchParams(location.search);
         const query = (params.get("q") || "").toLowerCase();
 
         const input = document.getElementById("search");
@@ -94,71 +96,191 @@
 
         input.value = query;
 
-        // Enterで再検索
+        // Enter検索
         input.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {
                 const q = input.value.trim();
-                if (q) {
-                    window.location.href = `search.html?q=${encodeURIComponent(q)}`;
-                }
+                if (q) location.href = `search.html?q=${encodeURIComponent(q)}`;
             }
         });
 
-        // データ読み込み
-        fetch("data.json")
-            .then(res => res.json())
-            .then(data => {
-                runSearch(data);
+        // ===== ハイライト =====
+        function highlight(text, words) {
+            let result = text;
+            words.forEach(word => {
+                const regex = new RegExp(`(${word})`, "gi");
+                result = result.replace(regex, "<mark>$1</mark>");
+            });
+            return result;
+        }
+
+        // ===== タイピングアニメーション =====
+        function typeText(element, text) {
+            element.textContent = "";
+            let i = 0;
+
+            function loop() {
+                if (i < text.length) {
+                    element.textContent += text[i];
+                    i++;
+                    setTimeout(loop, 25);
+                }
+            }
+            loop();
+        }
+
+        // ===== 編集距離 =====
+        function levenshtein(a, b) {
+            const m = [];
+            for (let i = 0; i <= b.length; i++) m[i] = [i];
+            for (let j = 0; j <= a.length; j++) m[0][j] = j;
+
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    m[i][j] = b[i - 1] === a[j - 1]
+                        ? m[i - 1][j - 1]
+                        : Math.min(
+                            m[i - 1][j - 1] + 1,
+                            m[i][j - 1] + 1,
+                            m[i - 1][j] + 1
+                        );
+                }
+            }
+            return m[b.length][a.length];
+        }
+
+        function typoScore(word, text) {
+            let best = Infinity;
+            text.split(" ").forEach(t => {
+                const d = levenshtein(word, t);
+                if (d < best) best = d;
             });
 
-        function runSearch(data) {
-            const words = query.split(" ").filter(Boolean);
+            if (best === 1) return 2;
+            if (best === 2) return 1;
+            return 0;
+        }
 
-            const results = data.map(item => {
+        // ===== n-gram（部分一致強化）=====
+        function ngramScore(word, text) {
+            const grams = [];
+            for (let i = 0; i < word.length - 1; i++) {
+                grams.push(word.slice(i, i + 2));
+            }
+
+            let score = 0;
+            grams.forEach(g => {
+                if (text.includes(g)) score += 0.5;
+            });
+
+            return score;
+        }
+
+        // ===== インデックス（キャッシュ対応）=====
+        let cachedIndex = null;
+
+        function buildIndex(data) {
+            const index = {};
+            data.forEach(item => {
+                item.search_text.split(" ").forEach(word => {
+                    if (!index[word]) index[word] = new Set();
+                    index[word].add(item.id);
+                });
+            });
+            return index;
+        }
+
+        function getCandidates(index, data, words) {
+            const ids = new Set();
+
+            words.forEach(word => {
+                if (index[word]) {
+                    index[word].forEach(id => ids.add(id));
+                }
+            });
+
+            if (ids.size === 0) return data;
+            return data.filter(item => ids.has(item.id));
+        }
+
+        // ===== メイン =====
+        fetch("q_and_a_data.json")
+            .then(res => res.json())
+            .then(data => {
+                if (!cachedIndex) {
+                    cachedIndex = buildIndex(data);
+                }
+                runSearch(data, cachedIndex);
+            });
+
+        function runSearch(data, index) {
+            const words = query.split(" ").filter(Boolean);
+            const candidates = getCandidates(index, data, words);
+
+            const results = candidates.map(item => {
                 let score = 0;
-                const text = item.search_text;
+
+                if (item.questions.some(q => q.toLowerCase() === query)) score += 10;
+                if (item.search_text.includes(query)) score += 5;
+
+                item.questions.forEach(q => {
+                    if (q.toLowerCase().includes(query)) score += 3;
+                });
 
                 words.forEach(word => {
-                    if (text.includes(word)) score += 1;
+                    if (item.search_text.includes(word)) score += 1;
+                    score += typoScore(word, item.search_text);
+                    score += ngramScore(word, item.search_text);
                 });
+
+                if (item.synonyms) {
+                    item.synonyms.forEach(s => {
+                        words.forEach(word => {
+                            if (s.includes(word)) score += 2;
+                        });
+                    });
+                }
 
                 score *= item.priority || 1;
 
                 return { ...item, score };
             })
-                .filter(item => item.score > 0)
+                .filter(i => i.score > 0)
                 .sort((a, b) => b.score - a.score);
 
-            render(results);
+            render(results, words, data);
         }
 
-        function render(results) {
+        // ===== 表示 =====
+        function render(results, words, allData) {
             aiBox.innerHTML = "";
             resultsBox.innerHTML = "";
 
             if (results.length === 0) {
-                resultsBox.innerHTML = `<div class="no-results">No results found</div>`;
+                resultsBox.innerHTML = "No results found";
                 return;
             }
 
-            // 🔝 AI回答（1位）
             const top = results[0];
 
             aiBox.innerHTML = `
         <div class="ai-answer">
             <div class="ai-label">AI Answer</div>
-            <div class="ai-text">${top.answer}</div>
+            <div id="typing" class="ai-text"></div>
         </div>
     `;
 
-            // 🔽 検索結果一覧
+            // ★ アニメーション実行
+            const typingEl = document.getElementById("typing");
+            typeText(typingEl, top.answer);
+
             results.forEach(item => {
                 const el = document.createElement("div");
                 el.className = "result";
 
                 el.innerHTML = `
-            <div class="result-title">${item.questions[0]}</div>
-            <div class="result-desc">${item.description}</div>
+            <div class="result-title">${highlight(item.questions[0], words)}</div>
+            <div class="result-desc">${highlight(item.description, words)}</div>
         `;
 
                 resultsBox.appendChild(el);
