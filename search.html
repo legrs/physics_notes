@@ -1,584 +1,656 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
-<meta charset="UTF-8">
-<title>Search Results</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Search Results</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<style>
-/* ── Reset ───────────────────────────────────────────────── */
-* { box-sizing: border-box; }
+  <style>
+    /* ── Reset ───────────────────────────────────────────────── */
+    * {
+      box-sizing: border-box;
+    }
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #fff;
-}
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #fff;
+    }
 
-/* ── Search results (hidden until animation ends) ─────────── */
-#app {
-  opacity: 0;
-  transition: opacity 0.6s ease;
-}
-#app.visible {
-  opacity: 1;
-}
+    /* ── Search results (hidden until animation ends) ─────────── */
+    #app {
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
 
-.container {
-  max-width: 720px;
-  margin: 40px auto;
-  padding: 0 20px;
-}
+    #app.visible {
+      opacity: 1;
+    }
 
-.search-box {
-  width: 100%;
-  padding: 12px 16px;
-  font-size: 16px;
-  border-radius: 999px;
-  border: 1px solid #ddd;
-  margin-bottom: 30px;
-}
+    .container {
+      max-width: 720px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
 
-.ai-answer {
-  padding: 24px;
-  border: 1px solid #eee;
-  border-radius: 16px;
-  margin-bottom: 20px;
-  background: #fafafa;
-}
+    .search-box {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 16px;
+      border-radius: 999px;
+      border: 1px solid #ddd;
+      margin-bottom: 30px;
+    }
 
-.ai-label {
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 10px;
-}
+    .ai-answer {
+      padding: 24px;
+      border: 1px solid #eee;
+      border-radius: 16px;
+      margin-bottom: 20px;
+      background: #fafafa;
+    }
 
-.ai-text {
-  font-size: 18px;
-  line-height: 1.7;
-  white-space: pre-wrap;
-}
+    .ai-label {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 10px;
+    }
 
-.result {
-  padding: 12px 0;
-  border-bottom: 1px solid #eee;
-}
+    .ai-text {
+      font-size: 18px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
 
-.result-title {
-  font-size: 18px;
-  color: #1a0dab;
-}
+    .result {
+      padding: 12px 0;
+      border-bottom: 1px solid #eee;
+    }
 
-.result-desc {
-  font-size: 14px;
-  color: #444;
-}
+    .result-title {
+      font-size: 18px;
+      color: #1a0dab;
+    }
 
-mark { background: #fff3a0; }
+    .result-desc {
+      font-size: 14px;
+      color: #444;
+    }
 
-/* ── AI Thinking Overlay ─────────────────────────────────── */
-#thinking-overlay {
-  position: fixed;
-  inset: 0;
-  background: #020408;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  transition: opacity 0.7s ease;
-}
-#thinking-overlay.fade-out {
-  opacity: 0;
-  pointer-events: none;
-}
+    mark {
+      background: #fff3a0;
+    }
 
-.thinking-wrapper {
-  position: relative;
-  /* Responsive square: 800px max, never wider than viewport */
-  width: min(800px, 100vw);
-  height: min(800px, 100vw);
-}
+    /* ── AI Thinking Overlay ─────────────────────────────────── */
+    #thinking-overlay {
+      position: fixed;
+      inset: 0;
+      background: #020408;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      transition: opacity 0.7s ease;
+    }
 
-#thinking-canvas {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-}
+    #thinking-overlay.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
 
-/* ── UI layer ── テキストの見た目はここで変更 ─────────────── */
-.ui-layer {
-  position: absolute;
-  bottom: 15%;
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
-  pointer-events: none;
-  width: 75%;
-}
+    .thinking-wrapper {
+      position: relative;
+      /* Responsive square: 800px max, never wider than viewport */
+      width: min(800px, 100vw);
+      height: min(800px, 100vw);
+    }
 
-/* ===== ラベルテキスト ("Processing" など) ===== */
-.task-label {
-  font-family: monospace;                        /* デバイス搭載の等幅フォント */
-  font-size: clamp(9px, 1.4vw, 11px);
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  color: rgba(100, 200, 255, 0.5);
-  margin-bottom: 10px;
-}
+    #thinking-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
 
-/* ===== タスク行テキスト ===== */
-.task-text {
-  font-family: monospace;                        /* デバイス搭載の等幅フォント */
-  font-size: clamp(11px, 1.8vw, 15px);
-  letter-spacing: 0.08em;
-  color: rgba(180, 230, 255, 0.85);
-  height: 1.6em;
-  overflow: hidden;
-  position: relative;
-}
+    /* ── UI layer ── テキストの見た目はここで変更 ─────────────── */
+    .ui-layer {
+      position: absolute;
+      bottom: 15%;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      pointer-events: none;
+      width: 75%;
+    }
 
-.task-inner {
-  position: absolute;
-  width: 100%;
-  transition: opacity 0.4s ease, transform 0.4s ease;
-}
-.task-inner.fade-out {
-  opacity: 0; transform: translateY(-8px);
-}
-.task-inner.fade-in {
-  opacity: 0; transform: translateY(8px); transition: none;
-}
-.task-inner.visible {
-  opacity: 1; transform: translateY(0);
-  transition: opacity 0.4s ease, transform 0.4s ease;
-}
+    /* ===== ラベルテキスト ("Processing" など) ===== */
+    .task-label {
+      font-family: monospace;
+      /* デバイス搭載の等幅フォント */
+      font-size: clamp(9px, 1.4vw, 11px);
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: rgba(100, 200, 255, 0.5);
+      margin-bottom: 10px;
+    }
 
-.progress-bar {
-  margin: 18px auto 0;
-  width: 200px; height: 1px;
-  background: rgba(100,180,255,0.1);
-  position: relative; overflow: hidden;
-}
-.progress-fill {
-  position: absolute;
-  top: 0; left: 0; height: 100%; width: 40%;
-  background: linear-gradient(90deg, transparent, rgba(100,200,255,0.8), transparent);
-  animation: scan 2.2s ease-in-out infinite;
-}
-@keyframes scan { 0% { left: -40%; } 100% { left: 140%; } }
+    /* ===== タスク行テキスト ===== */
+    .task-text {
+      font-family: monospace;
+      /* デバイス搭載の等幅フォント */
+      font-size: clamp(11px, 1.8vw, 15px);
+      letter-spacing: 0.08em;
+      color: rgba(180, 230, 255, 0.85);
+      height: 1.6em;
+      overflow: hidden;
+      position: relative;
+    }
 
-/* ── Corner decorations ──────────────────────────────────── */
-.corner {
-  position: absolute;
-  width: min(18px, 2.3vw); height: min(18px, 2.3vw);
-  opacity: 0.3;
-}
-.corner-tl { top: 7.5%; left: 7.5%; border-top: 1px solid #4af; border-left: 1px solid #4af; }
-.corner-tr { top: 7.5%; right: 7.5%; border-top: 1px solid #4af; border-right: 1px solid #4af; }
-.corner-bl { bottom: 7.5%; left: 7.5%; border-bottom: 1px solid #4af; border-left: 1px solid #4af; }
-.corner-br { bottom: 7.5%; right: 7.5%; border-bottom: 1px solid #4af; border-right: 1px solid #4af; }
+    .task-inner {
+      position: absolute;
+      width: 100%;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
 
-/* ===== リングラベル (上下の小さい文字) ===== */
-.ring-label {
-  position: absolute;
-  font-family: monospace;                        /* デバイス搭載の等幅フォント */
-  font-size: clamp(7px, 1.1vw, 9px);
-  letter-spacing: 0.2em;
-  color: rgba(100,200,255,0.2);
-  text-transform: uppercase;
-}
-.ring-label.top { top: 8.5%; left: 50%; transform: translateX(-50%); }
-.ring-label.bot { bottom: 8.5%; left: 50%; transform: translateX(-50%); }
-</style>
+    .task-inner.fade-out {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+
+    .task-inner.fade-in {
+      opacity: 0;
+      transform: translateY(8px);
+      transition: none;
+    }
+
+    .task-inner.visible {
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+
+    .progress-bar {
+      margin: 18px auto 0;
+      width: 200px;
+      height: 1px;
+      background: rgba(100, 180, 255, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 40%;
+      background: linear-gradient(90deg, transparent, rgba(100, 200, 255, 0.8), transparent);
+      animation: scan 2.2s ease-in-out infinite;
+    }
+
+    @keyframes scan {
+      0% {
+        left: -40%;
+      }
+
+      100% {
+        left: 140%;
+      }
+    }
+
+    /* ── Corner decorations ──────────────────────────────────── */
+    .corner {
+      position: absolute;
+      width: min(18px, 2.3vw);
+      height: min(18px, 2.3vw);
+      opacity: 0.3;
+    }
+
+    .corner-tl {
+      top: 7.5%;
+      left: 7.5%;
+      border-top: 1px solid #4af;
+      border-left: 1px solid #4af;
+    }
+
+    .corner-tr {
+      top: 7.5%;
+      right: 7.5%;
+      border-top: 1px solid #4af;
+      border-right: 1px solid #4af;
+    }
+
+    .corner-bl {
+      bottom: 7.5%;
+      left: 7.5%;
+      border-bottom: 1px solid #4af;
+      border-left: 1px solid #4af;
+    }
+
+    .corner-br {
+      bottom: 7.5%;
+      right: 7.5%;
+      border-bottom: 1px solid #4af;
+      border-right: 1px solid #4af;
+    }
+
+    /* ===== リングラベル (上下の小さい文字) ===== */
+    .ring-label {
+      position: absolute;
+      font-family: monospace;
+      /* デバイス搭載の等幅フォント */
+      font-size: clamp(7px, 1.1vw, 9px);
+      letter-spacing: 0.2em;
+      color: rgba(100, 200, 255, 0.2);
+      text-transform: uppercase;
+    }
+
+    .ring-label.top {
+      top: 8.5%;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .ring-label.bot {
+      bottom: 8.5%;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+  </style>
 </head>
+
 <body>
 
-<!-- ══ AI Thinking Overlay ══════════════════════════════════════ -->
-<div id="thinking-overlay">
-  <div class="thinking-wrapper">
-    <canvas id="thinking-canvas"></canvas>
+  <!-- ══ AI Thinking Overlay ══════════════════════════════════════ -->
+  <div id="thinking-overlay">
+    <div class="thinking-wrapper">
+      <canvas id="thinking-canvas"></canvas>
 
-    <div class="corner corner-tl"></div>
-    <div class="corner corner-tr"></div>
-    <div class="corner corner-bl"></div>
-    <div class="corner corner-br"></div>
+      <div class="corner corner-tl"></div>
+      <div class="corner corner-tr"></div>
+      <div class="corner corner-bl"></div>
+      <div class="corner corner-br"></div>
 
-    <!-- ===== テキスト変更・追加はここ ===== -->
-    <span class="ring-label top">NEURAL ENGINE v4.2</span>
-    <span class="ring-label bot">INFERENCE ACTIVE</span>
+      <!-- ===== テキスト変更・追加はここ ===== -->
+      <span class="ring-label top">NEURAL ENGINE v4.2</span>
+      <span class="ring-label bot">INFERENCE ACTIVE</span>
 
-    <div class="ui-layer">
-      <div class="task-label">Processing</div>
-      <div class="task-text">
-        <div class="task-inner visible" id="taskDisplay">Initializing context window...</div>
+      <div class="ui-layer">
+        <div class="task-label">Processing</div>
+        <div class="task-text">
+          <div class="task-inner visible" id="taskDisplay">Initializing context window...</div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+        </div>
       </div>
-      <div class="progress-bar"><div class="progress-fill"></div></div>
+      <!-- ===================================== -->
+
     </div>
-    <!-- ===================================== -->
-
   </div>
-</div>
 
-<!-- ══ Search Results ════════════════════════════════════════════ -->
-<div id="app">
-  <div class="container">
-    <input id="search" class="search-box" type="text">
-    <div id="ai"></div>
-    <div id="results"></div>
+  <!-- ══ Search Results ════════════════════════════════════════════ -->
+  <div id="app">
+    <div class="container">
+      <input id="search" class="search-box" type="text">
+      <div id="ai"></div>
+      <div id="results"></div>
+    </div>
   </div>
-</div>
 
-<!-- ══ AI Thinking Canvas ════════════════════════════════════════ -->
-<script>
-(function () {
-  const canvas  = document.getElementById('thinking-canvas');
-  const ctx     = canvas.getContext('2d');
-  const overlay = document.getElementById('thinking-overlay');
-  const appEl   = document.getElementById('app');
+  <!-- ══ AI Thinking Canvas ════════════════════════════════════════ -->
+  <script>
+    (function () {
+      const canvas = document.getElementById('thinking-canvas');
+      const ctx = canvas.getContext('2d');
+      const overlay = document.getElementById('thinking-overlay');
+      const appEl = document.getElementById('app');
 
-  /* ── Responsive canvas resolution ───────────────────────── */
-  const wrapper = canvas.parentElement;
-  function syncCanvasSize() {
-    const s = wrapper.getBoundingClientRect();
-    canvas.width  = Math.round(s.width);
-    canvas.height = Math.round(s.height);
-  }
-  syncCanvasSize();
-
-  /* Accessors for live canvas size */
-  const W = () => canvas.width;
-  const H = () => canvas.height;
-  const CX = () => canvas.width  / 2;
-  const CY = () => canvas.height / 2;
-  const R  = () => canvas.width  * 0.2375;   // 190/800 of original
-
-  /* ── Dot sphere (unit vectors × R at draw time) ──────────── */
-  const NUM_DOTS = 420;
-  function fibonacci_sphere(n) {
-    const pts = [];
-    const golden = Math.PI * (3 - Math.sqrt(5));
-    for (let i = 0; i < n; i++) {
-      const y   = 1 - (i / (n - 1)) * 2;
-      const rad = Math.sqrt(1 - y * y);
-      const th  = golden * i;
-      pts.push({
-        ux: Math.cos(th) * rad, uy: y, uz: Math.sin(th) * rad,
-        baseSize:   1.2 + Math.random() * 1.4,
-        pulse:      Math.random() * Math.PI * 2,
-        pulseSpeed: 0.015 + Math.random() * 0.01,
-        color:      Math.random()
-      });
-    }
-    return pts;
-  }
-  const dots = fibonacci_sphere(NUM_DOTS);
-
-  /* ── Pulse waves ─────────────────────────────────────────── */
-  const pulses = [];
-  function spawnPulse() {
-    const th = Math.random() * Math.PI * 2;
-    const ph = Math.acos(2 * Math.random() - 1);
-    pulses.push({
-      ox: Math.sin(ph) * Math.cos(th), oy: Math.cos(ph), oz: Math.sin(ph) * Math.sin(th),
-      angle: 0, speed: 0.008 + Math.random() * 0.006,
-      life: 0, maxLife: Math.PI * 0.85,
-      hue: 190 + Math.random() * 40
-    });
-  }
-  for (let i = 0; i < 4; i++) spawnPulse();
-
-  /* ── Rotation ────────────────────────────────────────────── */
-  let rotX = 0.3, rotY = 0;
-
-  /* ── 3-D helpers ─────────────────────────────────────────── */
-  function rotY3(x, z, a) { return [x*Math.cos(a)-z*Math.sin(a), x*Math.sin(a)+z*Math.cos(a)]; }
-  function rotX3(y, z, a) { return [y*Math.cos(a)-z*Math.sin(a), y*Math.sin(a)+z*Math.cos(a)]; }
-
-  function project(px, py, pz) {
-    const [rx, rz1] = rotY3(px, pz, rotY);
-    const [ry, rz2] = rotX3(py, rz1, rotX);
-    const fov   = W() * 0.875;
-    const scale = fov / (fov + rz2 + R());
-    return { sx: CX() + rx * scale, sy: CY() + ry * scale, depth: rz2, scale };
-  }
-
-  function angDist(dot, pulse) {
-    const d = dot.ux*pulse.ox + dot.uy*pulse.oy + dot.uz*pulse.oz;
-    return Math.acos(Math.max(-1, Math.min(1, d)));
-  }
-
-  /* ── Task text cycling ── テキストリストはここ ─────────── */
-  const tasks = [
-    "Analyzing context window…",
-    "Searching vector space…",
-    "Optimizing response path…",
-    "Evaluating token embeddings…",
-    "Cross-referencing knowledge graph…",
-    "Running attention mechanisms…",
-    "Sampling probability distributions…",
-    "Compressing semantic representations…",
-    "Aligning output constraints…",
-    "Synthesizing final response…",
-  ];
-  /* ─────────────────────────────────────────────────────────── */
-
-  let taskIdx = 0;
-  const taskEl = document.getElementById('taskDisplay');
-
-  function cycleTask() {
-    taskEl.classList.remove('visible');
-    taskEl.classList.add('fade-out');
-    setTimeout(() => {
-      taskIdx = (taskIdx + 1) % tasks.length;
-      taskEl.textContent = tasks[taskIdx];
-      taskEl.classList.remove('fade-out');
-      taskEl.classList.add('fade-in');
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        taskEl.classList.remove('fade-in');
-        taskEl.classList.add('visible');
-      }));
-    }, 420);
-  }
-  const taskInterval = setInterval(cycleTask, 2600);
-
-  /* ── Glow ────────────────────────────────────────────────── */
-  function drawGlow() {
-    const r = R();
-    const g1 = ctx.createRadialGradient(CX(), CY(), 0, CX(), CY(), r * 0.7);
-    g1.addColorStop(0,   'rgba(30,120,220,0.10)');
-    g1.addColorStop(0.5, 'rgba(10, 60,160,0.06)');
-    g1.addColorStop(1,   'rgba(0,  0,  0, 0)');
-    ctx.fillStyle = g1;
-    ctx.beginPath(); ctx.arc(CX(), CY(), r*0.7, 0, Math.PI*2); ctx.fill();
-
-    const g2 = ctx.createRadialGradient(CX(), CY(), r*0.75, CX(), CY(), r*1.35);
-    g2.addColorStop(0,   'rgba(40,160,255,0.06)');
-    g2.addColorStop(0.5, 'rgba(20,100,200,0.025)');
-    g2.addColorStop(1,   'rgba(0,  0,  0, 0)');
-    ctx.fillStyle = g2;
-    ctx.beginPath(); ctx.arc(CX(), CY(), r*1.35, 0, Math.PI*2); ctx.fill();
-  }
-
-  function drawRing(t) {
-    const r = R();
-    ctx.save();
-    ctx.translate(CX(), CY()); ctx.scale(1, 0.22);
-    const grad = ctx.createConicGradient(t * 0.4, 0, 0);
-    grad.addColorStop(0,    'rgba(80,200,255,0.0)');
-    grad.addColorStop(0.25, 'rgba(80,200,255,0.25)');
-    grad.addColorStop(0.5,  'rgba(80,200,255,0.0)');
-    grad.addColorStop(0.75, 'rgba(80,200,255,0.12)');
-    grad.addColorStop(1,    'rgba(80,200,255,0.0)');
-    ctx.strokeStyle = grad; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(0, 0, r+18, 0, Math.PI*2); ctx.stroke();
-    ctx.restore();
-  }
-
-  /* ── Overlay dismissal ─── 表示時間（ms）はここで変更 ────── */
-  const DISPLAY_DURATION = 3800;
-  /* ─────────────────────────────────────────────────────────── */
-
-  let animRunning = true, rafId;
-
-  setTimeout(() => {
-    clearInterval(taskInterval);
-    overlay.classList.add('fade-out');
-    overlay.addEventListener('transitionend', () => {
-      overlay.style.display = 'none';
-      animRunning = false;
-      cancelAnimationFrame(rafId);
-    }, { once: true });
-    appEl.classList.add('visible');
-    startSearchResults();
-  }, DISPLAY_DURATION);
-
-  /* ── Render loop ─────────────────────────────────────────── */
-  let t = 0;
-  function frame() {
-    if (!animRunning) return;
-
-    ctx.clearRect(0, 0, W(), H());
-
-    const bg = ctx.createRadialGradient(CX(), CY(), 0, CX(), CY(), W()*0.72);
-    bg.addColorStop(0, '#050d18'); bg.addColorStop(1, '#020408');
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, W(), H());
-
-    drawGlow(); drawRing(t);
-
-    rotY += 0.0015; rotX += 0.0003;
-
-    for (let i = pulses.length - 1; i >= 0; i--) {
-      pulses[i].angle += pulses[i].speed;
-      pulses[i].life   = pulses[i].angle;
-      if (pulses[i].angle > pulses[i].maxLife) { pulses.splice(i, 1); spawnPulse(); }
-    }
-
-    const r = R();
-    const projected = dots.map(d => {
-      const p = project(d.ux*r, d.uy*r, d.uz*r);
-      let pg = 0;
-      for (const pulse of pulses) {
-        const diff = Math.abs(angDist(d, pulse) - pulse.angle);
-        if (diff < 0.18) {
-          pg += (1 - diff/0.18) * Math.sin(pulse.life/pulse.maxLife*Math.PI) * 1.4;
-        }
+      /* ── Responsive canvas resolution ───────────────────────── */
+      const wrapper = canvas.parentElement;
+      function syncCanvasSize() {
+        const s = wrapper.getBoundingClientRect();
+        canvas.width = Math.round(s.width);
+        canvas.height = Math.round(s.height);
       }
-      const osc = 0.5 + 0.5 * Math.sin(t * d.pulseSpeed * 60 + d.pulse);
-      return { ...p, d, osc, pg, baseAlpha: 0.15 + 0.6 * (p.depth + r) / (2*r) };
-    }).sort((a, b) => a.depth - b.depth);
+      syncCanvasSize();
 
-    for (const p of projected) {
-      const alpha = Math.min(1, p.baseAlpha + p.pg * 0.5);
-      const size  = p.d.baseSize * p.scale * (1 + p.pg*0.8) * (1 + p.osc*0.15);
-      const h = 195 + p.d.color*30 - p.pg*40;
-      const s = 70  + p.pg*30;
-      const l = 55  + p.pg*30 + p.osc*8;
+      /* Accessors for live canvas size */
+      const W = () => canvas.width;
+      const H = () => canvas.height;
+      const CX = () => canvas.width / 2;
+      const CY = () => canvas.height / 2;
+      const R = () => canvas.width * 0.2375;   // 190/800 of original
 
-      if (p.pg > 0.05) {
-        const grd = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, size*4);
-        grd.addColorStop(0, `hsla(${h},${s}%,${l}%,${alpha*0.7})`);
-        grd.addColorStop(1, `hsla(${h},${s}%,${l}%,0)`);
-        ctx.fillStyle = grd;
-        ctx.beginPath(); ctx.arc(p.sx, p.sy, size*4, 0, Math.PI*2); ctx.fill();
-      }
-      ctx.fillStyle = `hsla(${h},${s}%,${l}%,${alpha})`;
-      ctx.beginPath(); ctx.arc(p.sx, p.sy, size, 0, Math.PI*2); ctx.fill();
-    }
-
-    ctx.save(); ctx.globalAlpha = 0.035;
-    for (let m = 0; m < 6; m++) {
-      const ang = (m/6)*Math.PI + rotY;
-      ctx.strokeStyle = '#4af'; ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      for (let a = 0; a <= Math.PI; a += 0.04) {
-        const pp = project(r*Math.sin(a)*Math.cos(ang), r*Math.cos(a), r*Math.sin(a)*Math.sin(ang));
-        a === 0 ? ctx.moveTo(pp.sx, pp.sy) : ctx.lineTo(pp.sx, pp.sy);
-      }
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    t += 0.016;
-    rafId = requestAnimationFrame(frame);
-  }
-  rafId = requestAnimationFrame(frame);
-})();
-</script>
-
-<!-- ══ Search Results Logic ═══════════════════════════════════════ -->
-<script>
-function startSearchResults() {
-  const params = new URLSearchParams(location.search);
-  const query  = (params.get("q") || "").toLowerCase();
-
-  const input      = document.getElementById("search");
-  const aiBox      = document.getElementById("ai");
-  const resultsBox = document.getElementById("results");
-
-  input.value = query;
-
-  input.addEventListener("keydown", e => {
-    if (e.key === "Enter") {
-      const q = input.value.trim();
-      if (q) location.href = `search.html?q=${encodeURIComponent(q)}`;
-    }
-  });
-
-  function highlight(text, words) {
-    let r = text;
-    words.forEach(w => { r = r.replace(new RegExp(`(${w})`, "gi"), "<mark>$1</mark>"); });
-    return r;
-  }
-
-  function typeText(el, text) {
-    el.textContent = ""; let i = 0;
-    (function loop() {
-      if (i < text.length) { el.textContent += text[i++]; setTimeout(loop, 25); }
-    })();
-  }
-
-  function levenshtein(a, b) {
-    const m = Array.from({length: b.length+1}, (_, i) => [i]);
-    for (let j = 0; j <= a.length; j++) m[0][j] = j;
-    for (let i = 1; i <= b.length; i++)
-      for (let j = 1; j <= a.length; j++)
-        m[i][j] = b[i-1]===a[j-1] ? m[i-1][j-1]
-          : Math.min(m[i-1][j-1]+1, m[i][j-1]+1, m[i-1][j]+1);
-    return m[b.length][a.length];
-  }
-
-  function typoScore(word, text) {
-    let best = Infinity;
-    text.split(" ").forEach(t => { const d = levenshtein(word, t); if (d < best) best = d; });
-    return best === 1 ? 2 : best === 2 ? 1 : 0;
-  }
-
-  function ngramScore(word, text) {
-    let score = 0;
-    for (let i = 0; i < word.length-1; i++) if (text.includes(word.slice(i, i+2))) score += 0.5;
-    return score;
-  }
-
-  let cachedIndex = null;
-
-  function buildIndex(data) {
-    const idx = {};
-    data.forEach(item => item.search_text.split(" ").forEach(w => {
-      if (!idx[w]) idx[w] = new Set(); idx[w].add(item.id);
-    }));
-    return idx;
-  }
-
-  function getCandidates(idx, data, words) {
-    const ids = new Set();
-    words.forEach(w => idx[w]?.forEach(id => ids.add(id)));
-    return ids.size === 0 ? data : data.filter(item => ids.has(item.id));
-  }
-
-  fetch("q_and_a_data.json")
-    .then(r => r.json())
-    .then(data => {
-      if (!cachedIndex) cachedIndex = buildIndex(data);
-      const words = query.split(" ").filter(Boolean);
-      const results = getCandidates(cachedIndex, data, words)
-        .map(item => {
-          let score = 0;
-          if (item.questions.some(q => q.toLowerCase() === query)) score += 10;
-          if (item.search_text.includes(query)) score += 5;
-          item.questions.forEach(q => { if (q.toLowerCase().includes(query)) score += 3; });
-          words.forEach(w => {
-            if (item.search_text.includes(w)) score += 1;
-            score += typoScore(w, item.search_text);
-            score += ngramScore(w, item.search_text);
+      /* ── Dot sphere (unit vectors × R at draw time) ──────────── */
+      const NUM_DOTS = 420;
+      function fibonacci_sphere(n) {
+        const pts = [];
+        const golden = Math.PI * (3 - Math.sqrt(5));
+        for (let i = 0; i < n; i++) {
+          const y = 1 - (i / (n - 1)) * 2;
+          const rad = Math.sqrt(1 - y * y);
+          const th = golden * i;
+          pts.push({
+            ux: Math.cos(th) * rad, uy: y, uz: Math.sin(th) * rad,
+            baseSize: 1.2 + Math.random() * 1.4,
+            pulse: Math.random() * Math.PI * 2,
+            pulseSpeed: 0.015 + Math.random() * 0.01,
+            color: Math.random()
           });
-          item.synonyms?.forEach(s => words.forEach(w => { if (s.includes(w)) score += 2; }));
-          return { ...item, score: score * (item.priority || 1) };
-        })
-        .filter(i => i.score > 0)
-        .sort((a, b) => b.score - a.score);
+        }
+        return pts;
+      }
+      const dots = fibonacci_sphere(NUM_DOTS);
 
-      if (results.length === 0) { resultsBox.innerHTML = "No results found"; return; }
+      /* ── Pulse waves ─────────────────────────────────────────── */
+      const pulses = [];
+      function spawnPulse() {
+        const th = Math.random() * Math.PI * 2;
+        const ph = Math.acos(2 * Math.random() - 1);
+        pulses.push({
+          ox: Math.sin(ph) * Math.cos(th), oy: Math.cos(ph), oz: Math.sin(ph) * Math.sin(th),
+          angle: 0, speed: 0.008 + Math.random() * 0.006,
+          life: 0, maxLife: Math.PI * 0.85,
+          hue: 190 + Math.random() * 40
+        });
+      }
+      for (let i = 0; i < 4; i++) spawnPulse();
 
-      aiBox.innerHTML = `
+      /* ── Rotation ────────────────────────────────────────────── */
+      let rotX = 0.3, rotY = 0;
+
+      /* ── 3-D helpers ─────────────────────────────────────────── */
+      function rotY3(x, z, a) { return [x * Math.cos(a) - z * Math.sin(a), x * Math.sin(a) + z * Math.cos(a)]; }
+      function rotX3(y, z, a) { return [y * Math.cos(a) - z * Math.sin(a), y * Math.sin(a) + z * Math.cos(a)]; }
+
+      function project(px, py, pz) {
+        const [rx, rz1] = rotY3(px, pz, rotY);
+        const [ry, rz2] = rotX3(py, rz1, rotX);
+        const fov = W() * 0.875;
+        const scale = fov / (fov + rz2 + R());
+        return { sx: CX() + rx * scale, sy: CY() + ry * scale, depth: rz2, scale };
+      }
+
+      function angDist(dot, pulse) {
+        const d = dot.ux * pulse.ox + dot.uy * pulse.oy + dot.uz * pulse.oz;
+        return Math.acos(Math.max(-1, Math.min(1, d)));
+      }
+
+      /* ── Task text cycling ── テキストリストはここ ─────────── */
+      const tasks = [
+        "Analyzing context window…",
+        "Searching vector space…",
+        "Optimizing response path…",
+        "Evaluating token embeddings…",
+        "Cross-referencing knowledge graph…",
+        "Running attention mechanisms…",
+        "Sampling probability distributions…",
+        "Compressing semantic representations…",
+        "Aligning output constraints…",
+        "Synthesizing final response…",
+      ];
+      /* ─────────────────────────────────────────────────────────── */
+
+      let taskIdx = 0;
+      const taskEl = document.getElementById('taskDisplay');
+
+      function cycleTask() {
+        taskEl.classList.remove('visible');
+        taskEl.classList.add('fade-out');
+        setTimeout(() => {
+          taskIdx = (taskIdx + 1) % tasks.length;
+          taskEl.textContent = tasks[taskIdx];
+          taskEl.classList.remove('fade-out');
+          taskEl.classList.add('fade-in');
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            taskEl.classList.remove('fade-in');
+            taskEl.classList.add('visible');
+          }));
+        }, 420);
+      }
+      const taskInterval = setInterval(cycleTask, 2600);
+
+      /* ── Glow ────────────────────────────────────────────────── */
+      function drawGlow() {
+        const r = R();
+        const g1 = ctx.createRadialGradient(CX(), CY(), 0, CX(), CY(), r * 0.7);
+        g1.addColorStop(0, 'rgba(30,120,220,0.10)');
+        g1.addColorStop(0.5, 'rgba(10, 60,160,0.06)');
+        g1.addColorStop(1, 'rgba(0,  0,  0, 0)');
+        ctx.fillStyle = g1;
+        ctx.beginPath(); ctx.arc(CX(), CY(), r * 0.7, 0, Math.PI * 2); ctx.fill();
+
+        const g2 = ctx.createRadialGradient(CX(), CY(), r * 0.75, CX(), CY(), r * 1.35);
+        g2.addColorStop(0, 'rgba(40,160,255,0.06)');
+        g2.addColorStop(0.5, 'rgba(20,100,200,0.025)');
+        g2.addColorStop(1, 'rgba(0,  0,  0, 0)');
+        ctx.fillStyle = g2;
+        ctx.beginPath(); ctx.arc(CX(), CY(), r * 1.35, 0, Math.PI * 2); ctx.fill();
+      }
+
+      function drawRing(t) {
+        const r = R();
+        ctx.save();
+        ctx.translate(CX(), CY()); ctx.scale(1, 0.22);
+        const grad = ctx.createConicGradient(t * 0.4, 0, 0);
+        grad.addColorStop(0, 'rgba(80,200,255,0.0)');
+        grad.addColorStop(0.25, 'rgba(80,200,255,0.25)');
+        grad.addColorStop(0.5, 'rgba(80,200,255,0.0)');
+        grad.addColorStop(0.75, 'rgba(80,200,255,0.12)');
+        grad.addColorStop(1, 'rgba(80,200,255,0.0)');
+        ctx.strokeStyle = grad; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(0, 0, r + 18, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+      }
+
+      /* ── Overlay dismissal ─── 表示時間（ms）はここで変更 ────── */
+      const DISPLAY_DURATION = 3800;
+      /* ─────────────────────────────────────────────────────────── */
+
+      let animRunning = true, rafId;
+
+      setTimeout(() => {
+        clearInterval(taskInterval);
+        overlay.classList.add('fade-out');
+        overlay.addEventListener('transitionend', () => {
+          overlay.style.display = 'none';
+          animRunning = false;
+          cancelAnimationFrame(rafId);
+        }, { once: true });
+        appEl.classList.add('visible');
+        startSearchResults();
+      }, DISPLAY_DURATION);
+
+      /* ── Render loop ─────────────────────────────────────────── */
+      let t = 0;
+      function frame() {
+        if (!animRunning) return;
+
+        ctx.clearRect(0, 0, W(), H());
+
+        const bg = ctx.createRadialGradient(CX(), CY(), 0, CX(), CY(), W() * 0.72);
+        bg.addColorStop(0, '#050d18'); bg.addColorStop(1, '#020408');
+        ctx.fillStyle = bg; ctx.fillRect(0, 0, W(), H());
+
+        drawGlow(); drawRing(t);
+
+        rotY += 0.0015; rotX += 0.0003;
+
+        for (let i = pulses.length - 1; i >= 0; i--) {
+          pulses[i].angle += pulses[i].speed;
+          pulses[i].life = pulses[i].angle;
+          if (pulses[i].angle > pulses[i].maxLife) { pulses.splice(i, 1); spawnPulse(); }
+        }
+
+        const r = R();
+        const projected = dots.map(d => {
+          const p = project(d.ux * r, d.uy * r, d.uz * r);
+          let pg = 0;
+          for (const pulse of pulses) {
+            const diff = Math.abs(angDist(d, pulse) - pulse.angle);
+            if (diff < 0.18) {
+              pg += (1 - diff / 0.18) * Math.sin(pulse.life / pulse.maxLife * Math.PI) * 1.4;
+            }
+          }
+          const osc = 0.5 + 0.5 * Math.sin(t * d.pulseSpeed * 60 + d.pulse);
+          return { ...p, d, osc, pg, baseAlpha: 0.15 + 0.6 * (p.depth + r) / (2 * r) };
+        }).sort((a, b) => a.depth - b.depth);
+
+        for (const p of projected) {
+          const alpha = Math.min(1, p.baseAlpha + p.pg * 0.5);
+          const size = p.d.baseSize * p.scale * (1 + p.pg * 0.8) * (1 + p.osc * 0.15);
+          const h = 195 + p.d.color * 30 - p.pg * 40;
+          const s = 70 + p.pg * 30;
+          const l = 55 + p.pg * 30 + p.osc * 8;
+
+          if (p.pg > 0.05) {
+            const grd = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, size * 4);
+            grd.addColorStop(0, `hsla(${h},${s}%,${l}%,${alpha * 0.7})`);
+            grd.addColorStop(1, `hsla(${h},${s}%,${l}%,0)`);
+            ctx.fillStyle = grd;
+            ctx.beginPath(); ctx.arc(p.sx, p.sy, size * 4, 0, Math.PI * 2); ctx.fill();
+          }
+          ctx.fillStyle = `hsla(${h},${s}%,${l}%,${alpha})`;
+          ctx.beginPath(); ctx.arc(p.sx, p.sy, size, 0, Math.PI * 2); ctx.fill();
+        }
+
+        ctx.save(); ctx.globalAlpha = 0.035;
+        for (let m = 0; m < 6; m++) {
+          const ang = (m / 6) * Math.PI + rotY;
+          ctx.strokeStyle = '#4af'; ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          for (let a = 0; a <= Math.PI; a += 0.04) {
+            const pp = project(r * Math.sin(a) * Math.cos(ang), r * Math.cos(a), r * Math.sin(a) * Math.sin(ang));
+            a === 0 ? ctx.moveTo(pp.sx, pp.sy) : ctx.lineTo(pp.sx, pp.sy);
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        t += 0.016;
+        rafId = requestAnimationFrame(frame);
+      }
+      rafId = requestAnimationFrame(frame);
+    })();
+  </script>
+
+  <!-- ══ Search Results Logic ═══════════════════════════════════════ -->
+  <script>
+    function startSearchResults() {
+      const params = new URLSearchParams(location.search);
+      const query = (params.get("q") || "").toLowerCase();
+
+      const input = document.getElementById("search");
+      const aiBox = document.getElementById("ai");
+      const resultsBox = document.getElementById("results");
+
+      input.value = query;
+
+      input.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+          const q = input.value.trim();
+          if (q) location.href = `search.html?q=${encodeURIComponent(q)}`;
+        }
+      });
+
+      function highlight(text, words) {
+        let r = text;
+        words.forEach(w => { r = r.replace(new RegExp(`(${w})`, "gi"), "<mark>$1</mark>"); });
+        return r;
+      }
+
+      function typeText(el, text) {
+        el.textContent = ""; let i = 0;
+        (function loop() {
+          if (i < text.length) { el.textContent += text[i++]; setTimeout(loop, 25); }
+        })();
+      }
+
+      function levenshtein(a, b) {
+        const m = Array.from({ length: b.length + 1 }, (_, i) => [i]);
+        for (let j = 0; j <= a.length; j++) m[0][j] = j;
+        for (let i = 1; i <= b.length; i++)
+          for (let j = 1; j <= a.length; j++)
+            m[i][j] = b[i - 1] === a[j - 1] ? m[i - 1][j - 1]
+              : Math.min(m[i - 1][j - 1] + 1, m[i][j - 1] + 1, m[i - 1][j] + 1);
+        return m[b.length][a.length];
+      }
+
+      function typoScore(word, text) {
+        let best = Infinity;
+        text.split(" ").forEach(t => { const d = levenshtein(word, t); if (d < best) best = d; });
+        return best === 1 ? 2 : best === 2 ? 1 : 0;
+      }
+
+      function ngramScore(word, text) {
+        let score = 0;
+        for (let i = 0; i < word.length - 1; i++) if (text.includes(word.slice(i, i + 2))) score += 0.5;
+        return score;
+      }
+
+      let cachedIndex = null;
+
+      function buildIndex(data) {
+        const idx = {};
+        data.forEach(item => item.search_text.split(" ").forEach(w => {
+          if (!idx[w]) idx[w] = new Set(); idx[w].add(item.id);
+        }));
+        return idx;
+      }
+
+      function getCandidates(idx, data, words) {
+        const ids = new Set();
+        words.forEach(w => idx[w]?.forEach(id => ids.add(id)));
+        return ids.size === 0 ? data : data.filter(item => ids.has(item.id));
+      }
+
+      fetch("q_and_a_data.json")
+        .then(r => r.json())
+        .then(data => {
+          if (!cachedIndex) cachedIndex = buildIndex(data);
+          const words = query.split(" ").filter(Boolean);
+          const results = getCandidates(cachedIndex, data, words)
+            .map(item => {
+              let score = 0;
+              if (item.questions.some(q => q.toLowerCase() === query)) score += 10;
+              if (item.search_text.includes(query)) score += 5;
+              item.questions.forEach(q => { if (q.toLowerCase().includes(query)) score += 3; });
+              words.forEach(w => {
+                if (item.search_text.includes(w)) score += 1;
+                score += typoScore(w, item.search_text);
+                score += ngramScore(w, item.search_text);
+              });
+              item.synonyms?.forEach(s => words.forEach(w => { if (s.includes(w)) score += 2; }));
+              return { ...item, score: score * (item.priority || 1) };
+            })
+            .filter(i => i.score > 0)
+            .sort((a, b) => b.score - a.score);
+
+          if (results.length === 0) { resultsBox.innerHTML = "No results found"; return; }
+
+          aiBox.innerHTML = `
         <div class="ai-answer">
           <div class="ai-label">AI Answer</div>
           <div id="typing" class="ai-text"></div>
         </div>`;
-      typeText(document.getElementById("typing"), results[0].answer);
+          typeText(document.getElementById("typing"), results[0].answer);
 
-      results.forEach(item => {
-        const el = document.createElement("div");
-        el.className = "result";
-        el.innerHTML = `
+          results.forEach(item => {
+            const el = document.createElement("div");
+            el.className = "result";
+            el.innerHTML = `
           <div class="result-title">${highlight(item.questions[0], words)}</div>
           <div class="result-desc">${highlight(item.description, words)}</div>`;
-        resultsBox.appendChild(el);
-      });
-    });
-}
-</script>
+            resultsBox.appendChild(el);
+          });
+        });
+    }
+  </script>
 
 </body>
+
 </html>
