@@ -537,7 +537,7 @@ function startSearchResults() {
     return ids.size === 0 ? data : data.filter(item => ids.has(item.id));
   }
 
-  fetch("data.json")
+  fetch("q_and_a_data.json")
     .then(r => r.json())
     .then(data => {
       if (!cachedIndex) cachedIndex = buildIndex(data);
