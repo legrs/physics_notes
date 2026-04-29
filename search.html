@@ -1093,7 +1093,7 @@
       input.value = query;
 
       input.addEventListener('keydown', e => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !e.isComposing) {
           const q = input.value.trim();
           if (!q) return;
           const newSearch = `?q=${encodeURIComponent(q)}`;
