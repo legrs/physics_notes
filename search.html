@@ -45,16 +45,81 @@ body {
 }
 .search-box:focus { border-color: #888; }
 
-/* ── AI Answer box (top result summary) ──────────────────── */
+/* ── AI Answer box ───────────────────────────────────────── */
 .ai-answer {
   padding: 24px;
-  border: 1px solid #eee;
+  border: 1px solid #e0e0e0;
   border-radius: 16px;
   margin-bottom: 20px;
   background: #fafafa;
+  position: relative;
 }
-.ai-label { font-size: 12px; color: #666; margin-bottom: 10px; }
-.ai-text  { font-size: 18px; line-height: 1.7; white-space: pre-wrap; }
+.ai-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #888;
+  margin-bottom: 12px;
+}
+
+/* Markdown content inside AI answer */
+.ai-prose { font-size: 15px; line-height: 1.8; color: #222; }
+.ai-prose h1,.ai-prose h2,.ai-prose h3 { font-weight:700; margin:.9em 0 .4em; color:#111; }
+.ai-prose h1{font-size:1.35em} .ai-prose h2{font-size:1.15em} .ai-prose h3{font-size:1em}
+.ai-prose p { margin: .5em 0; }
+.ai-prose ul,.ai-prose ol { padding-left:1.4em; margin:.4em 0; }
+.ai-prose li { margin:.2em 0; }
+.ai-prose blockquote {
+  border-left:3px solid #ddd; margin:.8em 0; padding:.3em .9em;
+  color:#555; background:#f5f5f5; border-radius:0 6px 6px 0;
+}
+.ai-prose code {
+  font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  background:#f3f4f6; border:1px solid #e5e7eb; border-radius:4px;
+  padding:.1em .35em; font-size:.88em;
+}
+.ai-prose pre {
+  background:#1e1e2e; border-radius:8px; padding:14px 18px;
+  overflow-x:auto; margin:.8em 0;
+}
+.ai-prose pre code { background:none;border:none;padding:0;color:#cdd6f4;font-size:.87em; }
+
+/* Collapse wrapper: clamp to ~10 lines */
+.ai-collapse-wrap {
+  position: relative;
+  overflow: hidden;
+  /* 10行 ≈ 10 × 1.8 × 15px = 270px */
+  max-height: 270px;
+  transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1);
+}
+.ai-collapse-wrap.expanded { max-height: 9999px; }
+
+/* Fade gradient at the bottom when collapsed */
+.ai-fade {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 72px;
+  background: linear-gradient(transparent, #fafafa);
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.ai-collapse-wrap.expanded + .ai-fade { opacity: 0; }
+
+/* Expand / collapse button */
+.ai-expand-btn {
+  display: block;
+  margin-top: 8px;
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  padding: 5px 16px;
+  font-size: 13px;
+  color: #555;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.ai-expand-btn:hover { background: #f0f0f0; border-color: #bbb; }
 
 /* ── Result list items ───────────────────────────────────── */
 .result {
@@ -737,7 +802,63 @@ function startSearchResults() {
         return;
       }
 
-      results.forEach((item, i) => {
+      // ── AI Answer（1位の回答をストリーミング表示） ──────────
+      const top = results[0];
+      aiBox.innerHTML = `
+        <div class="ai-answer">
+          <div class="ai-label">AI Answer</div>
+          <div class="ai-collapse-wrap" id="ai-collapse">
+            <div class="ai-prose" id="ai-prose"></div>
+          </div>
+          <div class="ai-fade" id="ai-fade" style="display:none"></div>
+          <button class="ai-expand-btn" id="ai-expand-btn" style="display:none">続きを読む ▾</button>
+        </div>
+      `;
+
+      const aiProse     = document.getElementById('ai-prose');
+      const aiCollapse  = document.getElementById('ai-collapse');
+      const aiFade      = document.getElementById('ai-fade');
+      const aiExpandBtn = document.getElementById('ai-expand-btn');
+
+      // expand / collapse トグル
+      let aiExpanded = false;
+      aiExpandBtn.addEventListener('click', () => {
+        aiExpanded = !aiExpanded;
+        aiCollapse.classList.toggle('expanded', aiExpanded);
+        aiFade.style.opacity = aiExpanded ? '0' : '1';
+        aiExpandBtn.textContent = aiExpanded ? '折りたたむ ▴' : '続きを読む ▾';
+      });
+
+      // ストリーミング
+      let aiStreamTimer = null;
+      let aiBuf = '', aiIdx = 0;
+      const fullText = top.answer;
+
+      function aiTick() {
+        if (aiIdx < fullText.length) {
+          const chunk = Math.floor(Math.random() * 3) + 1;
+          aiBuf += fullText.slice(aiIdx, aiIdx + chunk);
+          aiIdx += chunk;
+          aiProse.innerHTML = marked.parse(formatMath(aiBuf)) + '<span class="cursor-blink"></span>';
+
+          // ストリーム完了後に高さチェックするため、完了直前には毎回チェックしない
+          aiStreamTimer = setTimeout(aiTick, Math.random() * 20 + 8);
+        } else {
+          aiProse.innerHTML = marked.parse(formatMath(fullText));
+
+          // 10行超えか判定（レンダリング後の実高さで判断）
+          const LINE_HEIGHT = 15 * 1.8; // font-size × line-height
+          const THRESHOLD   = LINE_HEIGHT * 10; // ≈270px
+          if (aiProse.scrollHeight > THRESHOLD + 4) {
+            aiFade.style.display = 'block';
+            aiExpandBtn.style.display = 'block';
+          }
+        }
+      }
+      aiTick();
+
+      // ── 検索結果リスト ───────────────────────────────────────
+      results.forEach(item => {
         const el = document.createElement('div');
         el.className = 'result';
         el.innerHTML = `
