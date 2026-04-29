@@ -1104,8 +1104,9 @@
 
     /* ── 検索ロジック ────────────────────────────────────────────── */
     function startSearchResults() {
-      const params = new URLSearchParams(location.search);
-      const query = (params.get('q') || '').toLowerCase();
+      // URLSearchParams.get() は + をスペースに変換するため、生のパラメータを直接デコードする
+      const rawParam = (location.search.match(/[?&]q=([^&]*)/) || ['', ''])[1];
+      const query = decodeURIComponent(rawParam).toLowerCase();
 
       const input = document.getElementById('search');
       const aiBox = document.getElementById('ai');
@@ -1192,18 +1193,19 @@
           resultsBox.innerHTML = '';
 
           if (results.length === 0) {
-            const chatUrl = `https://chatgpt.com/?q=${encodeURIComponent(query)}`;
             resultsBox.innerHTML = `
               <p style="color:#888;padding:20px 0">結果が見つかりませんでした。</p>
               <div class="ask-ai-wrap">
-                <a class="ai-btn" href="${chatUrl}" target="_blank" rel="noopener">Ask AI ↗</a>
+                <button class="ai-btn" id="ask-ai-btn">Ask AI ↗</button>
               </div>`;
+            document.getElementById('ask-ai-btn').addEventListener('click', () => {
+              window.open('https://chatgpt.com/?q=' + encodeURIComponent(query), '_blank', 'noopener');
+            });
             return;
           }
 
           // ── AI Answer（1位の回答をストリーミング表示） ──────────
           const top = results[0];
-          const chatUrl = `https://chatgpt.com/?q=${encodeURIComponent(query)}`;
           aiBox.innerHTML = `
         <div class="ai-answer">
           <div class="ai-label">AI Answer</div>
@@ -1213,10 +1215,13 @@
           <div class="ai-fade" id="ai-fade" style="display:none"></div>
           <div class="ai-footer">
             <button class="ai-expand-btn" id="ai-expand-btn" style="display:none">続きを読む ▾</button>
-            <a class="ai-btn" href="${chatUrl}" target="_blank" rel="noopener">Dive Deeper ↗</a>
+            <button class="ai-btn" id="dive-deeper-btn">Dive Deeper ↗</button>
           </div>
         </div>
       `;
+          document.getElementById('dive-deeper-btn').addEventListener('click', () => {
+            window.open('https://chatgpt.com/?q=' + encodeURIComponent(query), '_blank', 'noopener');
+          });
 
           const aiProse = document.getElementById('ai-prose');
           const aiCollapse = document.getElementById('ai-collapse');
