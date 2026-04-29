@@ -4,7 +4,7 @@
         "questions": [
             "物理とは何か？"
         ],
-        "answer": "物理とは、",
+        "answer": "物理とは、自然を支配する原理、現象の理解を追究する学問である。扱う対象は、素粒子から宇宙まで万物である。",
         "description": "物理そのものについての説明",
         "keywords": [
             "物理",
@@ -19,14 +19,14 @@
         ],
         "updated_at": "2026-04-28",
         "search_text": "物理とは何か 物理 とは 何か 世界 physics",
-        "_note": "回答を書ききってない"
+        "_note": ""
     },
     {
         "id": "00002",
         "questions": [
             "力学とは何か？"
         ],
-        "answer": "力学とは、",
+        "answer": "力学とは、物体に力が働いたときにどう動くかということを追究する学問である。運動の法則を導くことで、未来の動きを予想するための学問である。",
         "description": "力学という分野についての説明",
         "keywords": [
             "物理",
@@ -43,10 +43,130 @@
         ],
         "priority": 2,
         "related": [
-            "00001"
+            "00001",
+            "00003"
         ],
         "updated_at": "2026-04-28",
         "search_text": "力学とは何か 力学 とは 何か エネルギー 仕事 力 energy work force mechanics",
-        "_note": "回答を書ききってない"
+        "_note": ""
+    },
+    {
+        "id": "00003",
+        "questions": [
+            "電位とは何か？"
+        ],
+        "answer": "電位とは、1クーロンの電荷が持つ位置エネルギーのことである。",
+        "description": "電位そのものについての説明",
+        "keywords": [
+            "電磁気学",
+            "電気",
+            "ポテンシャル",
+            "電位",
+            "仕事",
+            "位置エネルギー",
+            "エネルギー",
+            "力",
+            "電場"
+        ],
+        "synonyms": [
+            "電場",
+            "電位",
+            "電気ポテンシャル",
+            "ポテンシャルエネルギー",
+            "位置エネルギー",
+            "potential energy",
+            "electric potential"
+        ],
+        "priority": 2,
+        "related": [
+            "00001",
+            "00002"
+        ],
+        "updated_at": "2026-04-29",
+        "search_text": "電位とは何か 電位 とは 何か 位置エネルギー 位置エネルギー ポテンシャル エネルギー 電気 仕事 力 electric potential energy",
+        "_note": ""
+    },
+    {
+        "id": "00004",
+        "questions": [
+            "なぜ、円の面積はπr^2なのか？"
+        ],
+        "answer": "",
+        "description": "",
+        "keywords": [
+            "円の面積",
+            "円周",
+            "積分",
+            "バウムクーヘン積分"
+        ],
+        "synonyms": [
+            "why is the area of a circle pi r^2",
+            "area of a circle",
+            "circumference",
+            "integration",
+            "baumkuchen integration"
+        ],
+        "priority": 1,
+        "related": [
+            "00005"
+        ],
+        "updated_at": "2026-04-29",
+        "search_text": "なぜ円の面積はπr^2なのか なぜ えんの めんせきは πr^2 なのか 円周積分 バウムクーヘン積分 why is the area of a circle pi r^2 why is area of circle pi r^2 area of circle circumference integration",
+        "_note": ""
+    },
+    {
+        "id": "00005",
+        "questions": [
+            "なぜ、球の表面積は4πr^2なのか？"
+        ],
+        "answer": "",
+        "description": "",
+        "keywords": [
+            "球の表面積",
+            "球面三角法",
+            "積分"
+        ],
+        "synonyms": [
+            "why is the surface area of a sphere 4pi r^2",
+            "surface area of a sphere",
+            "spherical trigonometry",
+            "integration"
+        ],
+        "priority": 1,
+        "related": [
+            "00004"
+        ],
+        "updated_at": "2026-04-29",
+        "search_text": "なぜ球の表面積は4πr^2なのか なぜ きゅうの ひょうめんせきは 4πr^2 なのか 球面三角法 積分 why is the surface area of a sphere 4pi r^2 why is surface area of sphere 4pi r^2 surface area of sphere spherical trigonometry integration",
+        "_note": ""
+    },
+    {
+        "id": "00006",
+        "questions": [
+            "なぜh上がるとmghのpotentialが得られるか？"
+        ],
+        "answer": "",
+        "description": "",
+        "keywords": [
+            "位置エネルギー",
+            "仕事",
+            "運動方程式",
+            "保存力"
+        ],
+        "synonyms": [
+            "why is mgh the potential energy when moved up by h",
+            "potential energy",
+            "work",
+            "equation of motion",
+            "conservative force"
+        ],
+        "priority": 1,
+        "related": [
+            "00002",
+            "00003"
+        ],
+        "updated_at": "2026-04-29",
+        "search_text": "なぜh上がるとmghのpotentialが得られるか なぜhあがるとmghのpotentialがえられるか 位置エネルギー 仕事 運動方程式 保存力 why is mgh the potential energy when moved up by h potential energy work equation of motion conservative force",
+        "_note": ""
     }
 ]
