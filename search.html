@@ -177,23 +177,44 @@
       opacity: 0;
     }
 
-    /* Expand / collapse button */
-    .ai-expand-btn {
+    /* ── AI Answer footer (expand btn + AI btn) ─────────────── */
+    .ai-footer {
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    /* Shared style for expand and AI buttons */
+    .ai-expand-btn,
+    .ai-btn {
       display: block;
-      margin-top: 8px;
-      background: none;
-      border: 1px solid #ddd;
-      border-radius: 999px;
-      padding: 5px 16px;
-      font-size: 13px;
-      color: #555;
+      width: 100%;
+      text-align: center;
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: 1px solid #e0e0e0;
+      background: #f7f7f7;
+      color: #333;
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
       cursor: pointer;
+      box-sizing: border-box;
       transition: background 0.15s ease, border-color 0.15s ease;
     }
 
-    .ai-expand-btn:hover {
-      background: #f0f0f0;
-      border-color: #bbb;
+    .ai-expand-btn:hover,
+    .ai-btn:hover {
+      background: #ececec;
+      border-color: #ccc;
+    }
+
+    /* Ask AI button (no-results) */
+    .ask-ai-wrap {
+      text-align: center;
+      padding: 24px 0 8px;
     }
 
     /* ── Result list items ───────────────────────────────────── */
@@ -1171,12 +1192,18 @@
           resultsBox.innerHTML = '';
 
           if (results.length === 0) {
-            resultsBox.innerHTML = '<p style="color:#888;padding:20px 0">結果が見つかりませんでした。</p>';
+            const chatUrl = `https://chatgpt.com/?q=${encodeURIComponent(query)}`;
+            resultsBox.innerHTML = `
+              <p style="color:#888;padding:20px 0">結果が見つかりませんでした。</p>
+              <div class="ask-ai-wrap">
+                <a class="ai-btn" href="${chatUrl}" target="_blank" rel="noopener">Ask AI ↗</a>
+              </div>`;
             return;
           }
 
           // ── AI Answer（1位の回答をストリーミング表示） ──────────
           const top = results[0];
+          const chatUrl = `https://chatgpt.com/?q=${encodeURIComponent(query)}`;
           aiBox.innerHTML = `
         <div class="ai-answer">
           <div class="ai-label">AI Answer</div>
@@ -1184,7 +1211,10 @@
             <div class="ai-prose" id="ai-prose"></div>
           </div>
           <div class="ai-fade" id="ai-fade" style="display:none"></div>
-          <button class="ai-expand-btn" id="ai-expand-btn" style="display:none">続きを読む ▾</button>
+          <div class="ai-footer">
+            <button class="ai-expand-btn" id="ai-expand-btn" style="display:none">続きを読む ▾</button>
+            <a class="ai-btn" href="${chatUrl}" target="_blank" rel="noopener">Dive Deeper ↗</a>
+          </div>
         </div>
       `;
 
@@ -1192,6 +1222,19 @@
           const aiCollapse = document.getElementById('ai-collapse');
           const aiFade = document.getElementById('ai-fade');
           const aiExpandBtn = document.getElementById('ai-expand-btn');
+
+          const LINE_HEIGHT = 15 * 1.8;
+          const THRESHOLD = LINE_HEIGHT * 10; // ≈270px
+          let overflowShown = false;
+
+          function checkOverflow() {
+            if (overflowShown) return;
+            if (aiProse.scrollHeight > THRESHOLD + 4) {
+              overflowShown = true;
+              aiFade.style.display = 'block';
+              aiExpandBtn.style.display = 'block';
+            }
+          }
 
           // expand / collapse トグル
           let aiExpanded = false;
@@ -1213,19 +1256,11 @@
               aiBuf += fullText.slice(aiIdx, aiIdx + chunk);
               aiIdx += chunk;
               aiProse.innerHTML = marked.parse(formatMath(aiBuf)) + '<span class="cursor-blink"></span>';
-
-              // ストリーム完了後に高さチェックするため、完了直前には毎回チェックしない
+              checkOverflow();
               aiStreamTimer = setTimeout(aiTick, Math.random() * 20 + 8);
             } else {
               aiProse.innerHTML = marked.parse(formatMath(fullText));
-
-              // 10行超えか判定（レンダリング後の実高さで判断）
-              const LINE_HEIGHT = 15 * 1.8; // font-size × line-height
-              const THRESHOLD = LINE_HEIGHT * 10; // ≈270px
-              if (aiProse.scrollHeight > THRESHOLD + 4) {
-                aiFade.style.display = 'block';
-                aiExpandBtn.style.display = 'block';
-              }
+              checkOverflow();
             }
           }
           aiTick();
