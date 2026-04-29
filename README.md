@@ -1,8 +1,7 @@
 松本深志高校　3年物理ノート
 
 先生とのQ&Aデータベース↓\
-https://legrs.github.io/physics_notes/
-
+<https://legrs.github.io/physics_notes/>
 
 ## データベースの書き方
 
