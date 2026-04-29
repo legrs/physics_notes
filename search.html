@@ -231,6 +231,64 @@
       background: #fff3a0;
     }
 
+    /* ── Back link ───────────────────────────────────────────── */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      color: #888;
+      text-decoration: none;
+      margin-bottom: 20px;
+      padding: 4px 0;
+      transition: color 0.15s ease;
+    }
+
+    .back-link:hover {
+      color: #333;
+    }
+
+    /* ── Related items ───────────────────────────────────────── */
+    .related-section {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid #eee;
+    }
+
+    .related-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 12px;
+    }
+
+    .related-card {
+      padding: 12px 14px;
+      border: 1px solid #eee;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .related-card:hover {
+      background: #f5f5f5;
+      border-color: #ddd;
+    }
+
+    .related-card-title {
+      font-size: 15px;
+      color: #1a0dab;
+      margin-bottom: 3px;
+    }
+
+    .related-card-desc {
+      font-size: 13px;
+      color: #555;
+    }
+
     /* ── Modal (detail view) ─────────────────────────────────── */
     #modal-overlay {
       position: fixed;
@@ -652,6 +710,7 @@
     </div>
     <div id="modal-body">
       <div class="prose" id="modal-content"></div>
+      <div id="modal-related"></div>
     </div>
   </div>
 
@@ -682,6 +741,12 @@
   <!-- ══ Search Results ════════════════════════════════════════════ -->
   <div id="app">
     <div class="container">
+      <a href="https://legrs.github.io/physics_notes/index.html" class="back-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        トップへ
+      </a>
       <input id="search" class="search-box" type="text" placeholder="Search...">
       <div id="ai"></div>
       <div id="results"></div>
@@ -884,10 +949,12 @@
     const modalBody = document.getElementById('modal-body');
     const modalTitle = document.getElementById('modal-title');
     const modalContent = document.getElementById('modal-content');
+    const modalRelated = document.getElementById('modal-related');
     const closeBtn = document.getElementById('close-btn');
     const backdrop = document.getElementById('backdrop');
 
     let isStreaming = false, streamTimer = null, isUserScrolling = false;
+    let allData = null; // fetch後にキャッシュ
 
     modalBody.addEventListener('wheel', () => { if (isStreaming) isUserScrolling = true; }, { passive: true });
     modalBody.addEventListener('touchstart', () => { if (isStreaming) isUserScrolling = true; }, { passive: true });
@@ -896,6 +963,38 @@
       const dist = modalBody.scrollHeight - modalBody.clientHeight - modalBody.scrollTop;
       if (dist <= 10) isUserScrolling = false;
     });
+
+    /* 関連項目セクションを描画 */
+    function renderRelated(item) {
+      modalRelated.innerHTML = '';
+      if (!item.related || item.related.length === 0 || !allData) return;
+      const relItems = item.related.map(id => allData.find(d => d.id === id)).filter(Boolean);
+      if (relItems.length === 0) return;
+
+      const section = document.createElement('div');
+      section.className = 'related-section';
+      section.innerHTML = `<div class="related-label">関連項目</div>`;
+
+      relItems.forEach(ri => {
+        const card = document.createElement('div');
+        card.className = 'related-card';
+        card.innerHTML = `
+          <div class="related-card-title">${ri.questions[0]}</div>
+          <div class="related-card-desc">${ri.description}</div>
+        `;
+        card.addEventListener('click', () => {
+          stopStreaming();
+          modalTitle.textContent = ri.questions[0];
+          modalContent.innerHTML = '';
+          modalRelated.innerHTML = '';
+          modalBody.scrollTop = 0;
+          isUserScrolling = false;
+          startStreaming(ri.answer, () => renderRelated(ri));
+        });
+        section.appendChild(card);
+      });
+      modalRelated.appendChild(section);
+    }
 
     function openModal(triggerEl, item) {
       document.body.style.overflow = 'hidden';
@@ -912,6 +1011,7 @@
 
       modalTitle.textContent = item.questions[0];
       modalContent.innerHTML = '';
+      modalRelated.innerHTML = '';
       modalHeader.style.opacity = '0';
       modalBody.style.opacity = '0';
 
@@ -926,7 +1026,7 @@
       setTimeout(() => {
         modalHeader.style.opacity = '1';
         modalBody.style.opacity = '1';
-        startStreaming(item.answer);
+        startStreaming(item.answer, () => renderRelated(item));
       }, 500);
     }
 
@@ -944,7 +1044,8 @@
       }, 500);
     }
 
-    function startStreaming(fullText) {
+    /* onComplete コールバックを追加 */
+    function startStreaming(fullText, onComplete) {
       isStreaming = true;
       let idx = 0, buf = '';
 
@@ -955,7 +1056,6 @@
           buf += fullText.slice(idx, idx + chunk);
           idx += chunk;
 
-          // Markdownパース → 数式変換
           modalContent.innerHTML = marked.parse(formatMath(buf)) + '<span class="cursor-blink"></span>';
 
           if (!isUserScrolling) modalBody.scrollTop = modalBody.scrollHeight;
@@ -964,6 +1064,7 @@
         } else {
           modalContent.innerHTML = marked.parse(formatMath(fullText));
           isStreaming = false;
+          if (onComplete) onComplete();
         }
       }
       tick();
@@ -994,7 +1095,13 @@
       input.addEventListener('keydown', e => {
         if (e.key === 'Enter') {
           const q = input.value.trim();
-          if (q) location.href = `search.html?q=${encodeURIComponent(q)}`;
+          if (!q) return;
+          const newSearch = `?q=${encodeURIComponent(q)}`;
+          if (location.search === newSearch) {
+            location.reload();
+          } else {
+            location.href = `https://legrs.github.io/physics_notes/search.html${newSearch}`;
+          }
         }
       });
 
@@ -1037,10 +1144,11 @@
         return ids.size === 0 ? data : data.filter(item => ids.has(item.id));
       }
 
-      fetch('q_and_a_data.json')
+      fetch('https://legrs.github.io/physics_notes/q_and_a_data.json')
         .then(r => r.json())
         .then(data => {
           if (!cachedIndex) cachedIndex = buildIndex(data);
+          allData = data; // モーダルの関連項目用にキャッシュ
           const words = query.split(' ').filter(Boolean);
           const results = getCandidates(cachedIndex, data, words)
             .map(item => {
