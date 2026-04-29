@@ -22,11 +22,17 @@
         "related": [
             "00002"
         ],
-        "updated_at": "2026-04-28T00:00:00Z",
+        "updated_at": "2026-04-28",
         "search_text": "what is ai artificial intelligence explain technology",
         "_note": "ここにメモを入力"
     }
 ]
+```
+
+- answerは、マークダウン形式の記述や、LaTeXの使用が可能です。
+
+```json
+"answer": "### 力学とは\n物体の**運動**を扱う物理学の分野です。\n\nニュートンの第二法則：\n$$F = ma$$\n\nここで $F$ は力、$m$ は質量、$a$ は加速度です。"
 ```
 
 ## `search_text` の書き方ガイド
