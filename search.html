@@ -1,657 +1,756 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
-  <meta charset="UTF-8">
-  <title>Search Results</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>Search Results</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <style>
-    /* ── Reset ───────────────────────────────────────────────── */
-    * {
-      box-sizing: border-box;
-    }
+<!-- Marked.js (Markdown) -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!-- KaTeX (数式) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #fff;
-    }
+<style>
+/* ── Reset ───────────────────────────────────────────────── */
+* { box-sizing: border-box; }
 
-    /* ── Search results (hidden until animation ends) ─────────── */
-    #app {
-      opacity: 0;
-      transition: opacity 0.6s ease;
-    }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #fff;
+}
 
-    #app.visible {
-      opacity: 1;
-    }
+/* ── Search results (hidden until animation ends) ─────────── */
+#app {
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+#app.visible { opacity: 1; }
 
-    .container {
-      max-width: 720px;
-      margin: 40px auto;
-      padding: 0 20px;
-    }
+.container {
+  max-width: 720px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
 
-    .search-box {
-      width: 100%;
-      padding: 12px 16px;
-      font-size: 16px;
-      border-radius: 999px;
-      border: 1px solid #ddd;
-      margin-bottom: 30px;
-    }
+.search-box {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 16px;
+  border-radius: 999px;
+  border: 1px solid #ddd;
+  margin-bottom: 30px;
+  outline: none;
+}
+.search-box:focus { border-color: #888; }
 
-    .ai-answer {
-      padding: 24px;
-      border: 1px solid #eee;
-      border-radius: 16px;
-      margin-bottom: 20px;
-      background: #fafafa;
-    }
+/* ── AI Answer box (top result summary) ──────────────────── */
+.ai-answer {
+  padding: 24px;
+  border: 1px solid #eee;
+  border-radius: 16px;
+  margin-bottom: 20px;
+  background: #fafafa;
+}
+.ai-label { font-size: 12px; color: #666; margin-bottom: 10px; }
+.ai-text  { font-size: 18px; line-height: 1.7; white-space: pre-wrap; }
 
-    .ai-label {
-      font-size: 12px;
-      color: #666;
-      margin-bottom: 10px;
-    }
+/* ── Result list items ───────────────────────────────────── */
+.result {
+  padding: 14px 16px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background 0.15s ease;
+  margin: 0 -16px;
+}
+.result:hover { background: #f5f5f5; }
 
-    .ai-text {
-      font-size: 18px;
-      line-height: 1.7;
-      white-space: pre-wrap;
-    }
+.result-title {
+  font-size: 17px;
+  color: #1a0dab;
+  margin-bottom: 3px;
+}
+.result-desc { font-size: 14px; color: #444; }
+.result-hint { font-size: 12px; color: #999; margin-top: 4px; }
 
-    .result {
-      padding: 12px 0;
-      border-bottom: 1px solid #eee;
-    }
+mark { background: #fff3a0; }
 
-    .result-title {
-      font-size: 18px;
-      color: #1a0dab;
-    }
+/* ── Modal (detail view) ─────────────────────────────────── */
+#modal-overlay {
+  position: fixed;
+  background: #fff;
+  z-index: 200;
+  display: none;
+  flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  overflow: hidden;
+  border-radius: 12px;
+  transition:
+    top    0.48s cubic-bezier(0.4, 0, 0.2, 1),
+    left   0.48s cubic-bezier(0.4, 0, 0.2, 1),
+    width  0.48s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.48s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.48s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: top, left, width, height, border-radius;
+}
+#modal-overlay.fullscreen {
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  border-radius: 0 !important;
+}
 
-    .result-desc {
-      font-size: 14px;
-      color: #444;
-    }
+#modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #eee;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  gap: 12px;
+}
+#modal-title {
+  font-size: clamp(16px, 2.5vw, 22px);
+  font-weight: 700;
+  color: #111;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+#close-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #888;
+  padding: 6px;
+  border-radius: 50%;
+  line-height: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+#close-btn:hover { background: #f0f0f0; color: #333; }
 
-    mark {
-      background: #fff3a0;
-    }
+/* flex-grow のみでは overflow-y:auto が発動しない問題を修正 */
+#modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px 20px 60px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  overscroll-behavior: contain;
+}
 
-    /* ── AI Thinking Overlay ─────────────────────────────────── */
-    #thinking-overlay {
-      position: fixed;
-      inset: 0;
-      background: #020408;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      transition: opacity 0.7s ease;
-    }
+/* ── Prose (Markdown content) ────────────────────────────── */
+.prose {
+  max-width: 680px;
+  margin: 0 auto;
+  line-height: 1.8;
+  color: #222;
+  font-size: 16px;
+}
+.prose h1, .prose h2, .prose h3 {
+  font-weight: 700; margin: 1.4em 0 0.5em; color: #111;
+}
+.prose h1 { font-size: 1.6em; }
+.prose h2 { font-size: 1.35em; border-bottom: 1px solid #eee; padding-bottom: 6px; }
+.prose h3 { font-size: 1.15em; }
+.prose p  { margin: 0.8em 0; }
+.prose ul, .prose ol { padding-left: 1.5em; margin: 0.6em 0; }
+.prose li { margin: 0.3em 0; }
+.prose blockquote {
+  border-left: 4px solid #ddd;
+  margin: 1em 0;
+  padding: 0.4em 1em;
+  color: #555;
+  background: #fafafa;
+  border-radius: 0 6px 6px 0;
+}
+.prose code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+  font-size: 0.9em;
+}
+.prose pre {
+  background: #1e1e2e;
+  border-radius: 10px;
+  padding: 16px 20px;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+.prose pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #cdd6f4;
+  font-size: 0.88em;
+}
+.prose a { color: #1a0dab; }
+.prose hr { border: none; border-top: 1px solid #eee; margin: 1.5em 0; }
 
-    #thinking-overlay.fade-out {
-      opacity: 0;
-      pointer-events: none;
-    }
+/* ── KaTeX math wrappers ─────────────────────────────────── */
+.math-inline {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  padding: 0.05em 0.3em;
+  margin: 0 0.1em;
+  display: inline-block;
+}
+.math-block {
+  display: block;
+  overflow-x: auto;
+  padding: 12px 16px;
+  margin: 1em 0;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  text-align: center;
+}
+.katex { font-size: 1.05em; color: inherit; }
 
-    .thinking-wrapper {
-      position: relative;
-      /* Responsive square: 800px max, never wider than viewport */
-      width: min(800px, 100vw);
-      height: min(800px, 100vw);
-    }
+/* ── Streaming cursor ────────────────────────────────────── */
+.cursor-blink {
+  display: inline-block;
+  width: 7px; height: 1.15em;
+  background: #3b82f6;
+  vertical-align: middle;
+  margin-left: 3px;
+  animation: cur-blink 1s step-end infinite;
+}
+@keyframes cur-blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
-    #thinking-canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
+/* ── Backdrop ────────────────────────────────────────────── */
+#backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 190;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+#backdrop.visible { opacity: 1; }
 
-    /* ── UI layer ── テキストの見た目はここで変更 ─────────────── */
-    .ui-layer {
-      position: absolute;
-      bottom: 15%;
-      left: 50%;
-      transform: translateX(-50%);
-      text-align: center;
-      pointer-events: none;
-      width: 75%;
-    }
+/* ── AI Thinking Overlay ─────────────────────────────────── */
+#thinking-overlay {
+  position: fixed;
+  inset: 0;
+  background: #020408;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  transition: opacity 0.7s ease;
+}
+#thinking-overlay.fade-out { opacity: 0; pointer-events: none; }
 
-    /* ===== ラベルテキスト ("Processing" など) ===== */
-    .task-label {
-      font-family: monospace;
-      /* デバイス搭載の等幅フォント */
-      font-size: clamp(9px, 1.4vw, 11px);
-      letter-spacing: 0.25em;
-      text-transform: uppercase;
-      color: rgba(100, 200, 255, 0.5);
-      margin-bottom: 10px;
-    }
-
-    /* ===== タスク行テキスト ===== */
-    .task-text {
-      font-family: monospace;
-      /* デバイス搭載の等幅フォント */
-      font-size: clamp(11px, 1.8vw, 15px);
-      letter-spacing: 0.08em;
-      color: rgba(180, 230, 255, 0.85);
-      height: 1.6em;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .task-inner {
-      position: absolute;
-      width: 100%;
-      transition: opacity 0.4s ease, transform 0.4s ease;
-    }
-
-    .task-inner.fade-out {
-      opacity: 0;
-      transform: translateY(-8px);
-    }
-
-    .task-inner.fade-in {
-      opacity: 0;
-      transform: translateY(8px);
-      transition: none;
-    }
-
-    .task-inner.visible {
-      opacity: 1;
-      transform: translateY(0);
-      transition: opacity 0.4s ease, transform 0.4s ease;
-    }
-
-    .progress-bar {
-      margin: 18px auto 0;
-      width: 200px;
-      height: 1px;
-      background: rgba(100, 180, 255, 0.1);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      position: absolute;
-      top: 0;
-      left: 0;
-      height: 100%;
-      width: 40%;
-      background: linear-gradient(90deg, transparent, rgba(100, 200, 255, 0.8), transparent);
-      animation: scan 2.2s ease-in-out infinite;
-    }
-
-    @keyframes scan {
-      0% {
-        left: -40%;
-      }
-
-      100% {
-        left: 140%;
-      }
-    }
-
-    /* ── Corner decorations ──────────────────────────────────── */
-    .corner {
-      position: absolute;
-      width: min(18px, 2.3vw);
-      height: min(18px, 2.3vw);
-      opacity: 0.3;
-    }
-
-    .corner-tl {
-      top: 7.5%;
-      left: 7.5%;
-      border-top: 1px solid #4af;
-      border-left: 1px solid #4af;
-    }
-
-    .corner-tr {
-      top: 7.5%;
-      right: 7.5%;
-      border-top: 1px solid #4af;
-      border-right: 1px solid #4af;
-    }
-
-    .corner-bl {
-      bottom: 7.5%;
-      left: 7.5%;
-      border-bottom: 1px solid #4af;
-      border-left: 1px solid #4af;
-    }
-
-    .corner-br {
-      bottom: 7.5%;
-      right: 7.5%;
-      border-bottom: 1px solid #4af;
-      border-right: 1px solid #4af;
-    }
-
-    /* ===== リングラベル (上下の小さい文字) ===== */
-    .ring-label {
-      position: absolute;
-      font-family: monospace;
-      /* デバイス搭載の等幅フォント */
-      font-size: clamp(7px, 1.1vw, 9px);
-      letter-spacing: 0.2em;
-      color: rgba(100, 200, 255, 0.2);
-      text-transform: uppercase;
-    }
-
-    .ring-label.top {
-      top: 8.5%;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-
-    .ring-label.bot {
-      bottom: 8.5%;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-  </style>
+.thinking-wrapper {
+  position: relative;
+  width: min(800px, 100vw);
+  height: min(800px, 100vw);
+}
+#thinking-canvas {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%; display: block;
+}
+.ui-layer {
+  position: absolute; bottom: 15%; left: 50%;
+  transform: translateX(-50%);
+  text-align: center; pointer-events: none; width: 75%;
+}
+.task-label {
+  font-family: monospace;
+  font-size: clamp(9px, 1.4vw, 11px);
+  letter-spacing: 0.25em; text-transform: uppercase;
+  color: rgba(100,200,255,0.5); margin-bottom: 10px;
+}
+.task-text {
+  font-family: monospace;
+  font-size: clamp(11px, 1.8vw, 15px);
+  letter-spacing: 0.08em; color: rgba(180,230,255,0.85);
+  height: 1.6em; overflow: hidden; position: relative;
+}
+.task-inner { position: absolute; width: 100%; transition: opacity 0.4s ease, transform 0.4s ease; }
+.task-inner.fade-out  { opacity: 0; transform: translateY(-8px); }
+.task-inner.fade-in   { opacity: 0; transform: translateY(8px); transition: none; }
+.task-inner.visible   { opacity: 1; transform: translateY(0); transition: opacity 0.4s ease, transform 0.4s ease; }
+.progress-bar {
+  margin: 18px auto 0; width: 200px; height: 1px;
+  background: rgba(100,180,255,0.1); position: relative; overflow: hidden;
+}
+.progress-fill {
+  position: absolute; top: 0; left: 0; height: 100%; width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(100,200,255,0.8), transparent);
+  animation: scan 2.2s ease-in-out infinite;
+}
+@keyframes scan { 0%{left:-40%} 100%{left:140%} }
+.corner {
+  position: absolute; width: min(18px,2.3vw); height: min(18px,2.3vw); opacity: 0.3;
+}
+.corner-tl { top:7.5%; left:7.5%;   border-top:1px solid #4af; border-left:1px solid #4af; }
+.corner-tr { top:7.5%; right:7.5%;  border-top:1px solid #4af; border-right:1px solid #4af; }
+.corner-bl { bottom:7.5%; left:7.5%; border-bottom:1px solid #4af; border-left:1px solid #4af; }
+.corner-br { bottom:7.5%; right:7.5%; border-bottom:1px solid #4af; border-right:1px solid #4af; }
+.ring-label {
+  position: absolute; font-family: monospace;
+  font-size: clamp(7px,1.1vw,9px); letter-spacing: 0.2em;
+  color: rgba(100,200,255,0.2); text-transform: uppercase;
+}
+.ring-label.top { top:8.5%; left:50%; transform:translateX(-50%); }
+.ring-label.bot { bottom:8.5%; left:50%; transform:translateX(-50%); }
+</style>
 </head>
-
 <body>
 
-  <!-- ══ AI Thinking Overlay ══════════════════════════════════════ -->
-  <div id="thinking-overlay">
-    <div class="thinking-wrapper">
-      <canvas id="thinking-canvas"></canvas>
+<!-- ══ Backdrop ══════════════════════════════════════════════════ -->
+<div id="backdrop"></div>
 
-      <div class="corner corner-tl"></div>
-      <div class="corner corner-tr"></div>
-      <div class="corner corner-bl"></div>
-      <div class="corner corner-br"></div>
+<!-- ══ Detail Modal ══════════════════════════════════════════════ -->
+<div id="modal-overlay">
+  <div id="modal-header">
+    <h2 id="modal-title"></h2>
+    <button id="close-btn" aria-label="閉じる">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+  <div id="modal-body">
+    <div class="prose" id="modal-content"></div>
+  </div>
+</div>
 
-      <!-- ===== テキスト変更・追加はここ ===== -->
-      <span class="ring-label top">NEURAL ENGINE v4.2</span>
-      <span class="ring-label bot">INFERENCE ACTIVE</span>
-
-      <div class="ui-layer">
-        <div class="task-label">Processing</div>
-        <div class="task-text">
-          <div class="task-inner visible" id="taskDisplay">Initializing context window...</div>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill"></div>
-        </div>
+<!-- ══ AI Thinking Overlay ══════════════════════════════════════ -->
+<div id="thinking-overlay">
+  <div class="thinking-wrapper">
+    <canvas id="thinking-canvas"></canvas>
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
+    <!-- ===== テキスト変更・追加はここ ===== -->
+    <span class="ring-label top">NEURAL ENGINE v4.2</span>
+    <span class="ring-label bot">INFERENCE ACTIVE</span>
+    <div class="ui-layer">
+      <div class="task-label">Processing</div>
+      <div class="task-text">
+        <div class="task-inner visible" id="taskDisplay">Initializing context window...</div>
       </div>
-      <!-- ===================================== -->
-
+      <div class="progress-bar"><div class="progress-fill"></div></div>
     </div>
+    <!-- ===================================== -->
   </div>
+</div>
 
-  <!-- ══ Search Results ════════════════════════════════════════════ -->
-  <div id="app">
-    <div class="container">
-      <input id="search" class="search-box" type="text">
-      <div id="ai"></div>
-      <div id="results"></div>
-    </div>
+<!-- ══ Search Results ════════════════════════════════════════════ -->
+<div id="app">
+  <div class="container">
+    <input id="search" class="search-box" type="text" placeholder="Search...">
+    <div id="ai"></div>
+    <div id="results"></div>
   </div>
+</div>
 
-  <!-- ══ AI Thinking Canvas ════════════════════════════════════════ -->
-  <script>
-    (function () {
-      const canvas = document.getElementById('thinking-canvas');
-      const ctx = canvas.getContext('2d');
-      const overlay = document.getElementById('thinking-overlay');
-      const appEl = document.getElementById('app');
+<!-- ══ AI Thinking Canvas Script ════════════════════════════════ -->
+<script>
+(function () {
+  const canvas  = document.getElementById('thinking-canvas');
+  const ctx     = canvas.getContext('2d');
+  const overlay = document.getElementById('thinking-overlay');
+  const appEl   = document.getElementById('app');
 
-      /* ── Responsive canvas resolution ───────────────────────── */
-      const wrapper = canvas.parentElement;
-      function syncCanvasSize() {
-        const s = wrapper.getBoundingClientRect();
-        canvas.width = Math.round(s.width);
-        canvas.height = Math.round(s.height);
-      }
-      syncCanvasSize();
+  const wrapper = canvas.parentElement;
+  function syncCanvasSize() {
+    const s = wrapper.getBoundingClientRect();
+    canvas.width  = Math.round(s.width);
+    canvas.height = Math.round(s.height);
+  }
+  syncCanvasSize();
 
-      /* Accessors for live canvas size */
-      const W = () => canvas.width;
-      const H = () => canvas.height;
-      const CX = () => canvas.width / 2;
-      const CY = () => canvas.height / 2;
-      const R = () => canvas.width * 0.2375;   // 190/800 of original
+  const W  = () => canvas.width;
+  const CX = () => canvas.width  / 2;
+  const CY = () => canvas.height / 2;
+  const R  = () => canvas.width  * 0.2375;
 
-      /* ── Dot sphere (unit vectors × R at draw time) ──────────── */
-      const NUM_DOTS = 420;
-      function fibonacci_sphere(n) {
-        const pts = [];
-        const golden = Math.PI * (3 - Math.sqrt(5));
-        for (let i = 0; i < n; i++) {
-          const y = 1 - (i / (n - 1)) * 2;
-          const rad = Math.sqrt(1 - y * y);
-          const th = golden * i;
-          pts.push({
-            ux: Math.cos(th) * rad, uy: y, uz: Math.sin(th) * rad,
-            baseSize: 1.2 + Math.random() * 1.4,
-            pulse: Math.random() * Math.PI * 2,
-            pulseSpeed: 0.015 + Math.random() * 0.01,
-            color: Math.random()
-          });
-        }
-        return pts;
-      }
-      const dots = fibonacci_sphere(NUM_DOTS);
-
-      /* ── Pulse waves ─────────────────────────────────────────── */
-      const pulses = [];
-      function spawnPulse() {
-        const th = Math.random() * Math.PI * 2;
-        const ph = Math.acos(2 * Math.random() - 1);
-        pulses.push({
-          ox: Math.sin(ph) * Math.cos(th), oy: Math.cos(ph), oz: Math.sin(ph) * Math.sin(th),
-          angle: 0, speed: 0.008 + Math.random() * 0.006,
-          life: 0, maxLife: Math.PI * 0.85,
-          hue: 190 + Math.random() * 40
-        });
-      }
-      for (let i = 0; i < 4; i++) spawnPulse();
-
-      /* ── Rotation ────────────────────────────────────────────── */
-      let rotX = 0.3, rotY = 0;
-
-      /* ── 3-D helpers ─────────────────────────────────────────── */
-      function rotY3(x, z, a) { return [x * Math.cos(a) - z * Math.sin(a), x * Math.sin(a) + z * Math.cos(a)]; }
-      function rotX3(y, z, a) { return [y * Math.cos(a) - z * Math.sin(a), y * Math.sin(a) + z * Math.cos(a)]; }
-
-      function project(px, py, pz) {
-        const [rx, rz1] = rotY3(px, pz, rotY);
-        const [ry, rz2] = rotX3(py, rz1, rotX);
-        const fov = W() * 0.875;
-        const scale = fov / (fov + rz2 + R());
-        return { sx: CX() + rx * scale, sy: CY() + ry * scale, depth: rz2, scale };
-      }
-
-      function angDist(dot, pulse) {
-        const d = dot.ux * pulse.ox + dot.uy * pulse.oy + dot.uz * pulse.oz;
-        return Math.acos(Math.max(-1, Math.min(1, d)));
-      }
-
-      /* ── Task text cycling ── テキストリストはここ ─────────── */
-      const tasks = [
-        "Analyzing context window…",
-        "Looking for answers…",
-        "Searching vector space…",
-        "Optimizing response path…",
-        "Evaluating token embeddings…",
-        "Cross-referencing knowledge graph…",
-        "Running attention mechanisms…",
-        "Sampling probability distributions…",
-        "Compressing semantic representations…",
-        "Aligning output constraints…",
-        "Synthesizing final response…",
-      ];
-      /* ─────────────────────────────────────────────────────────── */
-
-      let taskIdx = 0;
-      const taskEl = document.getElementById('taskDisplay');
-
-      function cycleTask() {
-        taskEl.classList.remove('visible');
-        taskEl.classList.add('fade-out');
-        setTimeout(() => {
-          taskIdx = (taskIdx + 1) % tasks.length;
-          taskEl.textContent = tasks[taskIdx];
-          taskEl.classList.remove('fade-out');
-          taskEl.classList.add('fade-in');
-          requestAnimationFrame(() => requestAnimationFrame(() => {
-            taskEl.classList.remove('fade-in');
-            taskEl.classList.add('visible');
-          }));
-        }, 420);
-      }
-      const taskInterval = setInterval(cycleTask, 2600);
-
-      /* ── Glow ────────────────────────────────────────────────── */
-      function drawGlow() {
-        const r = R();
-        const g1 = ctx.createRadialGradient(CX(), CY(), 0, CX(), CY(), r * 0.7);
-        g1.addColorStop(0, 'rgba(30,120,220,0.10)');
-        g1.addColorStop(0.5, 'rgba(10, 60,160,0.06)');
-        g1.addColorStop(1, 'rgba(0,  0,  0, 0)');
-        ctx.fillStyle = g1;
-        ctx.beginPath(); ctx.arc(CX(), CY(), r * 0.7, 0, Math.PI * 2); ctx.fill();
-
-        const g2 = ctx.createRadialGradient(CX(), CY(), r * 0.75, CX(), CY(), r * 1.35);
-        g2.addColorStop(0, 'rgba(40,160,255,0.06)');
-        g2.addColorStop(0.5, 'rgba(20,100,200,0.025)');
-        g2.addColorStop(1, 'rgba(0,  0,  0, 0)');
-        ctx.fillStyle = g2;
-        ctx.beginPath(); ctx.arc(CX(), CY(), r * 1.35, 0, Math.PI * 2); ctx.fill();
-      }
-
-      function drawRing(t) {
-        const r = R();
-        ctx.save();
-        ctx.translate(CX(), CY()); ctx.scale(1, 0.22);
-        const grad = ctx.createConicGradient(t * 0.4, 0, 0);
-        grad.addColorStop(0, 'rgba(80,200,255,0.0)');
-        grad.addColorStop(0.25, 'rgba(80,200,255,0.25)');
-        grad.addColorStop(0.5, 'rgba(80,200,255,0.0)');
-        grad.addColorStop(0.75, 'rgba(80,200,255,0.12)');
-        grad.addColorStop(1, 'rgba(80,200,255,0.0)');
-        ctx.strokeStyle = grad; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(0, 0, r + 18, 0, Math.PI * 2); ctx.stroke();
-        ctx.restore();
-      }
-
-      /* ── Overlay dismissal ─── 表示時間（ms）はここで変更 ────── */
-      const DISPLAY_DURATION = 5000;
-      /* ─────────────────────────────────────────────────────────── */
-
-      let animRunning = true, rafId;
-
-      setTimeout(() => {
-        clearInterval(taskInterval);
-        overlay.classList.add('fade-out');
-        overlay.addEventListener('transitionend', () => {
-          overlay.style.display = 'none';
-          animRunning = false;
-          cancelAnimationFrame(rafId);
-        }, { once: true });
-        appEl.classList.add('visible');
-        startSearchResults();
-      }, DISPLAY_DURATION);
-
-      /* ── Render loop ─────────────────────────────────────────── */
-      let t = 0;
-      function frame() {
-        if (!animRunning) return;
-
-        ctx.clearRect(0, 0, W(), H());
-
-        const bg = ctx.createRadialGradient(CX(), CY(), 0, CX(), CY(), W() * 0.72);
-        bg.addColorStop(0, '#050d18'); bg.addColorStop(1, '#020408');
-        ctx.fillStyle = bg; ctx.fillRect(0, 0, W(), H());
-
-        drawGlow(); drawRing(t);
-
-        rotY += 0.0015; rotX += 0.0003;
-
-        for (let i = pulses.length - 1; i >= 0; i--) {
-          pulses[i].angle += pulses[i].speed;
-          pulses[i].life = pulses[i].angle;
-          if (pulses[i].angle > pulses[i].maxLife) { pulses.splice(i, 1); spawnPulse(); }
-        }
-
-        const r = R();
-        const projected = dots.map(d => {
-          const p = project(d.ux * r, d.uy * r, d.uz * r);
-          let pg = 0;
-          for (const pulse of pulses) {
-            const diff = Math.abs(angDist(d, pulse) - pulse.angle);
-            if (diff < 0.18) {
-              pg += (1 - diff / 0.18) * Math.sin(pulse.life / pulse.maxLife * Math.PI) * 1.4;
-            }
-          }
-          const osc = 0.5 + 0.5 * Math.sin(t * d.pulseSpeed * 60 + d.pulse);
-          return { ...p, d, osc, pg, baseAlpha: 0.15 + 0.6 * (p.depth + r) / (2 * r) };
-        }).sort((a, b) => a.depth - b.depth);
-
-        for (const p of projected) {
-          const alpha = Math.min(1, p.baseAlpha + p.pg * 0.5);
-          const size = p.d.baseSize * p.scale * (1 + p.pg * 0.8) * (1 + p.osc * 0.15);
-          const h = 195 + p.d.color * 30 - p.pg * 40;
-          const s = 70 + p.pg * 30;
-          const l = 55 + p.pg * 30 + p.osc * 8;
-
-          if (p.pg > 0.05) {
-            const grd = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, size * 4);
-            grd.addColorStop(0, `hsla(${h},${s}%,${l}%,${alpha * 0.7})`);
-            grd.addColorStop(1, `hsla(${h},${s}%,${l}%,0)`);
-            ctx.fillStyle = grd;
-            ctx.beginPath(); ctx.arc(p.sx, p.sy, size * 4, 0, Math.PI * 2); ctx.fill();
-          }
-          ctx.fillStyle = `hsla(${h},${s}%,${l}%,${alpha})`;
-          ctx.beginPath(); ctx.arc(p.sx, p.sy, size, 0, Math.PI * 2); ctx.fill();
-        }
-
-        ctx.save(); ctx.globalAlpha = 0.035;
-        for (let m = 0; m < 6; m++) {
-          const ang = (m / 6) * Math.PI + rotY;
-          ctx.strokeStyle = '#4af'; ctx.lineWidth = 0.8;
-          ctx.beginPath();
-          for (let a = 0; a <= Math.PI; a += 0.04) {
-            const pp = project(r * Math.sin(a) * Math.cos(ang), r * Math.cos(a), r * Math.sin(a) * Math.sin(ang));
-            a === 0 ? ctx.moveTo(pp.sx, pp.sy) : ctx.lineTo(pp.sx, pp.sy);
-          }
-          ctx.stroke();
-        }
-        ctx.restore();
-
-        t += 0.016;
-        rafId = requestAnimationFrame(frame);
-      }
-      rafId = requestAnimationFrame(frame);
-    })();
-  </script>
-
-  <!-- ══ Search Results Logic ═══════════════════════════════════════ -->
-  <script>
-    function startSearchResults() {
-      const params = new URLSearchParams(location.search);
-      const query = (params.get("q") || "").toLowerCase();
-
-      const input = document.getElementById("search");
-      const aiBox = document.getElementById("ai");
-      const resultsBox = document.getElementById("results");
-
-      input.value = query;
-
-      input.addEventListener("keydown", e => {
-        if (e.key === "Enter") {
-          const q = input.value.trim();
-          if (q) location.href = `search.html?q=${encodeURIComponent(q)}`;
-        }
-      });
-
-      function highlight(text, words) {
-        let r = text;
-        words.forEach(w => { r = r.replace(new RegExp(`(${w})`, "gi"), "<mark>$1</mark>"); });
-        return r;
-      }
-
-      function typeText(el, text) {
-        el.textContent = ""; let i = 0;
-        (function loop() {
-          if (i < text.length) { el.textContent += text[i++]; setTimeout(loop, 25); }
-        })();
-      }
-
-      function levenshtein(a, b) {
-        const m = Array.from({ length: b.length + 1 }, (_, i) => [i]);
-        for (let j = 0; j <= a.length; j++) m[0][j] = j;
-        for (let i = 1; i <= b.length; i++)
-          for (let j = 1; j <= a.length; j++)
-            m[i][j] = b[i - 1] === a[j - 1] ? m[i - 1][j - 1]
-              : Math.min(m[i - 1][j - 1] + 1, m[i][j - 1] + 1, m[i - 1][j] + 1);
-        return m[b.length][a.length];
-      }
-
-      function typoScore(word, text) {
-        let best = Infinity;
-        text.split(" ").forEach(t => { const d = levenshtein(word, t); if (d < best) best = d; });
-        return best === 1 ? 2 : best === 2 ? 1 : 0;
-      }
-
-      function ngramScore(word, text) {
-        let score = 0;
-        for (let i = 0; i < word.length - 1; i++) if (text.includes(word.slice(i, i + 2))) score += 0.5;
-        return score;
-      }
-
-      let cachedIndex = null;
-
-      function buildIndex(data) {
-        const idx = {};
-        data.forEach(item => item.search_text.split(" ").forEach(w => {
-          if (!idx[w]) idx[w] = new Set(); idx[w].add(item.id);
-        }));
-        return idx;
-      }
-
-      function getCandidates(idx, data, words) {
-        const ids = new Set();
-        words.forEach(w => idx[w]?.forEach(id => ids.add(id)));
-        return ids.size === 0 ? data : data.filter(item => ids.has(item.id));
-      }
-
-      fetch("q_and_a_data.json")
-        .then(r => r.json())
-        .then(data => {
-          if (!cachedIndex) cachedIndex = buildIndex(data);
-          const words = query.split(" ").filter(Boolean);
-          const results = getCandidates(cachedIndex, data, words)
-            .map(item => {
-              let score = 0;
-              if (item.questions.some(q => q.toLowerCase() === query)) score += 10;
-              if (item.search_text.includes(query)) score += 5;
-              item.questions.forEach(q => { if (q.toLowerCase().includes(query)) score += 3; });
-              words.forEach(w => {
-                if (item.search_text.includes(w)) score += 1;
-                score += typoScore(w, item.search_text);
-                score += ngramScore(w, item.search_text);
-              });
-              item.synonyms?.forEach(s => words.forEach(w => { if (s.includes(w)) score += 2; }));
-              return { ...item, score: score * (item.priority || 1) };
-            })
-            .filter(i => i.score > 0)
-            .sort((a, b) => b.score - a.score);
-
-          if (results.length === 0) { resultsBox.innerHTML = "No results found"; return; }
-
-          aiBox.innerHTML = `
-        <div class="ai-answer">
-          <div class="ai-label">AI Answer</div>
-          <div id="typing" class="ai-text"></div>
-        </div>`;
-          typeText(document.getElementById("typing"), results[0].answer);
-
-          results.forEach(item => {
-            const el = document.createElement("div");
-            el.className = "result";
-            el.innerHTML = `
-          <div class="result-title">${highlight(item.questions[0], words)}</div>
-          <div class="result-desc">${highlight(item.description, words)}</div>`;
-            resultsBox.appendChild(el);
-          });
-        });
+  const NUM_DOTS = 420;
+  function fibonacci_sphere(n) {
+    const pts = [], golden = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < n; i++) {
+      const y = 1 - (i / (n - 1)) * 2, rad = Math.sqrt(1 - y * y), th = golden * i;
+      pts.push({ ux: Math.cos(th)*rad, uy: y, uz: Math.sin(th)*rad,
+        baseSize: 1.2+Math.random()*1.4, pulse: Math.random()*Math.PI*2,
+        pulseSpeed: 0.015+Math.random()*0.01, color: Math.random() });
     }
-  </script>
+    return pts;
+  }
+  const dots = fibonacci_sphere(NUM_DOTS);
+
+  const pulses = [];
+  function spawnPulse() {
+    const th = Math.random()*Math.PI*2, ph = Math.acos(2*Math.random()-1);
+    pulses.push({ ox: Math.sin(ph)*Math.cos(th), oy: Math.cos(ph), oz: Math.sin(ph)*Math.sin(th),
+      angle: 0, speed: 0.008+Math.random()*0.006, life: 0, maxLife: Math.PI*0.85 });
+  }
+  for (let i = 0; i < 4; i++) spawnPulse();
+
+  let rotX = 0.3, rotY = 0;
+  function rotY3(x,z,a){ return [x*Math.cos(a)-z*Math.sin(a), x*Math.sin(a)+z*Math.cos(a)]; }
+  function rotX3(y,z,a){ return [y*Math.cos(a)-z*Math.sin(a), y*Math.sin(a)+z*Math.cos(a)]; }
+  function project(px,py,pz) {
+    const [rx,rz1]=rotY3(px,pz,rotY), [ry,rz2]=rotX3(py,rz1,rotX);
+    const fov=W()*0.875, scale=fov/(fov+rz2+R());
+    return { sx:CX()+rx*scale, sy:CY()+ry*scale, depth:rz2, scale };
+  }
+  function angDist(dot,pulse) {
+    return Math.acos(Math.max(-1,Math.min(1,dot.ux*pulse.ox+dot.uy*pulse.oy+dot.uz*pulse.oz)));
+  }
+
+  /* ── Task cycling ─── テキストリストはここ ─────────── */
+  const tasks = [
+    "Analyzing context window…",
+    "Searching vector space…",
+    "Optimizing response path…",
+    "Evaluating token embeddings…",
+    "Cross-referencing knowledge graph…",
+    "Running attention mechanisms…",
+    "Sampling probability distributions…",
+    "Compressing semantic representations…",
+    "Aligning output constraints…",
+    "Synthesizing final response…",
+  ];
+  let taskIdx = 0;
+  const taskEl = document.getElementById('taskDisplay');
+  function cycleTask() {
+    taskEl.classList.remove('visible'); taskEl.classList.add('fade-out');
+    setTimeout(() => {
+      taskIdx = (taskIdx + 1) % tasks.length;
+      taskEl.textContent = tasks[taskIdx];
+      taskEl.classList.remove('fade-out'); taskEl.classList.add('fade-in');
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        taskEl.classList.remove('fade-in'); taskEl.classList.add('visible');
+      }));
+    }, 420);
+  }
+  const taskInterval = setInterval(cycleTask, 2600);
+
+  function drawGlow() {
+    const r=R();
+    const g1=ctx.createRadialGradient(CX(),CY(),0,CX(),CY(),r*0.7);
+    g1.addColorStop(0,'rgba(30,120,220,0.10)'); g1.addColorStop(0.5,'rgba(10,60,160,0.06)'); g1.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g1; ctx.beginPath(); ctx.arc(CX(),CY(),r*0.7,0,Math.PI*2); ctx.fill();
+    const g2=ctx.createRadialGradient(CX(),CY(),r*0.75,CX(),CY(),r*1.35);
+    g2.addColorStop(0,'rgba(40,160,255,0.06)'); g2.addColorStop(0.5,'rgba(20,100,200,0.025)'); g2.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(CX(),CY(),r*1.35,0,Math.PI*2); ctx.fill();
+  }
+  function drawRing(t) {
+    const r=R(); ctx.save(); ctx.translate(CX(),CY()); ctx.scale(1,0.22);
+    const grad=ctx.createConicGradient(t*0.4,0,0);
+    grad.addColorStop(0,'rgba(80,200,255,0.0)'); grad.addColorStop(0.25,'rgba(80,200,255,0.25)');
+    grad.addColorStop(0.5,'rgba(80,200,255,0.0)'); grad.addColorStop(0.75,'rgba(80,200,255,0.12)'); grad.addColorStop(1,'rgba(80,200,255,0.0)');
+    ctx.strokeStyle=grad; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(0,0,r+18,0,Math.PI*2); ctx.stroke(); ctx.restore();
+  }
+
+  /* ── 表示時間 (ms) ── */
+  const DISPLAY_DURATION = 3800;
+
+  let animRunning = true, rafId;
+  setTimeout(() => {
+    clearInterval(taskInterval);
+    overlay.classList.add('fade-out');
+    overlay.addEventListener('transitionend', () => {
+      overlay.style.display = 'none'; animRunning = false; cancelAnimationFrame(rafId);
+    }, { once: true });
+    appEl.classList.add('visible');
+    startSearchResults();
+  }, DISPLAY_DURATION);
+
+  let t = 0;
+  function frame() {
+    if (!animRunning) return;
+    ctx.clearRect(0,0,W(),W());
+    const bg=ctx.createRadialGradient(CX(),CY(),0,CX(),CY(),W()*0.72);
+    bg.addColorStop(0,'#050d18'); bg.addColorStop(1,'#020408');
+    ctx.fillStyle=bg; ctx.fillRect(0,0,W(),W());
+    drawGlow(); drawRing(t);
+    rotY+=0.0015; rotX+=0.0003;
+    for(let i=pulses.length-1;i>=0;i--){
+      pulses[i].angle+=pulses[i].speed; pulses[i].life=pulses[i].angle;
+      if(pulses[i].angle>pulses[i].maxLife){pulses.splice(i,1);spawnPulse();}
+    }
+    const r=R();
+    const projected=dots.map(d=>{
+      const p=project(d.ux*r,d.uy*r,d.uz*r);
+      let pg=0;
+      for(const pulse of pulses){
+        const diff=Math.abs(angDist(d,pulse)-pulse.angle);
+        if(diff<0.18) pg+=(1-diff/0.18)*Math.sin(pulse.life/pulse.maxLife*Math.PI)*1.4;
+      }
+      const osc=0.5+0.5*Math.sin(t*d.pulseSpeed*60+d.pulse);
+      return{...p,d,osc,pg,baseAlpha:0.15+0.6*(p.depth+r)/(2*r)};
+    }).sort((a,b)=>a.depth-b.depth);
+    for(const p of projected){
+      const alpha=Math.min(1,p.baseAlpha+p.pg*0.5);
+      const size=p.d.baseSize*p.scale*(1+p.pg*0.8)*(1+p.osc*0.15);
+      const h=195+p.d.color*30-p.pg*40, s=70+p.pg*30, l=55+p.pg*30+p.osc*8;
+      if(p.pg>0.05){
+        const grd=ctx.createRadialGradient(p.sx,p.sy,0,p.sx,p.sy,size*4);
+        grd.addColorStop(0,`hsla(${h},${s}%,${l}%,${alpha*0.7})`); grd.addColorStop(1,`hsla(${h},${s}%,${l}%,0)`);
+        ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(p.sx,p.sy,size*4,0,Math.PI*2); ctx.fill();
+      }
+      ctx.fillStyle=`hsla(${h},${s}%,${l}%,${alpha})`;
+      ctx.beginPath(); ctx.arc(p.sx,p.sy,size,0,Math.PI*2); ctx.fill();
+    }
+    ctx.save(); ctx.globalAlpha=0.035;
+    for(let m=0;m<6;m++){
+      const ang=(m/6)*Math.PI+rotY; ctx.strokeStyle='#4af'; ctx.lineWidth=0.8; ctx.beginPath();
+      for(let a=0;a<=Math.PI;a+=0.04){
+        const pp=project(r*Math.sin(a)*Math.cos(ang),r*Math.cos(a),r*Math.sin(a)*Math.sin(ang));
+        a===0?ctx.moveTo(pp.sx,pp.sy):ctx.lineTo(pp.sx,pp.sy);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+    t+=0.016; rafId=requestAnimationFrame(frame);
+  }
+  rafId=requestAnimationFrame(frame);
+})();
+</script>
+
+<!-- ══ Modal + Search Logic ══════════════════════════════════════ -->
+<script>
+/* ── 数式変換（KaTeX） ── $$...$$ ブロック → $...$ インライン の順に処理 */
+function formatMath(text) {
+  // ブロック数式 $$...$$
+  text = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, expr) => {
+    try {
+      if (typeof katex === 'undefined') return _;
+      return '<div class="math-block">' + katex.renderToString(expr.trim(), { throwOnError: false, displayMode: true }) + '</div>';
+    } catch(e) { return _; }
+  });
+  // インライン数式 $...$（改行を含まない）
+  text = text.replace(/\$([^$\n]+?)\$/g, (_, expr) => {
+    try {
+      if (typeof katex === 'undefined') return _;
+      return '<span class="math-inline">' + katex.renderToString(expr, { throwOnError: false }) + '</span>';
+    } catch(e) { return _; }
+  });
+  return text;
+}
+
+/* ── モーダル制御 ────────────────────────────────────────────── */
+const modalOverlay = document.getElementById('modal-overlay');
+const modalHeader  = document.getElementById('modal-header');
+const modalBody    = document.getElementById('modal-body');
+const modalTitle   = document.getElementById('modal-title');
+const modalContent = document.getElementById('modal-content');
+const closeBtn     = document.getElementById('close-btn');
+const backdrop     = document.getElementById('backdrop');
+
+let isStreaming = false, streamTimer = null, isUserScrolling = false;
+
+modalBody.addEventListener('wheel',      () => { if (isStreaming) isUserScrolling = true; }, { passive: true });
+modalBody.addEventListener('touchstart', () => { if (isStreaming) isUserScrolling = true; }, { passive: true });
+modalBody.addEventListener('scroll', () => {
+  if (!isStreaming) return;
+  const dist = modalBody.scrollHeight - modalBody.clientHeight - modalBody.scrollTop;
+  if (dist <= 10) isUserScrolling = false;
+});
+
+function openModal(triggerEl, item) {
+  document.body.style.overflow = 'hidden';
+  isUserScrolling = false;
+
+  const rect = triggerEl.getBoundingClientRect();
+  modalOverlay.style.cssText = `
+    display: flex;
+    top: ${rect.top}px;
+    left: ${rect.left}px;
+    width: ${rect.width}px;
+    height: ${rect.height}px;
+  `;
+
+  modalTitle.textContent = item.questions[0];
+  modalContent.innerHTML = '';
+  modalHeader.style.opacity = '0';
+  modalBody.style.opacity   = '0';
+
+  backdrop.style.display = 'block';
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      backdrop.classList.add('visible');
+      modalOverlay.classList.add('fullscreen');
+    });
+  });
+
+  setTimeout(() => {
+    modalHeader.style.opacity = '1';
+    modalBody.style.opacity   = '1';
+    startStreaming(item.answer);
+  }, 500);
+}
+
+function closeModal() {
+  stopStreaming();
+  document.body.style.overflow = '';
+  modalHeader.style.opacity = '0';
+  modalBody.style.opacity   = '0';
+  backdrop.classList.remove('visible');
+  modalOverlay.classList.remove('fullscreen');
+
+  setTimeout(() => {
+    modalOverlay.style.display = 'none';
+    setTimeout(() => { backdrop.style.display = 'none'; }, 200);
+  }, 500);
+}
+
+function startStreaming(fullText) {
+  isStreaming = true;
+  let idx = 0, buf = '';
+
+  function tick() {
+    if (!isStreaming) return;
+    if (idx < fullText.length) {
+      const chunk = Math.floor(Math.random() * 3) + 1;
+      buf += fullText.slice(idx, idx + chunk);
+      idx += chunk;
+
+      // Markdownパース → 数式変換
+      modalContent.innerHTML = marked.parse(formatMath(buf)) + '<span class="cursor-blink"></span>';
+
+      if (!isUserScrolling) modalBody.scrollTop = modalBody.scrollHeight;
+
+      streamTimer = setTimeout(tick, Math.random() * 20 + 8);
+    } else {
+      modalContent.innerHTML = marked.parse(formatMath(fullText));
+      isStreaming = false;
+    }
+  }
+  tick();
+}
+
+function stopStreaming() {
+  isStreaming = false;
+  if (streamTimer) clearTimeout(streamTimer);
+}
+
+closeBtn.addEventListener('click', closeModal);
+backdrop.addEventListener('click', closeModal);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && modalOverlay.style.display !== 'none') closeModal();
+});
+
+/* ── 検索ロジック ────────────────────────────────────────────── */
+function startSearchResults() {
+  const params = new URLSearchParams(location.search);
+  const query  = (params.get('q') || '').toLowerCase();
+
+  const input      = document.getElementById('search');
+  const aiBox      = document.getElementById('ai');
+  const resultsBox = document.getElementById('results');
+
+  input.value = query;
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const q = input.value.trim();
+      if (q) location.href = `search.html?q=${encodeURIComponent(q)}`;
+    }
+  });
+
+  function highlight(text, words) {
+    let r = text;
+    words.forEach(w => { r = r.replace(new RegExp(`(${w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'), '<mark>$1</mark>'); });
+    return r;
+  }
+
+  function levenshtein(a, b) {
+    const m = Array.from({length: b.length+1}, (_, i) => [i]);
+    for (let j = 0; j <= a.length; j++) m[0][j] = j;
+    for (let i = 1; i <= b.length; i++)
+      for (let j = 1; j <= a.length; j++)
+        m[i][j] = b[i-1]===a[j-1] ? m[i-1][j-1] : Math.min(m[i-1][j-1]+1, m[i][j-1]+1, m[i-1][j]+1);
+    return m[b.length][a.length];
+  }
+  function typoScore(word, text) {
+    let best = Infinity;
+    text.split(' ').forEach(t => { const d=levenshtein(word,t); if(d<best) best=d; });
+    return best===1?2:best===2?1:0;
+  }
+  function ngramScore(word, text) {
+    let s = 0;
+    for (let i = 0; i < word.length-1; i++) if (text.includes(word.slice(i,i+2))) s += 0.5;
+    return s;
+  }
+
+  let cachedIndex = null;
+  function buildIndex(data) {
+    const idx = {};
+    data.forEach(item => item.search_text.split(' ').forEach(w => {
+      if (!idx[w]) idx[w] = new Set(); idx[w].add(item.id);
+    }));
+    return idx;
+  }
+  function getCandidates(idx, data, words) {
+    const ids = new Set();
+    words.forEach(w => idx[w]?.forEach(id => ids.add(id)));
+    return ids.size === 0 ? data : data.filter(item => ids.has(item.id));
+  }
+
+  fetch('q_and_a_data.json')
+    .then(r => r.json())
+    .then(data => {
+      if (!cachedIndex) cachedIndex = buildIndex(data);
+      const words = query.split(' ').filter(Boolean);
+      const results = getCandidates(cachedIndex, data, words)
+        .map(item => {
+          let score = 0;
+          if (item.questions.some(q => q.toLowerCase() === query)) score += 10;
+          if (item.search_text.includes(query)) score += 5;
+          item.questions.forEach(q => { if (q.toLowerCase().includes(query)) score += 3; });
+          words.forEach(w => {
+            if (item.search_text.includes(w)) score += 1;
+            score += typoScore(w, item.search_text);
+            score += ngramScore(w, item.search_text);
+          });
+          item.synonyms?.forEach(s => words.forEach(w => { if (s.includes(w)) score += 2; }));
+          return { ...item, score: score * (item.priority || 1) };
+        })
+        .filter(i => i.score > 0)
+        .sort((a, b) => b.score - a.score);
+
+      aiBox.innerHTML = '';
+      resultsBox.innerHTML = '';
+
+      if (results.length === 0) {
+        resultsBox.innerHTML = '<p style="color:#888;padding:20px 0">結果が見つかりませんでした。</p>';
+        return;
+      }
+
+      results.forEach((item, i) => {
+        const el = document.createElement('div');
+        el.className = 'result';
+        el.innerHTML = `
+          <div class="result-title">${highlight(item.questions[0], words)}</div>
+          <div class="result-desc">${highlight(item.description, words)}</div>
+          <div class="result-hint">クリックして詳細を見る →</div>
+        `;
+        el.addEventListener('click', () => openModal(el, item));
+        resultsBox.appendChild(el);
+      });
+    });
+}
+</script>
 
 </body>
-
 </html>
