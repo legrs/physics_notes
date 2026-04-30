@@ -1166,7 +1166,7 @@
         return ids.size === 0 ? data : data.filter(item => ids.has(item.id));
       }
 
-      fetch('https://legrs.github.io/physics_notes/q_and_a_data.json')
+      fetch('https://legrs.github.io/physics_notes/q_and_a_data.json', { cache: 'no-cache' })
         .then(r => r.json())
         .then(data => {
           if (!cachedIndex) cachedIndex = buildIndex(data);
