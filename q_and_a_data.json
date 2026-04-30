@@ -145,7 +145,7 @@
         "questions": [
             "なぜh上がるとmghのpotentialが得られるか？"
         ],
-        "answer": "運動方程式より、$F=ma$だから、上昇に使う力は$mg$、仕事の定義より、$F \\cdot h=mgh$",
+        "answer": "運動方程式より、$F=ma$だから、重力に逆らって上昇するのに使う力は$mg$。仕事の定義より、$F \\cdot h=mgh$",
         "description": "重力による位置エネルギーの解説",
         "keywords": [
             "位置エネルギー",
