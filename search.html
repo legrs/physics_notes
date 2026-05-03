@@ -846,8 +846,14 @@
         "Aligning output constraints...",
         "Synthesizing final response...",
       ];
+      /* Fisher-Yates shuffle でランダム順に並び替え */
+      for (let i = tasks.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [tasks[i], tasks[j]] = [tasks[j], tasks[i]];
+      }
       let taskIdx = 0;
       const taskEl = document.getElementById('taskDisplay');
+      taskEl.textContent = tasks[0];
       function cycleTask() {
         taskEl.classList.remove('visible'); taskEl.classList.add('fade-out');
         setTimeout(() => {
