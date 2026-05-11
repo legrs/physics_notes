@@ -128,7 +128,7 @@ $
 
 Total amount of charge is conserved.
 
-- *Coulomd's law*
+- *Coulomb's law*
 
 
 #align(center,box(width:6cm, height:3cm, clip:true)[
@@ -889,6 +889,106 @@ align(center,box(width:15cm, height:3cm, clip:true)[
 $
   bold( C := V / Q )
 $
+
+* Parallel-plate capacitor makes uniform electric field. *\
+It makes $4 pi k Q "lines of electric force"$ .
+
+#text(size:10pt)[( 電気力線ってsuperpositionできるの？uniformであることは積分で証明？)]
+
+#figure(
+align(center,box(width:15cm, height:5cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      content((-5,0), $+$)
+      content((-4,0), $+$)
+      content((-3,0), $+$)
+
+      let draw_uni(p)={
+        let (x,y) = p
+        line(p,(x - 1   ,y + 1), mark:(end:">", fill:black))
+        line(p,(x - 1.41,y + 0), mark:(end:">", fill:black))
+        line(p,(x + 1.41,y + 0), mark:(end:">", fill:black))
+        line(p,(x + 0   ,y - 1.41), mark:(end:">", fill:black))
+        line(p,(x - 1   ,y - 1), mark:(end:">", fill:black))
+        line(p,(x + 1   ,y - 1), mark:(end:">", fill:black))
+        line(p,(x + 0   ,y + 1.41), mark:(end:">", fill:black))
+        line(p,(x + 1   ,y + 1), mark:(end:">", fill:black))
+      }
+
+      draw_uni((-5,0))
+      draw_uni((-4,0))
+      draw_uni((-3,0))
+
+      line((-0.5,0),(0.5,0), mark:(end:">", fill:gray), stroke:(thickness:0.3, paint:gray))
+
+      content((5,0), $+$)
+      content((4,0), $+$)
+      content((3,0), $+$)
+
+      line((3,0),(3 - 1.41,0), mark:(end:">", fill:black))
+      line((3,0),(3 - 1,1), mark:(end:">", fill:black))
+      line((3,0),(3 - 1,-1), mark:(end:">", fill:black))
+      line((3,0),(3 - 1,1), mark:(end:">", fill:black))
+      line((3,0),(3,1.41), mark:(end:">", fill:black))
+      line((3.33,0),(3.33,1.41), mark:(end:">", fill:black))
+      line((3.66,0),(3.66,1.41), mark:(end:">", fill:black))
+      line((4,0),(4,1.41), mark:(end:">", fill:black))
+      line((4.33,0),(4.33,1.41), mark:(end:">", fill:black))
+      line((4.66,0),(4.66,1.41), mark:(end:">", fill:black))
+      line((5,0),(5,1.41), mark:(end:">", fill:black))
+      line((3,0),(3,-1.41), mark:(end:">", fill:black))
+      line((3.33,0),(3.33,-1.41), mark:(end:">", fill:black))
+      line((3.66,0),(3.66,-1.41), mark:(end:">", fill:black))
+      line((4,0),(4,-1.41), mark:(end:">", fill:black))
+      line((4.33,0),(4.33,-1.41), mark:(end:">", fill:black))
+      line((4.66,0),(4.66,-1.41), mark:(end:">", fill:black))
+      line((5,0),(5,-1.41), mark:(end:">", fill:black))
+      line((5,0),(5 + 1.41,0), mark:(end:">", fill:black))
+      line((5,0),(5 + 1,1), mark:(end:">", fill:black))
+      line((5,0),(5 + 1,-1), mark:(end:">", fill:black))
+    })
+  ]
+])
+,caption:[superposition of electric field which made by lined charges]
+)
+
+#pagebreak()
+
+Let \
+surface area of one side plate $bold(S)$,\
+amount of electric charge $bold(Q)$,\
+distance between plates $bold(d)$
+
+#align(center,box(width:15cm, height:5cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      line((-4,2),(4,2))
+      line((-4,-2),(4,-2))
+      
+      for i in range(4){
+        content((i,2.2), $+$)
+        content((-i,2.2), $+$)
+        content((i,-2.2), $-$)
+        content((-i,-2.2), $-$)
+        line((i,2),(i,-2), mark:(end:">", fill:black))
+        line((-i,2),(-i,-2), mark:(end:">", fill:black))
+      }
+
+      line((5,2),(5,-2), mark:(start:">",end:">", fill:black))
+      content((4.5,2), $bold(S)$)
+      content((3.8,2.3), $bold(+Q)$)
+      content((8,0), [number of lines $4 pi k Q$])
+      content((4.6,0), $bold(d)$)
+      content((7,-1), [$ E = (4 pi k Q )/ S$])
+
+    })
+  ]
+])
+
 
 
 
