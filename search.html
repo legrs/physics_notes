@@ -954,6 +954,13 @@
   <script>
     /* ── 数式変換（KaTeX） ── $$...$$ ブロック → $...$ インライン の順に処理 */
     function formatMath(text) {
+      // CommonMark の right-flanking delimiter 制約への対応:
+      // closing ** の直前が記号（）など punctuation）で直後が平仮名・片仮名・漢字の場合、
+      // marked.js が bold を認識しないため、** の直後にスペースを挿入する。
+      text = text.replace(
+        /(\*\*[^*\n]*?[!-\/:-@\[-`{-~\uFF01-\uFF60\u3000-\u303F])\*\*(?=[\u3040-\u30FF\u4E00-\u9FFF])/g,
+        '$1** '
+      );
       // ブロック数式 $$...$$
       text = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, expr) => {
         try {
