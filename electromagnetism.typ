@@ -1087,20 +1087,107 @@ $
 
 === Energy of capacitor
 
-#align(center,box(width:15cm, height:6cm, clip:true)[
+#align(center,box(width:15cm, height:4cm, clip:true)[
   #place(center + horizon)[
     #cetz.canvas({
       import cetz.draw: *
 
-      line((0,3),(0,2))
-      line((-1,2),(1,2))
-      line((-1,-2),(1,-2))
-      line((0,-2),(0,-3))
+      line((0,2),(0,1))
+      line((-1,1),(1,1))
+      line((-1,-1),(1,-1))
+      line((0,-1),(0,-2))
 
+      content((0.5,1.5), $bold(+ Q)$)
+      content((0.5,-1.5), $bold(- Q)$)
 
+      line((-1.0,1),(-1.0,-1), mark:(start:">",end:">", fill:black))
+      content((-0.1,0), $bold(V(Q))$)
+      //content((0,0), $bold(C)$)
 
-      content((-1,2.5), $bold(+ Q)$)
-      content((-1,-2.5), $bold(- Q)$)
+      line((1.5,0),(2.5,0), mark:(end:">", fill:gray), stroke:(paint:gray, thickness:0.2))
+      //line((-0.5,0),(0.5,0), mark:(end:">", fill:gray), stroke:(thickness:0.3, paint:gray))
+      
+      line((4,2),(4,1))
+      line((3,1),(5,1))
+      line((3,-1),(5,-1))
+      line((4,-1),(4,-2))
+
+      content((5.0,1.5), $bold(+Q - q)$)
+      content((4.5,-1.5), $bold(- Q)$)
+
+      line((3.0,1),(3.0,-1), mark:(start:">",end:">", fill:black))
+      content((3.8,0), $bold(V(q))$)
+
+      line((5,0.8),(5,0.4), mark:(fill:black), stroke:(thickness:0.02))
+      line((5,-0.4),(5,-0.8), mark:(end:">", fill:black), stroke:(thickness:0.02))
+      content((5,0), $d q$)
+
+      line((5.5,0),(6.5,0), mark:(end:">", fill:gray), stroke:(paint:gray, thickness:0.2))
+      
+      line((8,2),(8,1))
+      line((7,1),(9,1))
+      line((7,-1),(9,-1))
+      line((8,-1),(8,-2))
+
+      content((8,0), $bold(0)$)
+    })
+  ]
+])
+$ V(q) = q/C \
+W = integral_0^Q d q dot V(q) = integral_0^Q d q dot q/C= 1/2 Q^2 /C = 1/2 Q V
+$
+$
+therefore bold(W = 1/2 Q V)
+$
+
+* The work which battery has done :$W = Q V$. ( V=const. )*
+Therefoe Work:$1/2 Q V$ is wasted.
+
+#align(center,box(width:15cm, height:5cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+/*
+      line((0.1,0,0),(1,0,0))
+      line((1,0,0),(1,2,1))
+      line((1,2,1),(0.1,2,1))
+      line((-0.1,2,0),(-1,2,0))
+      line((-1,2,0),(-1,0,0))
+      line((-1,0,0),(0,0,0))
+
+      line((0,0,0),(3,0,0), mark:(end:">", fill:black))
+      line((0,0,0),(0,3,0), mark:(end:">", fill:black))
+      line((0,0,0),(0,0,2), mark:(end:">", fill:black))
+      */
+
+      ortho(x:30deg, y:150deg,{
+        let AXIS_LENGTH = 2.5
+        //line((0, 0, 0), (AXIS_LENGTH, 0, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "x-axis")
+        //line((0, 0, 0), (0, AXIS_LENGTH, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "y-axis")
+        //line((0, 0, 0), (0, 0, AXIS_LENGTH), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "z-axis")
+        //content("x-axis.end", [$x$], anchor: "west")
+        //content("y-axis.end", [$y$], anchor: "south")
+        //content("z-axis.end", [$z$], anchor: "north-east")
+
+        line((0.1,0,-1),(2,0,-1))
+        line((2,0,-1),(2,1,2))
+        line((2,1,2),(0.1,1,2))
+        //line((2,0,-1),(2,0,0.5), mark:(end:">",fill:black))
+        //line((2,0,-1),(0.5,0,-1), mark:(end:">",fill:black))
+        //line((2,0,-1),(2,1.5,-1), mark:(end:">",fill:black))
+        line((-0.1,0,2),(-1,0,2))
+        line((-1,0,2),(-1,0,-1))
+        line((-1,0,-1),(-0.1,0,-1))
+
+        line((0.1,0,-1.5),(0.1,0,-0.5))
+        line((-0.1,0,-1.5),(-0.1,0,-0.5))
+
+        line((0.1,1,2.3),(0.1,1,1.7))
+        line((-0.1,0,2.5),(-0.1,0,1.5))
+
+        line((2.2,1,2),(2.2,0,-1), mark:(start:">",fill:black))
+        content((2.5,0.5,1), $bold(e^-)$)
+      })
     })
   ]
 ])
