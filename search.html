@@ -21,7 +21,8 @@
     body {
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #fff;
+      background: var(--bg);
+      color: var(--text-body);
     }
 
     /* ── Search results (hidden until animation ends) ─────────── */
@@ -54,12 +55,14 @@
       padding: 12px 16px;
       font-size: 16px;
       border-radius: 999px;
-      border: 1px solid #ddd;
+      border: 1px solid var(--border-dark);
       outline: none;
+      background: var(--input-bg);
+      color: var(--text-primary);
     }
 
     .search-box:focus {
-      border-color: #888;
+      border-color: var(--chat-accent);
     }
 
     /* AI icon button */
@@ -93,10 +96,10 @@
     /* ── AI Answer box ───────────────────────────────────────── */
     .ai-answer {
       padding: 24px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid var(--border-mid);
       border-radius: 16px;
       margin-bottom: 20px;
-      background: #fafafa;
+      background: var(--bg-surface);
       position: relative;
     }
 
@@ -105,7 +108,7 @@
       font-weight: 600;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #888;
+      color: var(--chat-accent);
       margin-bottom: 12px;
     }
 
@@ -113,7 +116,7 @@
     .ai-prose {
       font-size: 15px;
       line-height: 1.8;
-      color: #222;
+      color: var(--text-body);
     }
 
     .ai-prose h1,
@@ -121,7 +124,7 @@
     .ai-prose h3 {
       font-weight: 700;
       margin: .9em 0 .4em;
-      color: #111;
+      color: var(--text-primary);
     }
 
     .ai-prose h1 {
@@ -151,18 +154,18 @@
     }
 
     .ai-prose blockquote {
-      border-left: 3px solid #ddd;
+      border-left: 3px solid var(--border-dark);
       margin: .8em 0;
       padding: .3em .9em;
-      color: #555;
-      background: #f5f5f5;
+      color: var(--text-secondary);
+      background: var(--bg-elevated);
       border-radius: 0 6px 6px 0;
     }
 
     .ai-prose code {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      background: #f3f4f6;
-      border: 1px solid #e5e7eb;
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
       border-radius: 4px;
       padding: .1em .35em;
       font-size: .88em;
@@ -204,7 +207,7 @@
       left: 0;
       right: 0;
       height: 72px;
-      background: linear-gradient(transparent, #fafafa);
+      background: linear-gradient(transparent, var(--bg-surface));
       pointer-events: none;
       transition: opacity 0.3s ease;
     }
@@ -230,9 +233,9 @@
       text-align: center;
       padding: 10px 16px;
       border-radius: 10px;
-      border: 1px solid #e0e0e0;
-      background: #f7f7f7;
-      color: #333;
+      border: 1px solid var(--border-mid);
+      background: var(--bg-elevated);
+      color: var(--text-body);
       font-size: 14px;
       font-weight: 500;
       text-decoration: none;
@@ -243,8 +246,8 @@
 
     .ai-expand-btn:hover,
     .ai-btn:hover {
-      background: #ececec;
-      border-color: #ccc;
+      background: var(--border-dark);
+      border-color: var(--text-muted);
     }
 
     /* Ask AI button (no-results) */
@@ -256,7 +259,7 @@
     /* ── Result list items ───────────────────────────────────── */
     .result {
       padding: 14px 16px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--border);
       cursor: pointer;
       border-radius: 10px;
       transition: background 0.15s ease;
@@ -264,28 +267,29 @@
     }
 
     .result:hover {
-      background: #f5f5f5;
+      background: var(--bg-elevated);
     }
 
     .result-title {
       font-size: 17px;
-      color: #1a0dab;
+      color: var(--chat-accent);
       margin-bottom: 3px;
     }
 
     .result-desc {
       font-size: 14px;
-      color: #444;
+      color: var(--text-secondary);
     }
 
     .result-hint {
       font-size: 12px;
-      color: #999;
+      color: var(--text-muted);
       margin-top: 4px;
     }
 
     mark {
-      background: #fff3a0;
+      background: var(--mark-bg);
+      color: inherit;
     }
 
     /* ── Back link ───────────────────────────────────────────── */
@@ -294,7 +298,7 @@
       align-items: center;
       gap: 5px;
       font-size: 13px;
-      color: #888;
+      color: var(--text-muted);
       text-decoration: none;
       margin-bottom: 20px;
       padding: 4px 0;
@@ -302,14 +306,14 @@
     }
 
     .back-link:hover {
-      color: #333;
+      color: var(--chat-accent);
     }
 
     /* ── Related items ───────────────────────────────────────── */
     .related-section {
       margin-top: 32px;
       padding-top: 24px;
-      border-top: 1px solid #eee;
+      border-top: 1px solid var(--border);
     }
 
     .related-label {
@@ -317,13 +321,13 @@
       font-weight: 600;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: #888;
+      color: var(--text-muted);
       margin-bottom: 12px;
     }
 
     .related-card {
       padding: 12px 14px;
-      border: 1px solid #eee;
+      border: 1px solid var(--border);
       border-radius: 10px;
       margin-bottom: 8px;
       cursor: pointer;
@@ -331,25 +335,25 @@
     }
 
     .related-card:hover {
-      background: #f5f5f5;
-      border-color: #ddd;
+      background: var(--bg-elevated);
+      border-color: var(--border-dark);
     }
 
     .related-card-title {
       font-size: 15px;
-      color: #1a0dab;
+      color: var(--chat-accent);
       margin-bottom: 3px;
     }
 
     .related-card-desc {
       font-size: 13px;
-      color: #555;
+      color: var(--text-secondary);
     }
 
     /* ── Modal (detail view) ─────────────────────────────────── */
     #modal-overlay {
       position: fixed;
-      background: #fff;
+      background: var(--bg-card);
       z-index: 200;
       display: none;
       flex-direction: column;
@@ -378,7 +382,7 @@
       align-items: center;
       justify-content: space-between;
       padding: 16px 20px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--border);
       flex-shrink: 0;
       opacity: 0;
       transition: opacity 0.3s ease;
@@ -388,7 +392,7 @@
     #modal-title {
       font-size: clamp(16px, 2.5vw, 22px);
       font-weight: 700;
-      color: #111;
+      color: var(--text-primary);
       margin: 0;
       flex: 1;
       min-width: 0;
@@ -399,7 +403,7 @@
       background: none;
       border: none;
       cursor: pointer;
-      color: #888;
+      color: var(--text-muted);
       padding: 6px;
       border-radius: 50%;
       line-height: 0;
@@ -407,8 +411,8 @@
     }
 
     #close-btn:hover {
-      background: #f0f0f0;
-      color: #333;
+      background: var(--bg-elevated);
+      color: var(--text-body);
     }
 
     /* flex-grow のみでは overflow-y:auto が発動しない問題を修正 */
@@ -427,7 +431,7 @@
       max-width: 680px;
       margin: 0 auto;
       line-height: 1.8;
-      color: #222;
+      color: var(--text-body);
       font-size: 16px;
     }
 
@@ -436,7 +440,7 @@
     .prose h3 {
       font-weight: 700;
       margin: 1.4em 0 0.5em;
-      color: #111;
+      color: var(--text-primary);
     }
 
     .prose h1 {
@@ -445,7 +449,7 @@
 
     .prose h2 {
       font-size: 1.35em;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--border);
       padding-bottom: 6px;
     }
 
@@ -468,18 +472,18 @@
     }
 
     .prose blockquote {
-      border-left: 4px solid #ddd;
+      border-left: 4px solid var(--border-dark);
       margin: 1em 0;
       padding: 0.4em 1em;
-      color: #555;
-      background: #fafafa;
+      color: var(--text-secondary);
+      background: var(--bg-surface);
       border-radius: 0 6px 6px 0;
     }
 
     .prose code {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      background: #f3f4f6;
-      border: 1px solid #e5e7eb;
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
       border-radius: 4px;
       padding: 0.1em 0.4em;
       font-size: 0.9em;
@@ -502,19 +506,19 @@
     }
 
     .prose a {
-      color: #1a0dab;
+      color: var(--chat-accent);
     }
 
     .prose hr {
       border: none;
-      border-top: 1px solid #eee;
+      border-top: 1px solid var(--border);
       margin: 1.5em 0;
     }
 
     /* ── KaTeX math wrappers ─────────────────────────────────── */
     .math-inline {
-      background: #f1f5f9;
-      border: 1px solid #e2e8f0;
+      background: var(--math-bg);
+      border: 1px solid var(--math-border);
       border-radius: 5px;
       padding: 0.05em 0.3em;
       margin: 0 0.1em;
@@ -526,8 +530,8 @@
       overflow-x: auto;
       padding: 12px 16px;
       margin: 1em 0;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
+      background: var(--math-block-bg);
+      border: 1px solid var(--math-border);
       border-radius: 8px;
       text-align: center;
     }
@@ -542,7 +546,7 @@
       display: inline-block;
       width: 7px;
       height: 1.15em;
-      background: #3b82f6;
+      background: var(--chat-accent);
       vertical-align: middle;
       margin-left: 3px;
       animation: cur-blink 1s step-end infinite;
@@ -753,11 +757,31 @@
     :root {
       --chat-accent: #3b82f6;
       --chat-accent-fg: #ffffff;
+
+      /* ── Light theme tokens ─────────────────────────── */
+      --bg: #ffffff;
+      --bg-surface: #fafafa;
+      --bg-elevated: #f5f5f5;
+      --bg-card: #ffffff;
+      --text-primary: #111111;
+      --text-body: #222222;
+      --text-secondary: #444444;
+      --text-muted: #888888;
+      --border: #eeeeee;
+      --border-mid: #e0e0e0;
+      --border-dark: #dddddd;
+      --input-bg: #ffffff;
+      --mark-bg: #fff3a0;
+      --code-bg: #f3f4f6;
+      --code-border: #e5e7eb;
+      --math-bg: #f1f5f9;
+      --math-border: #e2e8f0;
+      --math-block-bg: #f8fafc;
     }
 
     #chat-panel {
       position: fixed;
-      background: #fff;
+      background: var(--bg-card);
       z-index: 250;
       display: none;
       flex-direction: column;
@@ -787,11 +811,11 @@
       align-items: center;
       justify-content: space-between;
       padding: 12px 16px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--border);
       flex-shrink: 0;
       opacity: 0;
       transition: opacity 0.28s ease;
-      background: rgba(255, 255, 255, 0.92);
+      background: var(--bg-card);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       gap: 10px;
@@ -800,7 +824,7 @@
     #chat-title {
       font-size: 17px;
       font-weight: 700;
-      color: #111;
+      color: var(--text-primary);
       margin: 0;
     }
 
@@ -824,11 +848,11 @@
     }
 
     .chat-header-btn:hover {
-      background: rgba(0, 0, 0, 0.05);
+      background: var(--bg-elevated);
     }
 
     #chat-close-btn {
-      color: #666;
+      color: var(--text-muted);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -838,8 +862,8 @@
     }
 
     #chat-close-btn:hover {
-      background: #f0f0f0;
-      color: #111;
+      background: var(--bg-elevated);
+      color: var(--text-primary);
     }
 
     /* Chat window */
@@ -847,7 +871,7 @@
       flex: 1;
       min-height: 0;
       overflow-y: auto;
-      background: #fff;
+      background: var(--bg-card);
       overscroll-behavior: contain;
       opacity: 0;
       transition: opacity 0.28s ease;
@@ -871,8 +895,8 @@
     }
 
     .chat-msg-user {
-      background: #f0f0f0;
-      color: #111;
+      background: var(--bg-elevated);
+      color: var(--text-primary);
       padding: 10px 14px;
       border-radius: 18px;
       border-bottom-right-radius: 4px;
@@ -899,7 +923,7 @@
     .chat-msg-ai {
       max-width: 88%;
       font-size: 14px;
-      color: #111;
+      color: var(--text-body);
       line-height: 1.72;
     }
 
@@ -944,8 +968,8 @@
     /* Chat footer */
     #chat-footer {
       flex-shrink: 0;
-      border-top: 1px solid #eee;
-      background: #fff;
+      border-top: 1px solid var(--border);
+      background: var(--bg-card);
       padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
       opacity: 0;
       transition: opacity 0.28s ease;
@@ -961,13 +985,13 @@
 
     #chat-input {
       flex: 1;
-      background: #f3f4f6;
+      background: var(--bg-elevated);
       border: none;
       border-radius: 22px;
       padding: 10px 16px;
       font-size: 15px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #111;
+      color: var(--text-primary);
       outline: none;
       resize: none;
       min-height: 44px;
@@ -977,11 +1001,11 @@
     }
 
     #chat-input::placeholder {
-      color: #999;
+      color: var(--text-muted);
     }
 
     #chat-input:focus {
-      background: #ececec;
+      background: var(--border-dark);
     }
 
     #chat-send-btn {
@@ -1056,7 +1080,7 @@
     }
 
     .chat-prose pre {
-      background: #f3f4f6;
+      background: var(--code-bg);
       border-radius: 8px;
       padding: 12px 14px;
       overflow-x: auto;
@@ -1066,7 +1090,7 @@
 
     .chat-prose code {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      background: #f3f4f6;
+      background: var(--code-bg);
       padding: 0.1em 0.35em;
       border-radius: 4px;
       font-size: 0.87em;
@@ -1078,9 +1102,9 @@
     }
 
     .chat-prose blockquote {
-      border-left: 3px solid #ddd;
+      border-left: 3px solid var(--border-dark);
       padding-left: 0.8em;
-      color: #555;
+      color: var(--text-secondary);
       margin: 0.6em 0;
     }
 
@@ -1097,13 +1121,13 @@
 
     .chat-prose th,
     .chat-prose td {
-      border: 1px solid #e2e8f0;
+      border: 1px solid var(--math-border);
       padding: 0.4em 0.7em;
       text-align: left;
     }
 
     .chat-prose th {
-      background: #f8fafc;
+      background: var(--bg-elevated);
       font-weight: 600;
     }
 
@@ -1127,7 +1151,7 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: #f2f2f7;
+      background: var(--bg-elevated);
       z-index: 270;
       border-radius: 20px 20px 0 0;
       max-height: 92dvh;
@@ -1151,10 +1175,10 @@
     .cs-header {
       position: sticky;
       top: 0;
-      background: rgba(242, 242, 247, 0.95);
+      background: var(--bg-elevated);
       backdrop-filter: blur(8px);
       padding: 14px 16px;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      border-bottom: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -1165,7 +1189,7 @@
       font-size: 17px;
       font-weight: 700;
       margin: 0;
-      color: #111;
+      color: var(--text-primary);
     }
 
     .cs-done-btn {
@@ -1188,16 +1212,16 @@
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.1em;
-      color: #888;
+      color: var(--text-muted);
       margin-bottom: 8px;
       padding: 0 4px;
     }
 
     .cs-card {
-      background: #fff;
+      background: var(--bg-card);
       border-radius: 14px;
       overflow: hidden;
-      border: 1px solid rgba(0, 0, 0, 0.08);
+      border: 1px solid var(--border);
       margin-bottom: 20px;
     }
 
@@ -1205,7 +1229,7 @@
       display: flex;
       align-items: center;
       padding: 12px 14px;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      border-bottom: 1px solid var(--border);
     }
 
     .cs-row:last-child {
@@ -1215,7 +1239,7 @@
     .cs-row-label {
       font-size: 14px;
       font-weight: 500;
-      color: #222;
+      color: var(--text-body);
       min-width: 80px;
       flex-shrink: 0;
     }
@@ -1237,7 +1261,7 @@
     .cs-row input[type="text"]::placeholder,
     .cs-row input[type="url"]::placeholder,
     .cs-row input[type="password"]::placeholder {
-      color: #bbb;
+      color: var(--text-muted);
     }
 
     .cs-port-row {
@@ -1252,8 +1276,8 @@
       height: 28px;
       border-radius: 8px;
       border: none;
-      background: #f0f0f0;
-      color: #333;
+      background: var(--bg-elevated);
+      color: var(--text-body);
       font-size: 16px;
       cursor: pointer;
       display: flex;
@@ -1265,7 +1289,7 @@
     }
 
     .cs-port-btn:hover {
-      background: #e0e0e0;
+      background: var(--border-dark);
     }
 
     #cs-port-input {
@@ -1309,7 +1333,7 @@
       height: 20px;
       left: 3px;
       bottom: 3px;
-      background: #fff;
+      background: var(--bg-card);
       border-radius: 50%;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
       transition: transform 0.3s;
@@ -1353,14 +1377,14 @@
 
     /* Fetch model row */
     .cs-fetch-btn {
-      background: #f0f0f0;
+      background: var(--bg-elevated);
       border: none;
       cursor: pointer;
       font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #555;
+      color: var(--text-secondary);
       padding: 5px 10px;
       border-radius: 8px;
       margin-left: 8px;
@@ -1368,7 +1392,7 @@
     }
 
     .cs-fetch-btn:hover {
-      background: #e0e0e0;
+      background: var(--border-dark);
     }
 
     /* API key expanded row */
@@ -1378,7 +1402,7 @@
 
     #cs-apikey-input {
       width: 100%;
-      background: #f3f4f6;
+      background: var(--bg-elevated);
       border: none;
       outline: none;
       border-radius: 10px;
@@ -1390,7 +1414,7 @@
     /* Clear button */
     #cs-clear-btn {
       width: 100%;
-      background: #fff;
+      background: var(--bg-card);
       border: 1px solid rgba(220, 50, 50, 0.2);
       border-radius: 14px;
       padding: 14px;
@@ -1403,7 +1427,7 @@
     }
 
     #cs-clear-btn:hover {
-      background: #fff5f5;
+      background: rgba(220, 50, 50, 0.08);
     }
 
     /* Chat header inner wrapper — constrains content width like ConnectToLocalAI (max-w-3xl) */
@@ -1463,956 +1487,1214 @@
       pointer-events: none;
       padding: 0 16px;
     }
-  </style>
-</head>
 
-<body>
+    /* ══════════════════════════════════════════════════════════════
+       DARK MODE
+    ══════════════════════════════════════════════════════════════ */
+    html.dark {
+      --bg: #000000;
+      --bg-surface: #0d0d0d;
+      --bg-elevated: #1a1a1a;
+      --bg-card: #0a0a0a;
+      --text-primary: #f2f2f2;
+      --text-body: #dddddd;
+      --text-secondary: #aaaaaa;
+      --text-muted: #666666;
+      --border: #222222;
+      --border-mid: #2a2a2a;
+      --border-dark: #333333;
+      --input-bg: #111111;
+      --mark-bg: #3d3000;
+      --code-bg: #1a1a1a;
+      --code-border: #333333;
+      --math-bg: #111111;
+      --math-border: #2a2a2a;
+      --math-block-bg: #0d0d0d;
+    }
 
-  <!-- ══ Backdrop ══════════════════════════════════════════════════ -->
-  <div id="backdrop"></div>
+    html.dark body {
+      color-scheme: dark;
+    }
 
-  <!-- ══ Detail Modal ══════════════════════════════════════════════ -->
-  <div id="modal-overlay">
-    <div id="modal-header">
-      <h2 id="modal-title"></h2>
-      <button id="close-btn" aria-label="閉じる">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-      </button>
-    </div>
-    <div id="modal-body">
-      <div class="prose" id="modal-content"></div>
-      <div id="modal-related"></div>
-    </div>
-  </div>
+    /* prose pre stays dark regardless */
+    html.dark .ai-prose pre,
+    html.dark .prose pre {
+      background: #0d0d0d;
+    }
 
-  <!-- ══ AI Thinking Overlay ══════════════════════════════════════ -->
-  <div id="thinking-overlay">
-    <div class="thinking-wrapper">
-      <canvas id="thinking-canvas"></canvas>
-      <div class="corner corner-tl"></div>
-      <div class="corner corner-tr"></div>
-      <div class="corner corner-bl"></div>
-      <div class="corner corner-br"></div>
-      <!-- ===== テキスト変更・追加はここ ===== -->
-      <span class="ring-label top">NEURAL ENGINE</span>
-      <span class="ring-label bot">INFERENCE ACTIVE</span>
-      <div class="ui-layer">
-        <div class="task-label">Now Processing. Hang tight...</div>
-        <div class="task-text">
-          <div class="task-inner visible" id="taskDisplay">Interpreting your prompt...</div>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill"></div>
-        </div>
-      </div>
-      <!-- ===================================== -->
-    </div>
-  </div>
+    /* chat prose pre in dark mode */
+    html.dark .chat-prose pre {
+      background: #111;
+    }
 
-  <!-- ══ Search Results ════════════════════════════════════════════ -->
-  <div id="app">
-    <div class="container">
-      <a href="https://legrs.github.io/physics_notes/index.html" class="back-link">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="15 18 9 12 15 6" />
-        </svg>
-        トップへ
-      </a>
-      <div class="search-row">
-        <input id="search" class="search-box" type="text" placeholder="Search...">
-        <button class="ai-chat-btn" id="ai-chat-btn" title="Physics AI を開く" aria-label="Physics AI">
-          <img id="ai-chat-icon" src="img/ai-icon.svg" alt="AI">
-        </button>
-      </div>
-      <div id="ai"></div>
-      <div id="results"></div>
-    </div>
-  </div>
+    /* Settings panel in dark mode */
+    html.dark #chat-settings-panel {
+      border-top-color: rgba(255, 255, 255, 0.06);
+    }
 
-  <!-- ══ Chat Panel ════════════════════════════════════════════ -->
-  <div id="chat-panel">
+    html.dark .cs-header {
+      background: rgba(10, 10, 10, 0.95);
+    }
 
-    <!-- Header -->
-    <header id="chat-header">
-      <div class="chat-header-inner">
-        <h1 id="chat-title">Physics AI</h1>
-        <div class="chat-header-actions">
-          <button class="chat-header-btn" id="chat-settings-btn">設定</button>
-          <button class="chat-header-btn" id="chat-close-btn" aria-label="検索画面に戻る">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
-      </div>
-    </header>
+    /* Scrollbar tint in dark mode */
+    html.dark ::-webkit-scrollbar-track {
+      background: #000;
+    }
 
-    <!-- Messages -->
-    <main id="chat-window">
-      <div id="chat-scroll-container"></div>
-    </main>
+    html.dark ::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 4px;
+    }
 
-    <!-- Footer / Input -->
-    <footer id="chat-footer">
-      <div class="chat-input-row">
-        <textarea id="chat-input" rows="1" placeholder="メッセージ"></textarea>
-        <button id="chat-send-btn" aria-label="送信">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-            <path
-              d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
-          </svg>
-        </button>
-      </div>
-    </footer>
+    html.dark ::-webkit-scrollbar-thumb:hover {
+      background: #444;
+    }
 
-  </div>
 
-  <!-- ══ Chat Settings Overlay & Panel ════════════════════════ -->
-  <div id="chat-settings-overlay"></div>
 
-  <div id="chat-settings-panel">
-    <div class="cs-header">
-      <h2>設定</h2>
-      <button class="cs-done-btn" id="cs-done-btn">完了</button>
-    </div>
-    <div class="cs-body">
+    <body>< !-- ══ Backdrop ══════════════════════════════════════════════════ --><div id="backdrop"></div>< !-- ══ Detail Modal ══════════════════════════════════════════════ --><div id="modal-overlay"><div id="modal-header"><h2 id="modal-title"></h2><button id="close-btn" aria-label="閉じる"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+    stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button></div><div id="modal-body"><div class="prose" id="modal-content"></div><div id="modal-related"></div></div></div>< !-- ══ AI Thinking Overlay ══════════════════════════════════════ --><div id="thinking-overlay"><div class="thinking-wrapper"><canvas id="thinking-canvas"></canvas><div class="corner corner-tl"></div><div class="corner corner-tr"></div><div class="corner corner-bl"></div><div class="corner corner-br"></div>< !--=====テキスト変更・追加はここ=====--><span class="ring-label top">NEURAL ENGINE</span><span class="ring-label bot">INFERENCE ACTIVE</span><div class="ui-layer"><div class="task-label">Now Processing. Hang tight...</div><div class="task-text"><div class="task-inner visible" id="taskDisplay">Interpreting your prompt...</div></div><div class="progress-bar"><div class="progress-fill"></div></div></div>< !--=====================================--></div></div>< !-- ══ Search Results ════════════════════════════════════════════ --><div id="app"><div class="container"><a href="https://legrs.github.io/physics_notes/index.html" class="back-link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+    stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg>トップへ </a><div class="search-row"><input id="search" class="search-box" type="text" placeholder="Search..."><button class="ai-chat-btn" id="ai-chat-btn" title="Physics AI を開く" aria-label="Physics AI"><img id="ai-chat-icon" src="img/ai-icon.svg" alt="AI"></button></div><div id="ai"></div><div id="results"></div></div></div>< !-- ══ Chat Panel ════════════════════════════════════════════ --><div id="chat-panel">< !-- Header --><header id="chat-header"><div class="chat-header-inner"><h1 id="chat-title">Physics AI</h1><div class="chat-header-actions"><button class="chat-header-btn" id="chat-settings-btn">設定</button><button class="chat-header-btn" id="chat-close-btn" aria-label="検索画面に戻る"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+    stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button></div></div></header>< !-- Messages --><main id="chat-window"><div id="chat-scroll-container"></div></main>< !-- Footer / Input --><footer id="chat-footer"><div class="chat-input-row"><textarea id="chat-input" rows="1" placeholder="メッセージ"></textarea><button id="chat-send-btn" aria-label="送信"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg></button></div></footer></div>< !-- ══ Chat Settings Overlay & Panel ════════════════════════ --><div id="chat-settings-overlay"></div><div id="chat-settings-panel"><div class="cs-header"><h2>設定</h2><button class="cs-done-btn" id="cs-done-btn">完了</button></div><div class="cs-body">< !-- ダークモード --><div class="cs-section-label">外観</div><div class="cs-card"><div class="cs-row"><span class="cs-row-label">ダークモード</span><label class="cs-toggle" style="margin-left:auto"><input type="checkbox" id="cs-dark-toggle"><span class="cs-toggle-slider"></span></label></div></div>< !-- アクセントカラー --><div class="cs-section-label">アクセントカラー</div><div class="cs-card"><div class="cs-swatches"><button class="cs-swatch" id="cs-swatch-neutral" data-accent="neutral" aria-label="ニュートラル"
 
-      <!-- アクセントカラー -->
-      <div class="cs-section-label">アクセントカラー</div>
-      <div class="cs-card">
-        <div class="cs-swatches">
-          <button class="cs-swatch" id="cs-swatch-neutral" data-accent="neutral" aria-label="ニュートラル"
-            title="ニュートラル"></button>
-          <button class="cs-swatch" data-accent="blue" style="background:#3b82f6" aria-label="ブルー"></button>
-          <button class="cs-swatch" data-accent="pink" style="background:#ec4899" aria-label="ピンク"></button>
-          <button class="cs-swatch" data-accent="green" style="background:#22c55e" aria-label="グリーン"></button>
-          <button class="cs-swatch" data-accent="yellow" style="background:#f59e0b" aria-label="イエロー"></button>
-        </div>
-      </div>
+    title="ニュートラル"></button><button class="cs-swatch" data-accent="blue" style="background:#3b82f6" aria-label="ブルー"></button><button class="cs-swatch" data-accent="pink" style="background:#ec4899" aria-label="ピンク"></button><button class="cs-swatch" data-accent="green" style="background:#22c55e" aria-label="グリーン"></button><button class="cs-swatch" data-accent="yellow" style="background:#f59e0b" aria-label="イエロー"></button></div></div>< !-- クリア --><button id="cs-clear-btn">チャット履歴を消去</button></div></div>< !-- Toast container --><div id="chat-toast-container"></div><script>(function () {
+        const canvas=document.getElementById('thinking-canvas');
+        const ctx=canvas.getContext('2d');
+        const overlay=document.getElementById('thinking-overlay');
+        const appEl=document.getElementById('app');
 
-      <!-- クリア -->
-      <button id="cs-clear-btn">チャット履歴を消去</button>
+        const wrapper=canvas.parentElement;
 
-    </div>
-  </div>
-
-  <!-- Toast container -->
-  <div id="chat-toast-container"></div>
-  <script>
-    (function () {
-      const canvas = document.getElementById('thinking-canvas');
-      const ctx = canvas.getContext('2d');
-      const overlay = document.getElementById('thinking-overlay');
-      const appEl = document.getElementById('app');
-
-      const wrapper = canvas.parentElement;
-      function syncCanvasSize() {
-        const s = wrapper.getBoundingClientRect();
-        canvas.width = Math.round(s.width);
-        canvas.height = Math.round(s.height);
-      }
-      syncCanvasSize();
-
-      const W = () => canvas.width;
-      const CX = () => canvas.width / 2;
-      const CY = () => canvas.height / 2;
-      const R = () => canvas.width * 0.2375;
-
-      const NUM_DOTS = 420;
-      function fibonacci_sphere(n) {
-        const pts = [], golden = Math.PI * (3 - Math.sqrt(5));
-        for (let i = 0; i < n; i++) {
-          const y = 1 - (i / (n - 1)) * 2, rad = Math.sqrt(1 - y * y), th = golden * i;
-          pts.push({
-            ux: Math.cos(th) * rad, uy: y, uz: Math.sin(th) * rad,
-            baseSize: 1.2 + Math.random() * 1.4, pulse: Math.random() * Math.PI * 2,
-            pulseSpeed: 0.015 + Math.random() * 0.01, color: Math.random()
-          });
+        function syncCanvasSize() {
+          const s=wrapper.getBoundingClientRect();
+          canvas.width=Math.round(s.width);
+          canvas.height=Math.round(s.height);
         }
+
+        syncCanvasSize();
+
+        const W=()=> canvas.width;
+        const CX=()=> canvas.width / 2;
+        const CY=()=> canvas.height / 2;
+        const R=()=> canvas.width * 0.2375;
+
+        const NUM_DOTS=420;
+
+        function fibonacci_sphere(n) {
+          const pts=[], golden=Math.PI * (3 - Math.sqrt(5));
+
+          for (let i=0; i < n; i++) {
+            const y=1 - (i / (n - 1)) * 2, rad=Math.sqrt(1 - y * y), th=golden * i;
+
+            pts.push({
+              ux: Math.cos(th) * rad, uy: y, uz: Math.sin(th) * rad,
+              baseSize: 1.2 + Math.random() * 1.4, pulse: Math.random() * Math.PI * 2,
+              pulseSpeed: 0.015 + Math.random() * 0.01, color: Math.random()
+            });
+        }
+
         return pts;
       }
-      const dots = fibonacci_sphere(NUM_DOTS);
 
-      const pulses = [];
+      const dots=fibonacci_sphere(NUM_DOTS);
+
+      const pulses=[];
+
       function spawnPulse() {
-        const th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
+        const th=Math.random() * Math.PI * 2, ph=Math.acos(2 * Math.random() - 1);
+
         pulses.push({
           ox: Math.sin(ph) * Math.cos(th), oy: Math.cos(ph), oz: Math.sin(ph) * Math.sin(th),
           angle: 0, speed: 0.008 + Math.random() * 0.006, life: 0, maxLife: Math.PI * 0.85
         });
-      }
-      for (let i = 0; i < 4; i++) spawnPulse();
+    }
 
-      let rotX = 0.3, rotY = 0;
-      function rotY3(x, z, a) { return [x * Math.cos(a) - z * Math.sin(a), x * Math.sin(a) + z * Math.cos(a)]; }
-      function rotX3(y, z, a) { return [y * Math.cos(a) - z * Math.sin(a), y * Math.sin(a) + z * Math.cos(a)]; }
-      function project(px, py, pz) {
-        const [rx, rz1] = rotY3(px, pz, rotY), [ry, rz2] = rotX3(py, rz1, rotX);
-        const fov = W() * 0.875, scale = fov / (fov + rz2 + R());
-        return { sx: CX() + rx * scale, sy: CY() + ry * scale, depth: rz2, scale };
-      }
-      function angDist(dot, pulse) {
-        return Math.acos(Math.max(-1, Math.min(1, dot.ux * pulse.ox + dot.uy * pulse.oy + dot.uz * pulse.oz)));
+    for (let i=0; i < 4; i++) spawnPulse();
+
+    let rotX=0.3, rotY=0;
+
+    function rotY3(x, z, a) {
+      return [x * Math.cos(a) - z * Math.sin(a), x * Math.sin(a) + z * Math.cos(a)];
+    }
+
+    function rotX3(y, z, a) {
+      return [y * Math.cos(a) - z * Math.sin(a), y * Math.sin(a) + z * Math.cos(a)];
+    }
+
+    function project(px, py, pz) {
+      const [rx, rz1]=rotY3(px, pz, rotY), [ry, rz2]=rotX3(py, rz1, rotX);
+      const fov=W() * 0.875, scale=fov / (fov + rz2 + R());
+
+      return {
+        sx: CX() + rx * scale, sy: CY() + ry * scale, depth: rz2, scale
       }
 
-      /* ── Task cycling ─── テキストリストはここ ─────────── */
-      const tasks = [
-        "Initializing context window...",
-        "Searching vector space...",
-        "Optimizing response path...",
-        "Evaluating token embeddings...",
-        "Cross-referencing knowledge graph...",
-        "Running attention mechanisms...",
-        "Sampling probability distributions...",
-        "Compressing semantic representations...",
-        "Aligning output constraints...",
-        "Synthesizing final response...",
-      ];
-      /* Fisher-Yates shuffle でランダム順に並び替え */
-      for (let i = tasks.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [tasks[i], tasks[j]] = [tasks[j], tasks[i]];
-      }
-      let taskIdx = 0;
-      const taskEl = document.getElementById('taskDisplay');
-      taskEl.textContent = tasks[0];
-      function cycleTask() {
-        taskEl.classList.remove('visible'); taskEl.classList.add('fade-out');
-        setTimeout(() => {
-          taskIdx = (taskIdx + 1) % tasks.length;
-          taskEl.textContent = tasks[taskIdx];
+      ;
+    }
+
+    function angDist(dot, pulse) {
+      return Math.acos(Math.max(-1, Math.min(1, dot.ux * pulse.ox + dot.uy * pulse.oy + dot.uz * pulse.oz)));
+    }
+
+    /* ── Task cycling ─── テキストリストはここ ─────────── */
+    const tasks=[ "Initializing context window...",
+    "Searching vector space...",
+    "Optimizing response path...",
+    "Evaluating token embeddings...",
+    "Cross-referencing knowledge graph...",
+    "Running attention mechanisms...",
+    "Sampling probability distributions...",
+    "Compressing semantic representations...",
+    "Aligning output constraints...",
+    "Synthesizing final response...",
+    ];
+
+    /* Fisher-Yates shuffle でランダム順に並び替え */
+    for (let i=tasks.length - 1; i > 0; i--) {
+      const j=Math.floor(Math.random() * (i + 1));
+      [tasks[i], tasks[j]]=[tasks[j], tasks[i]];
+    }
+
+    let taskIdx=0;
+    const taskEl=document.getElementById('taskDisplay');
+    taskEl.textContent=tasks[0];
+
+    function cycleTask() {
+      taskEl.classList.remove('visible'); taskEl.classList.add('fade-out');
+
+      setTimeout(()=> {
+          taskIdx=(taskIdx + 1) % tasks.length;
+          taskEl.textContent=tasks[taskIdx];
           taskEl.classList.remove('fade-out'); taskEl.classList.add('fade-in');
-          requestAnimationFrame(() => requestAnimationFrame(() => {
-            taskEl.classList.remove('fade-in'); taskEl.classList.add('visible');
-          }));
-        }, 420);
-      }
-      const taskInterval = setInterval(cycleTask, 2600);
 
-      function drawGlow() {
-        const r = R();
-        const g1 = ctx.createRadialGradient(CX(), CY(), 0, CX(), CY(), r * 0.7);
-        g1.addColorStop(0, 'rgba(30,120,220,0.10)'); g1.addColorStop(0.5, 'rgba(10,60,160,0.06)'); g1.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = g1; ctx.beginPath(); ctx.arc(CX(), CY(), r * 0.7, 0, Math.PI * 2); ctx.fill();
-        const g2 = ctx.createRadialGradient(CX(), CY(), r * 0.75, CX(), CY(), r * 1.35);
-        g2.addColorStop(0, 'rgba(40,160,255,0.06)'); g2.addColorStop(0.5, 'rgba(20,100,200,0.025)'); g2.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(CX(), CY(), r * 1.35, 0, Math.PI * 2); ctx.fill();
-      }
-      function drawRing(t) {
-        const r = R(); ctx.save(); ctx.translate(CX(), CY()); ctx.scale(1, 0.22);
-        const grad = ctx.createConicGradient(t * 0.4, 0, 0);
-        grad.addColorStop(0, 'rgba(80,200,255,0.0)'); grad.addColorStop(0.25, 'rgba(80,200,255,0.25)');
-        grad.addColorStop(0.5, 'rgba(80,200,255,0.0)'); grad.addColorStop(0.75, 'rgba(80,200,255,0.12)'); grad.addColorStop(1, 'rgba(80,200,255,0.0)');
-        ctx.strokeStyle = grad; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, r + 18, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
-      }
+          requestAnimationFrame(()=> requestAnimationFrame(()=> {
+                taskEl.classList.remove('fade-in'); taskEl.classList.add('visible');
+              }));
+        }
 
-      /* ── 表示時間 (ms) ── */
-      const DISPLAY_DURATION = 10000;
+        , 420);
+    }
 
-      let animRunning = true, rafId;
-      setTimeout(() => {
+    const taskInterval=setInterval(cycleTask, 2600);
+
+    function drawGlow() {
+      const r=R();
+      const g1=ctx.createRadialGradient(CX(), CY(), 0, CX(), CY(), r * 0.7);
+      g1.addColorStop(0, 'rgba(30,120,220,0.10)'); g1.addColorStop(0.5, 'rgba(10,60,160,0.06)'); g1.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle=g1; ctx.beginPath(); ctx.arc(CX(), CY(), r * 0.7, 0, Math.PI * 2); ctx.fill();
+      const g2=ctx.createRadialGradient(CX(), CY(), r * 0.75, CX(), CY(), r * 1.35);
+      g2.addColorStop(0, 'rgba(40,160,255,0.06)'); g2.addColorStop(0.5, 'rgba(20,100,200,0.025)'); g2.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(CX(), CY(), r * 1.35, 0, Math.PI * 2); ctx.fill();
+    }
+
+    function drawRing(t) {
+      const r=R(); ctx.save(); ctx.translate(CX(), CY()); ctx.scale(1, 0.22);
+      const grad=ctx.createConicGradient(t * 0.4, 0, 0);
+      grad.addColorStop(0, 'rgba(80,200,255,0.0)'); grad.addColorStop(0.25, 'rgba(80,200,255,0.25)');
+      grad.addColorStop(0.5, 'rgba(80,200,255,0.0)'); grad.addColorStop(0.75, 'rgba(80,200,255,0.12)'); grad.addColorStop(1, 'rgba(80,200,255,0.0)');
+      ctx.strokeStyle=grad; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(0, 0, r + 18, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    }
+
+    /* ── 表示時間 (ms) ── */
+    const DISPLAY_DURATION=10000;
+
+    let animRunning=true, rafId;
+
+    setTimeout(()=> {
         clearInterval(taskInterval);
         overlay.classList.add('fade-out');
-        overlay.addEventListener('transitionend', () => {
-          overlay.style.display = 'none'; animRunning = false; cancelAnimationFrame(rafId);
-        }, { once: true });
-        appEl.classList.add('visible');
-        startSearchResults();
-      }, DISPLAY_DURATION);
 
-      let t = 0;
-      function frame() {
-        if (!animRunning) return;
-        ctx.clearRect(0, 0, W(), W());
-        const bg = ctx.createRadialGradient(CX(), CY(), 0, CX(), CY(), W() * 0.72);
-        bg.addColorStop(0, '#050d18'); bg.addColorStop(1, '#020408');
-        ctx.fillStyle = bg; ctx.fillRect(0, 0, W(), W());
-        drawGlow(); drawRing(t);
-        rotY += 0.0015; rotX += 0.0003;
-        for (let i = pulses.length - 1; i >= 0; i--) {
-          pulses[i].angle += pulses[i].speed; pulses[i].life = pulses[i].angle;
-          if (pulses[i].angle > pulses[i].maxLife) { pulses.splice(i, 1); spawnPulse(); }
-        }
-        const r = R();
-        const projected = dots.map(d => {
-          const p = project(d.ux * r, d.uy * r, d.uz * r);
-          let pg = 0;
-          for (const pulse of pulses) {
-            const diff = Math.abs(angDist(d, pulse) - pulse.angle);
-            if (diff < 0.18) pg += (1 - diff / 0.18) * Math.sin(pulse.life / pulse.maxLife * Math.PI) * 1.4;
+        overlay.addEventListener('transitionend', ()=> {
+            overlay.style.display='none'; animRunning=false; cancelAnimationFrame(rafId);
           }
-          const osc = 0.5 + 0.5 * Math.sin(t * d.pulseSpeed * 60 + d.pulse);
-          return { ...p, d, osc, pg, baseAlpha: 0.15 + 0.6 * (p.depth + r) / (2 * r) };
-        }).sort((a, b) => a.depth - b.depth);
-        for (const p of projected) {
-          const alpha = Math.min(1, p.baseAlpha + p.pg * 0.5);
-          const size = p.d.baseSize * p.scale * (1 + p.pg * 0.8) * (1 + p.osc * 0.15);
-          const h = 195 + p.d.color * 30 - p.pg * 40, s = 70 + p.pg * 30, l = 55 + p.pg * 30 + p.osc * 8;
-          if (p.pg > 0.05) {
-            const grd = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, size * 4);
-            grd.addColorStop(0, `hsla(${h},${s}%,${l}%,${alpha * 0.7})`); grd.addColorStop(1, `hsla(${h},${s}%,${l}%,0)`);
-            ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(p.sx, p.sy, size * 4, 0, Math.PI * 2); ctx.fill();
-          }
-          ctx.fillStyle = `hsla(${h},${s}%,${l}%,${alpha})`;
-          ctx.beginPath(); ctx.arc(p.sx, p.sy, size, 0, Math.PI * 2); ctx.fill();
+
+          , {
+          once: true
+        });
+      appEl.classList.add('visible');
+      startSearchResults();
+    }
+
+    , DISPLAY_DURATION);
+
+    let t=0;
+
+    function frame() {
+      if ( !animRunning) return;
+      ctx.clearRect(0, 0, W(), W());
+      const bg=ctx.createRadialGradient(CX(), CY(), 0, CX(), CY(), W() * 0.72);
+      bg.addColorStop(0, '#050d18'); bg.addColorStop(1, '#020408');
+      ctx.fillStyle=bg; ctx.fillRect(0, 0, W(), W());
+      drawGlow(); drawRing(t);
+      rotY +=0.0015; rotX +=0.0003;
+
+      for (let i=pulses.length - 1; i >=0; i--) {
+        pulses[i].angle +=pulses[i].speed; pulses[i].life=pulses[i].angle;
+
+        if (pulses[i].angle > pulses[i].maxLife) {
+          pulses.splice(i, 1); spawnPulse();
         }
-        ctx.save(); ctx.globalAlpha = 0.035;
-        for (let m = 0; m < 6; m++) {
-          const ang = (m / 6) * Math.PI + rotY; ctx.strokeStyle = '#4af'; ctx.lineWidth = 0.8; ctx.beginPath();
-          for (let a = 0; a <= Math.PI; a += 0.04) {
-            const pp = project(r * Math.sin(a) * Math.cos(ang), r * Math.cos(a), r * Math.sin(a) * Math.sin(ang));
-            a === 0 ? ctx.moveTo(pp.sx, pp.sy) : ctx.lineTo(pp.sx, pp.sy);
-          }
-          ctx.stroke();
-        }
-        ctx.restore();
-        t += 0.016; rafId = requestAnimationFrame(frame);
       }
-      rafId = requestAnimationFrame(frame);
-    })();
-  </script>
 
-  <!-- ══ Modal + Search Logic ══════════════════════════════════════ -->
-  <script>
+      const r=R();
+
+      const projected=dots.map(d=> {
+          const p=project(d.ux * r, d.uy * r, d.uz * r);
+          let pg=0;
+
+          for (const pulse of pulses) {
+            const diff=Math.abs(angDist(d, pulse) - pulse.angle);
+            if (diff < 0.18) pg +=(1 - diff / 0.18) * Math.sin(pulse.life / pulse.maxLife * Math.PI) * 1.4;
+          }
+
+          const osc=0.5 + 0.5 * Math.sin(t * d.pulseSpeed * 60 + d.pulse);
+
+          return {
+            ...p, d, osc, pg, baseAlpha: 0.15 + 0.6 * (p.depth + r) / (2 * r)
+          }
+
+          ;
+        }).sort((a, b)=> a.depth - b.depth);
+
+      for (const p of projected) {
+        const alpha=Math.min(1, p.baseAlpha + p.pg * 0.5);
+        const size=p.d.baseSize * p.scale * (1 + p.pg * 0.8) * (1 + p.osc * 0.15);
+        const h=195 + p.d.color * 30 - p.pg * 40, s=70 + p.pg * 30, l=55 + p.pg * 30 + p.osc * 8;
+
+        if (p.pg > 0.05) {
+          const grd=ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, size * 4);
+
+          grd.addColorStop(0, `hsla($ {
+                h
+              }
+
+              , $ {
+                s
+              }
+
+              %, $ {
+                l
+              }
+
+              %, $ {
+                alpha * 0.7
+
+              })`); grd.addColorStop(1, `hsla($ {
+                h
+              }
+
+              , $ {
+                s
+              }
+
+              %, $ {
+                l
+              }
+
+              %, 0)`);
+          ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(p.sx, p.sy, size * 4, 0, Math.PI * 2); ctx.fill();
+        }
+
+        ctx.fillStyle=`hsla($ {
+            h
+          }
+
+          , $ {
+            s
+          }
+
+          %, $ {
+            l
+          }
+
+          %, $ {
+            alpha
+          })`;
+        ctx.beginPath(); ctx.arc(p.sx, p.sy, size, 0, Math.PI * 2); ctx.fill();
+      }
+
+      ctx.save(); ctx.globalAlpha=0.035;
+
+      for (let m=0; m < 6; m++) {
+        const ang=(m / 6) * Math.PI + rotY; ctx.strokeStyle='#4af'; ctx.lineWidth=0.8; ctx.beginPath();
+
+        for (let a=0; a <=Math.PI; a +=0.04) {
+          const pp=project(r * Math.sin(a) * Math.cos(ang), r * Math.cos(a), r * Math.sin(a) * Math.sin(ang));
+          a===0 ? ctx.moveTo(pp.sx, pp.sy) : ctx.lineTo(pp.sx, pp.sy);
+        }
+
+        ctx.stroke();
+      }
+
+      ctx.restore();
+      t +=0.016; rafId=requestAnimationFrame(frame);
+    }
+
+    rafId=requestAnimationFrame(frame);
+    })();
+    </script>< !-- ══ Modal+Search Logic ══════════════════════════════════════ --><script>
+
     /* ── 数式変換（KaTeX） ── $$...$$ ブロック → $...$ インライン の順に処理 */
     function formatMath(text) {
+
       // CommonMark の right-flanking delimiter 制約への対応:
       // closing ** の直前が記号（）など punctuation）で直後が平仮名・片仮名・漢字の場合、
       // marked.js が bold を認識しないため、** の直後にスペースを挿入する。
-      text = text.replace(
-        /(\*\*[^*\n]*?[!-\/:-@\[-`{-~\uFF01-\uFF60\u3000-\u303F])\*\*(?=[\u3040-\u30FF\u4E00-\u9FFF])/g,
-        '$1** '
-      );
-      // ブロック数式 $$...$$
-      text = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, expr) => {
-        try {
-          if (typeof katex === 'undefined') return _;
-          return '<div class="math-block">' + katex.renderToString(expr.trim(), { throwOnError: false, displayMode: true }) + '</div>';
-        } catch (e) { return _; }
-      });
+      text=text.replace(/(\*\*[^*\n]*?[ !-\/:-@\[-` {
+            -~\uFF01-\uFF60\u3000-\u303F])\*\*(?=[\u3040-\u30FF\u4E00-\u9FFF])/g,
+          '$1** '
+        );
+
+        // ブロック数式 $$...$$
+        text=text.replace(/\$\$([\s\S]+?)\$\$/g, (_, expr)=> {
+            try {
+              if (typeof katex==='undefined') return _;
+
+              return '<div class="math-block">' + katex.renderToString(expr.trim(), {
+                throwOnError: false, displayMode: true
+              }) + '</div>';
+          }
+
+          catch (e) {
+            return _;
+          }
+        });
+
       // インライン数式 $...$（改行を含まない）
-      text = text.replace(/\$([^$\n]+?)\$/g, (_, expr) => {
-        try {
-          if (typeof katex === 'undefined') return _;
-          return '<span class="math-inline">' + katex.renderToString(expr, { throwOnError: false }) + '</span>';
-        } catch (e) { return _; }
+      text=text.replace(/\$([^$\n]+?)\$/g, (_, expr)=> {
+          try {
+            if (typeof katex==='undefined') return _;
+
+            return '<span class="math-inline">' + katex.renderToString(expr, {
+              throwOnError: false
+            }) + '</span>';
+        }
+
+        catch (e) {
+          return _;
+        }
       });
-      return text;
+    return text;
     }
 
     /* ── モーダル制御 ────────────────────────────────────────────── */
-    const modalOverlay = document.getElementById('modal-overlay');
-    const modalHeader = document.getElementById('modal-header');
-    const modalBody = document.getElementById('modal-body');
-    const modalTitle = document.getElementById('modal-title');
-    const modalContent = document.getElementById('modal-content');
-    const modalRelated = document.getElementById('modal-related');
-    const closeBtn = document.getElementById('close-btn');
-    const backdrop = document.getElementById('backdrop');
+    const modalOverlay=document.getElementById('modal-overlay');
+    const modalHeader=document.getElementById('modal-header');
+    const modalBody=document.getElementById('modal-body');
+    const modalTitle=document.getElementById('modal-title');
+    const modalContent=document.getElementById('modal-content');
+    const modalRelated=document.getElementById('modal-related');
+    const closeBtn=document.getElementById('close-btn');
+    const backdrop=document.getElementById('backdrop');
 
-    let isStreaming = false, streamTimer = null, isUserScrolling = false;
-    let allData = null; // fetch後にキャッシュ
+    let isStreaming=false,
+    streamTimer=null,
+    isUserScrolling=false;
+    let allData=null; // fetch後にキャッシュ
 
-    modalBody.addEventListener('wheel', () => { if (isStreaming) isUserScrolling = true; }, { passive: true });
-    modalBody.addEventListener('touchstart', () => { if (isStreaming) isUserScrolling = true; }, { passive: true });
-    modalBody.addEventListener('scroll', () => {
-      if (!isStreaming) return;
-      const dist = modalBody.scrollHeight - modalBody.clientHeight - modalBody.scrollTop;
-      if (dist <= 10) isUserScrolling = false;
+    modalBody.addEventListener('wheel', ()=> {
+        if (isStreaming) isUserScrolling=true;
+      }
+
+      , {
+      passive: true
     });
+
+    modalBody.addEventListener('touchstart', ()=> {
+        if (isStreaming) isUserScrolling=true;
+      }
+
+      , {
+      passive: true
+    });
+
+    modalBody.addEventListener('scroll', ()=> {
+        if ( !isStreaming) return;
+        const dist=modalBody.scrollHeight - modalBody.clientHeight - modalBody.scrollTop;
+        if (dist <=10) isUserScrolling=false;
+      });
 
     /* 関連項目セクションを描画 */
     function renderRelated(item) {
-      modalRelated.innerHTML = '';
+      modalRelated.innerHTML='';
       // ── Ask AI ボタン（常に最上部に表示） ──────────────────────
-      const askSection = document.createElement('div');
-      askSection.className = 'related-section';
-      const askCard = document.createElement('div');
-      askCard.className = 'related-card';
-      askCard.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(135deg,#f0f7ff 0%,#e8f0fe 100%);border-color:#c7d7f7';
-      askCard.innerHTML = `
-        <div>
-          <div class="related-card-title" style="color:#1a56db">Ask AI</div>
-          <div class="related-card-desc" style="color:#4a72c4">for better and deeper results</div>
-        </div>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a56db" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">
-          <path d="M7 17L17 7M17 7H7M17 7v10"/>
-        </svg>
-      `;
-      askCard.addEventListener('click', () => {
-        window.open('https://chatgpt.com/?q=' + encodeURIComponent(item.questions[0]), '_blank', 'noopener');
-      });
+      const askSection=document.createElement('div');
+      askSection.className='related-section';
+      const askCard=document.createElement('div');
+      askCard.className='related-card';
+      askCard.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;';
+      askCard.innerHTML=` <div><div class="related-card-title">Ask AI</div><div class="related-card-desc">for better and deeper results</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--chat-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M7 17L17 7M17 7H7M17 7v10" /></svg>`;
+
+      askCard.addEventListener('click', ()=> {
+          window.open('https://chatgpt.com/?q=' + encodeURIComponent(item.questions[0]), '_blank', 'noopener');
+        });
       askSection.appendChild(askCard);
       modalRelated.appendChild(askSection);
 
-      if (!item.related || item.related.length === 0 || !allData) return;
-      const relItems = item.related.map(id => allData.find(d => d.id === id)).filter(Boolean);
-      if (relItems.length === 0) return;
+      if ( !item.related || item.related.length===0 || !allData) return;
+      const relItems=item.related.map(id=> allData.find(d=> d.id===id)).filter(Boolean);
+      if (relItems.length===0) return;
 
-      const section = document.createElement('div');
-      section.className = 'related-section';
-      section.innerHTML = `<div class="related-label">関連項目</div>`;
+      const section=document.createElement('div');
+      section.className='related-section';
+      section.innerHTML=`<div class="related-label">関連項目</div>`;
 
-      relItems.forEach(ri => {
-        const card = document.createElement('div');
-        card.className = 'related-card';
-        card.innerHTML = `
-          <div class="related-card-title">${ri.questions[0]}</div>
-          <div class="related-card-desc">${ri.description}</div>
-        `;
-        card.addEventListener('click', () => {
-          stopStreaming();
-          modalTitle.textContent = ri.questions[0];
-          modalContent.innerHTML = '';
-          modalRelated.innerHTML = '';
-          modalBody.scrollTop = 0;
-          isUserScrolling = false;
-          startStreaming(ri.answer, () => renderRelated(ri));
+      relItems.forEach(ri=> {
+          const card=document.createElement('div');
+          card.className='related-card';
+
+          card.innerHTML=` <div class="related-card-title" >$ {
+            ri.questions[0]
+          }
+
+          </div> <div class="related-card-desc" >$ {
+            ri.description
+          }
+
+          </div> `;
+
+          card.addEventListener('click', ()=> {
+              stopStreaming();
+              modalTitle.textContent=ri.questions[0];
+              modalContent.innerHTML='';
+              modalRelated.innerHTML='';
+              modalBody.scrollTop=0;
+              isUserScrolling=false;
+              startStreaming(ri.answer, ()=> renderRelated(ri));
+            });
+          section.appendChild(card);
         });
-        section.appendChild(card);
-      });
       modalRelated.appendChild(section);
     }
 
     function openModal(triggerEl, item) {
-      document.body.style.overflow = 'hidden';
-      isUserScrolling = false;
+      document.body.style.overflow='hidden';
+      isUserScrolling=false;
 
-      const rect = triggerEl.getBoundingClientRect();
-      modalOverlay.style.cssText = `
-    display: flex;
-    top: ${rect.top}px;
-    left: ${rect.left}px;
-    width: ${rect.width}px;
-    height: ${rect.height}px;
-  `;
+      const rect=triggerEl.getBoundingClientRect();
+      modalOverlay.style.cssText=` display: flex;
 
-      modalTitle.textContent = item.questions[0];
-      modalContent.innerHTML = '';
-      modalRelated.innerHTML = '';
-      modalHeader.style.opacity = '0';
-      modalBody.style.opacity = '0';
+      top: $ {
+        rect.top
+      }
 
-      backdrop.style.display = 'block';
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          backdrop.classList.add('visible');
-          modalOverlay.classList.add('fullscreen');
+      px;
+
+      left: $ {
+        rect.left
+      }
+
+      px;
+
+      width: $ {
+        rect.width
+      }
+
+      px;
+
+      height: $ {
+        rect.height
+      }
+
+      px;
+      `;
+
+      modalTitle.textContent=item.questions[0];
+      modalContent.innerHTML='';
+      modalRelated.innerHTML='';
+      modalHeader.style.opacity='0';
+      modalBody.style.opacity='0';
+
+      backdrop.style.display='block';
+
+      requestAnimationFrame(()=> {
+          requestAnimationFrame(()=> {
+              backdrop.classList.add('visible');
+              modalOverlay.classList.add('fullscreen');
+            });
         });
-      });
 
-      setTimeout(() => {
-        modalHeader.style.opacity = '1';
-        modalBody.style.opacity = '1';
-        startStreaming(item.answer, () => renderRelated(item));
-      }, 500);
+      setTimeout(()=> {
+          modalHeader.style.opacity='1';
+          modalBody.style.opacity='1';
+          startStreaming(item.answer, ()=> renderRelated(item));
+        }
+
+        , 500);
     }
 
     function closeModal() {
       stopStreaming();
-      document.body.style.overflow = '';
-      modalHeader.style.opacity = '0';
-      modalBody.style.opacity = '0';
+      document.body.style.overflow='';
+      modalHeader.style.opacity='0';
+      modalBody.style.opacity='0';
       backdrop.classList.remove('visible');
       modalOverlay.classList.remove('fullscreen');
 
-      setTimeout(() => {
-        modalOverlay.style.display = 'none';
-        setTimeout(() => { backdrop.style.display = 'none'; }, 200);
-      }, 500);
+      setTimeout(()=> {
+          modalOverlay.style.display='none';
+
+          setTimeout(()=> {
+              backdrop.style.display='none';
+            }
+
+            , 200);
+        }
+
+        , 500);
     }
 
     /* onComplete コールバックを追加 */
     function startStreaming(fullText, onComplete) {
-      isStreaming = true;
-      let idx = 0, buf = '';
+      isStreaming=true;
+      let idx=0,
+      buf='';
 
       function tick() {
-        if (!isStreaming) return;
+        if ( !isStreaming) return;
+
         if (idx < fullText.length) {
-          const chunk = Math.floor(Math.random() * 3) + 1;
-          buf += fullText.slice(idx, idx + chunk);
-          idx += chunk;
+          const chunk=Math.floor(Math.random() * 3)+1;
+          buf+=fullText.slice(idx, idx + chunk);
+          idx+=chunk;
 
-          modalContent.innerHTML = marked.parse(formatMath(buf)) + '<span class="cursor-blink"></span>';
+          modalContent.innerHTML=marked.parse(formatMath(buf))+'<span class="cursor-blink"></span>';
 
-          if (!isUserScrolling) modalBody.scrollTop = modalBody.scrollHeight;
+          if ( !isUserScrolling) modalBody.scrollTop=modalBody.scrollHeight;
 
-          streamTimer = setTimeout(tick, Math.random() * 20 + 8);
-        } else {
-          modalContent.innerHTML = marked.parse(formatMath(fullText));
-          isStreaming = false;
+          streamTimer=setTimeout(tick, Math.random() * 20 + 8);
+        }
+
+        else {
+          modalContent.innerHTML=marked.parse(formatMath(fullText));
+          isStreaming=false;
           if (onComplete) onComplete();
         }
       }
+
       tick();
     }
 
     function stopStreaming() {
-      isStreaming = false;
+      isStreaming=false;
       if (streamTimer) clearTimeout(streamTimer);
     }
 
     closeBtn.addEventListener('click', closeModal);
     backdrop.addEventListener('click', closeModal);
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && modalOverlay.style.display !== 'none') closeModal();
-    });
+
+    document.addEventListener('keydown', e=> {
+        if (e.key==='Escape' && modalOverlay.style.display !=='none') closeModal();
+      });
 
     /* ── 検索ロジック ────────────────────────────────────────────── */
     // チャットへ渡す検索コンテキストをキャッシュ
-    let _chatContextQuery = '';
-    let _chatContextAnswer = '';
+    let _chatContextQuery='';
+    let _chatContextAnswer='';
 
     /* ── グローバル検索ヘルパー（Chat パネルからも利用） ─────── */
     function _levenshtein(a, b) {
-      const m = Array.from({ length: b.length + 1 }, (_, i) => [i]);
-      for (let j = 0; j <= a.length; j++) m[0][j] = j;
-      for (let i = 1; i <= b.length; i++)
-        for (let j = 1; j <= a.length; j++)
-          m[i][j] = b[i - 1] === a[j - 1] ? m[i - 1][j - 1] : Math.min(m[i - 1][j - 1] + 1, m[i][j - 1] + 1, m[i - 1][j] + 1);
-      return m[b.length][a.length];
+      const m=Array.from({
+        length: b.length + 1
+      }
+
+      , (_, i)=> [i]);
+    for (let j=0; j <=a.length; j++) m[0][j]=j;
+    for (let i=1; i <=b.length; i++) for (let j=1; j <=a.length; j++) m[i][j]=b[i - 1]===a[j - 1] ? m[i - 1][j - 1] : Math.min(m[i - 1][j - 1] + 1, m[i][j - 1] + 1, m[i - 1][j] + 1);
+    return m[b.length][a.length];
     }
+
     function _typoScore(word, text) {
-      let best = Infinity;
-      text.split(' ').forEach(t => { const d = _levenshtein(word, t); if (d < best) best = d; });
-      return best === 1 ? 2 : best === 2 ? 1 : 0;
+      let best=Infinity;
+
+      text.split(' ').forEach(t=> {
+          const d=_levenshtein(word, t); if (d < best) best=d;
+        });
+      return best===1 ? 2 : best===2 ? 1 : 0;
     }
+
     function _ngramScore(word, text) {
-      let s = 0;
-      for (let i = 0; i < word.length - 1; i++) if (text.includes(word.slice(i, i + 2))) s += 0.5;
+      let s=0;
+      for (let i=0; i < word.length - 1; i++) if (text.includes(word.slice(i, i + 2))) s+=0.5;
       return s;
     }
+
     function _buildIndex(data) {
-      const idx = {};
-      data.forEach(item => item.search_text.split(' ').forEach(w => {
-        if (!idx[w]) idx[w] = new Set(); idx[w].add(item.id);
-      }));
+      const idx= {}
+
+      ;
+
+      data.forEach(item=> item.search_text.split(' ').forEach(w=> {
+            if ( !idx[w]) idx[w]=new Set(); idx[w].add(item.id);
+          }));
       return idx;
     }
+
     function _getCandidates(idx, data, words) {
-      const ids = new Set();
-      words.forEach(w => idx[w]?.forEach(id => ids.add(id)));
-      return ids.size === 0 ? data : data.filter(item => ids.has(item.id));
+      const ids=new Set();
+      words.forEach(w=> idx[w]?.forEach(id=> ids.add(id)));
+      return ids.size===0 ? data: data.filter(item=> ids.has(item.id));
     }
 
     /* クエリからスコア付き上位結果を返す（Chat パネルで使用） */
     function searchTopResult(query) {
-      if (!allData) return null;
-      const q = query.toLowerCase();
-      const words = q.split(' ').filter(Boolean);
-      if (!words.length) return null;
-      const idx = _buildIndex(allData);
-      const results = _getCandidates(idx, allData, words)
-        .map(item => {
-          let score = 0;
-          if (item.questions.some(qq => qq.toLowerCase() === q)) score += 10;
-          if (item.search_text.includes(q)) score += 5;
-          item.questions.forEach(qq => { if (qq.toLowerCase().includes(q)) score += 3; });
-          words.forEach(w => {
-            if (item.search_text.includes(w)) score += 1;
-            score += _typoScore(w, item.search_text);
-            score += _ngramScore(w, item.search_text);
-            // ① keywords ブースト
-            item.keywords?.forEach(k => { if (k.toLowerCase().includes(w)) score += 2; });
-          });
-          item.synonyms?.forEach(s => words.forEach(w => { if (s.includes(w)) score += 2; }));
+      if ( !allData) return null;
+      const q=query.toLowerCase();
+      const words=q.split(' ').filter(Boolean);
+      if ( !words.length) return null;
+      const idx=_buildIndex(allData);
+
+      const results=_getCandidates(idx, allData, words) .map(item=> {
+          let score=0;
+          if (item.questions.some(qq=> qq.toLowerCase()===q)) score +=10;
+          if (item.search_text.includes(q)) score +=5;
+
+          item.questions.forEach(qq=> {
+              if (qq.toLowerCase().includes(q)) score +=3;
+            });
+
+          words.forEach(w=> {
+              if (item.search_text.includes(w)) score +=1;
+              score +=_typoScore(w, item.search_text);
+              score +=_ngramScore(w, item.search_text);
+
+              // ① keywords ブースト
+              item.keywords?.forEach(k=> {
+                  if (k.toLowerCase().includes(w)) score +=2;
+                });
+            });
+
+          item.synonyms?.forEach(s=> words.forEach(w=> {
+                if (s.includes(w)) score +=2;
+              }));
+
           // ③ フレーズボーナス（隣接単語ペア）
-          for (let i = 0; i < words.length - 1; i++) {
-            const phrase = words[i] + words[i + 1];
-            if (item.search_text.includes(phrase)) score += 2;
+          for (let i=0; i < words.length - 1; i++) {
+            const phrase=words[i] + words[i + 1];
+            if (item.search_text.includes(phrase)) score +=2;
           }
-          return { ...item, score: score * (item.priority || 1) };
-        })
-        .filter(i => i.score > 0)
-        .sort((a, b) => b.score - a.score);
+
+          return {
+            ...item, score: score * (item.priority || 1)
+          }
+
+          ;
+        }) .filter(i=> i.score > 0) .sort((a, b)=> b.score - a.score);
       // ② related ブースト（上位3件の related に含まれるアイテムを +0.5）
-      const _topRelated1 = new Set(results.slice(0, 3).flatMap(r => r.related || []));
-      results.forEach(r => { if (_topRelated1.has(r.id)) r.score += 0.5; });
-      results.sort((a, b) => b.score - a.score);
+      const _topRelated1=new Set(results.slice(0, 3).flatMap(r=> r.related || []));
+
+      results.forEach(r=> {
+          if (_topRelated1.has(r.id)) r.score +=0.5;
+        });
+      results.sort((a, b)=> b.score - a.score);
       return results[0] || null;
     }
 
     function startSearchResults() {
-      const rawParam = (location.search.match(/[?&]q=([^&]*)/) || ['', ''])[1];
-      const query = decodeURIComponent(rawParam).toLowerCase();
-      _chatContextQuery = query;
+      const rawParam=(location.search.match(/[?&]q=([^&]*)/) || ['', ''])[1];
+      const query=decodeURIComponent(rawParam).toLowerCase();
+      _chatContextQuery=query;
 
-      const input = document.getElementById('search');
-      const aiBox = document.getElementById('ai');
-      const resultsBox = document.getElementById('results');
+      const input=document.getElementById('search');
+      const aiBox=document.getElementById('ai');
+      const resultsBox=document.getElementById('results');
 
-      input.value = query;
+      input.value=query;
 
-      input.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && !e.isComposing) {
-          const q = input.value.trim();
-          if (!q) return;
-          const newSearch = `?q=${encodeURIComponent(q)}`;
-          if (location.search === newSearch) {
-            location.reload();
-          } else {
-            location.href = `https://legrs.github.io/physics_notes/search.html${newSearch}`;
+      input.addEventListener('keydown', e=> {
+          if (e.key==='Enter' && !e.isComposing) {
+            const q=input.value.trim();
+            if ( !q) return;
+
+            const newSearch=`?q=$ {
+              encodeURIComponent(q)
+            }
+
+            `;
+
+            if (location.search===newSearch) {
+              location.reload();
+            }
+
+            else {
+              location.href=`https: //legrs.github.io/physics_notes/search.html${newSearch}`;
+            }
           }
-        }
-      });
+        });
 
       function highlight(text, words) {
-        let r = text;
-        words.forEach(w => { r = r.replace(new RegExp(`(${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'), '<mark>$1</mark>'); });
+        let r=text;
+
+        words.forEach(w=> {
+            r=r.replace(new RegExp(`($ {
+                    w.replace(/[.*+?^$ {}
+
+                      ()|[\]\\]/g, '\\$&')
+                  })`, 'gi'), '<mark>$1</mark>');
+          });
         return r;
       }
 
-      let cachedIndex = null;
+      let cachedIndex=null;
 
-      fetch('https://legrs.github.io/physics_notes/q_and_a_data.json', { cache: 'no-cache' })
-        .then(r => r.json())
-        .then(data => {
-          if (!cachedIndex) cachedIndex = _buildIndex(data);
-          allData = data; // モーダルの関連項目用にキャッシュ
-          const words = query.split(' ').filter(Boolean);
-          const results = _getCandidates(cachedIndex, data, words)
-            .map(item => {
-              let score = 0;
-              if (item.questions.some(q => q.toLowerCase() === query)) score += 10;
-              if (item.search_text.includes(query)) score += 5;
-              item.questions.forEach(q => { if (q.toLowerCase().includes(query)) score += 3; });
-              words.forEach(w => {
-                if (item.search_text.includes(w)) score += 1;
-                score += _typoScore(w, item.search_text);
-                score += _ngramScore(w, item.search_text);
-                // ① keywords ブースト
-                item.keywords?.forEach(k => { if (k.toLowerCase().includes(w)) score += 2; });
+      fetch('https://legrs.github.io/physics_notes/q_and_a_data.json', {
+        cache: 'no-cache'
+
+      }) .then(r=> r.json()) .then(data=> {
+        if ( !cachedIndex) cachedIndex=_buildIndex(data);
+        allData=data; // モーダルの関連項目用にキャッシュ
+        const words=query.split(' ').filter(Boolean);
+
+        const results=_getCandidates(cachedIndex, data, words) .map(item=> {
+            let score=0;
+            if (item.questions.some(q=> q.toLowerCase()===query)) score +=10;
+            if (item.search_text.includes(query)) score +=5;
+
+            item.questions.forEach(q=> {
+                if (q.toLowerCase().includes(query)) score +=3;
               });
-              item.synonyms?.forEach(s => words.forEach(w => { if (s.includes(w)) score += 2; }));
-              // ③ フレーズボーナス（隣接単語ペア）
-              for (let i = 0; i < words.length - 1; i++) {
-                const phrase = words[i] + words[i + 1];
-                if (item.search_text.includes(phrase)) score += 2;
-              }
-              return { ...item, score: score * (item.priority || 1) };
-            })
-            .filter(i => i.score > 0)
-            .sort((a, b) => b.score - a.score);
-          // ② related ブースト（上位3件の related に含まれるアイテムを +0.5）
-          const _topRelated2 = new Set(results.slice(0, 3).flatMap(r => r.related || []));
-          results.forEach(r => { if (_topRelated2.has(r.id)) r.score += 0.5; });
-          results.sort((a, b) => b.score - a.score);
 
-          aiBox.innerHTML = '';
-          resultsBox.innerHTML = '';
+            words.forEach(w=> {
+                if (item.search_text.includes(w)) score +=1;
+                score +=_typoScore(w, item.search_text);
+                score +=_ngramScore(w, item.search_text);
 
-          if (results.length === 0) {
-            resultsBox.innerHTML = `
-              <p style="color:#888;padding:20px 0">結果が見つかりませんでした。</p>
-              <div class="ask-ai-wrap">
-                <button class="ai-btn" id="ask-ai-btn">Ask AI ↗</button>
-              </div>`;
-            document.getElementById('ask-ai-btn').addEventListener('click', () => {
+                // ① keywords ブースト
+                item.keywords?.forEach(k=> {
+                    if (k.toLowerCase().includes(w)) score +=2;
+                  });
+              });
+
+            item.synonyms?.forEach(s=> words.forEach(w=> {
+                  if (s.includes(w)) score +=2;
+                }));
+
+            // ③ フレーズボーナス（隣接単語ペア）
+            for (let i=0; i < words.length - 1; i++) {
+              const phrase=words[i] + words[i + 1];
+              if (item.search_text.includes(phrase)) score +=2;
+            }
+
+            return {
+              ...item, score: score * (item.priority || 1)
+            }
+
+            ;
+          }) .filter(i=> i.score > 0) .sort((a, b)=> b.score - a.score);
+        // ② related ブースト（上位3件の related に含まれるアイテムを +0.5）
+        const _topRelated2=new Set(results.slice(0, 3).flatMap(r=> r.related || []));
+
+        results.forEach(r=> {
+            if (_topRelated2.has(r.id)) r.score +=0.5;
+          });
+        results.sort((a, b)=> b.score - a.score);
+
+        aiBox.innerHTML='';
+        resultsBox.innerHTML='';
+
+        if (results.length===0) {
+          resultsBox.innerHTML=` <p style="color:#888;padding:20px 0" >結果が見つかりませんでした。</p> <div class="ask-ai-wrap" > <button class="ai-btn" id="ask-ai-btn" >Ask AI ↗</button> </div>`;
+
+          document.getElementById('ask-ai-btn').addEventListener('click', ()=> {
               window.open('https://chatgpt.com/?q=' + encodeURIComponent(query), '_blank', 'noopener');
             });
-            return;
-          }
+          return;
+        }
 
-          // ── AI Answer（1位の回答をストリーミング表示） ──────────
-          const top = results[0];
-          _chatContextAnswer = top.answer; // チャットコンテキスト用にキャッシュ
-          aiBox.innerHTML = `
-        <div class="ai-answer">
-          <div class="ai-label">AI Answer</div>
-          <div class="ai-collapse-wrap" id="ai-collapse">
-            <div class="ai-prose" id="ai-prose"></div>
-          </div>
-          <div class="ai-fade" id="ai-fade" style="display:none"></div>
-          <div class="ai-footer">
-            <button class="ai-expand-btn" id="ai-expand-btn" style="display:none">続きを読む ▾</button>
-            <button class="ai-btn" id="dive-deeper-btn">Dive Deeper ↗</button>
-          </div>
-        </div>
-      `;
-          document.getElementById('dive-deeper-btn').addEventListener('click', () => {
+        // ── AI Answer（1位の回答をストリーミング表示） ──────────
+        const top=results[0];
+        _chatContextAnswer=top.answer; // チャットコンテキスト用にキャッシュ
+        aiBox.innerHTML=` <div class="ai-answer" > <div class="ai-label" >AI Answer</div> <div class="ai-collapse-wrap" id="ai-collapse" > <div class="ai-prose" id="ai-prose" ></div> </div> <div class="ai-fade" id="ai-fade" style="display:none" ></div> <div class="ai-footer" > <button class="ai-expand-btn" id="ai-expand-btn" style="display:none" >続きを読む ▾</button> <button class="ai-btn" id="dive-deeper-btn" >Dive Deeper ↗</button> </div> </div> `;
+
+        document.getElementById('dive-deeper-btn').addEventListener('click', ()=> {
             window.open('https://chatgpt.com/?q=' + encodeURIComponent(query), '_blank', 'noopener');
           });
 
-          const aiProse = document.getElementById('ai-prose');
-          const aiCollapse = document.getElementById('ai-collapse');
-          const aiFade = document.getElementById('ai-fade');
-          const aiExpandBtn = document.getElementById('ai-expand-btn');
+        const aiProse=document.getElementById('ai-prose');
+        const aiCollapse=document.getElementById('ai-collapse');
+        const aiFade=document.getElementById('ai-fade');
+        const aiExpandBtn=document.getElementById('ai-expand-btn');
 
-          const LINE_HEIGHT = 15 * 1.8;
-          const THRESHOLD = LINE_HEIGHT * 10; // ≈270px
-          let overflowShown = false;
+        const LINE_HEIGHT=15 * 1.8;
+        const THRESHOLD=LINE_HEIGHT * 10; // ≈270px
+        let overflowShown=false;
 
-          function checkOverflow() {
-            if (overflowShown) return;
-            if (aiProse.scrollHeight > THRESHOLD + 4) {
-              overflowShown = true;
-              aiFade.style.display = 'block';
-              aiExpandBtn.style.display = 'block';
-            }
+        function checkOverflow() {
+          if (overflowShown) return;
+
+          if (aiProse.scrollHeight > THRESHOLD + 4) {
+            overflowShown=true;
+            aiFade.style.display='block';
+            aiExpandBtn.style.display='block';
           }
+        }
 
-          // expand / collapse トグル
-          let aiExpanded = false;
-          aiExpandBtn.addEventListener('click', () => {
-            aiExpanded = !aiExpanded;
+        // expand / collapse トグル
+        let aiExpanded=false;
+
+        aiExpandBtn.addEventListener('click', ()=> {
+            aiExpanded= !aiExpanded;
             aiCollapse.classList.toggle('expanded', aiExpanded);
-            aiFade.style.opacity = aiExpanded ? '0' : '1';
-            aiExpandBtn.textContent = aiExpanded ? '折りたたむ ▴' : '続きを読む ▾';
+            aiFade.style.opacity=aiExpanded ? '0' : '1';
+            aiExpandBtn.textContent=aiExpanded ? '折りたたむ ▴' : '続きを読む ▾';
           });
 
-          // ストリーミング
-          let aiStreamTimer = null;
-          let aiBuf = '', aiIdx = 0;
-          const fullText = top.answer;
+        // ストリーミング
+        let aiStreamTimer=null;
+        let aiBuf='', aiIdx=0;
+        const fullText=top.answer;
 
-          function aiTick() {
-            if (aiIdx < fullText.length) {
-              const chunk = Math.floor(Math.random() * 3) + 1;
-              aiBuf += fullText.slice(aiIdx, aiIdx + chunk);
-              aiIdx += chunk;
-              aiProse.innerHTML = marked.parse(formatMath(aiBuf)) + '<span class="cursor-blink"></span>';
-              checkOverflow();
-              aiStreamTimer = setTimeout(aiTick, Math.random() * 20 + 8);
-            } else {
-              aiProse.innerHTML = marked.parse(formatMath(fullText));
-              checkOverflow();
-            }
+        function aiTick() {
+          if (aiIdx < fullText.length) {
+            const chunk=Math.floor(Math.random() * 3) + 1;
+            aiBuf +=fullText.slice(aiIdx, aiIdx + chunk);
+            aiIdx +=chunk;
+            aiProse.innerHTML=marked.parse(formatMath(aiBuf)) + '<span class="cursor-blink"></span>';
+            checkOverflow();
+            aiStreamTimer=setTimeout(aiTick, Math.random() * 20 + 8);
           }
-          aiTick();
 
-          // ── 検索結果リスト ───────────────────────────────────────
-          results.forEach(item => {
-            const el = document.createElement('div');
-            el.className = 'result';
-            el.innerHTML = `
-          <div class="result-title">${highlight(item.questions[0], words)}</div>
-          <div class="result-desc">${highlight(item.description, words)}</div>
-          <div class="result-hint">クリックして詳細を見る →</div>
-        `;
-            el.addEventListener('click', () => openModal(el, item));
+          else {
+            aiProse.innerHTML=marked.parse(formatMath(fullText));
+            checkOverflow();
+          }
+        }
+
+        aiTick();
+
+        // ── 検索結果リスト ───────────────────────────────────────
+        results.forEach(item=> {
+            const el=document.createElement('div');
+            el.className='result';
+
+            el.innerHTML=` <div class="result-title" >$ {
+              highlight(item.questions[0], words)
+            }
+
+            </div> <div class="result-desc" >$ {
+              highlight(item.description, words)
+            }
+
+            </div> <div class="result-hint" >クリックして詳細を見る →</div> `;
+            el.addEventListener('click', ()=> openModal(el, item));
             resultsBox.appendChild(el);
           });
+      });
+    }
+
+    </script>< !-- ══ Chat Panel Logic ══════════════════════════════════════ --><script>(()=> {
+        'use strict';
+
+        // ── Accent color ─────────────────────────────────────────────────
+        const CHAT_ACCENTS= {
+          blue: {
+            color: '#3b82f6', fg: '#fff'
+          }
+
+          ,
+          pink: {
+            color: '#ec4899', fg: '#fff'
+          }
+
+          ,
+          green: {
+            color: '#22c55e', fg: '#fff'
+          }
+
+          ,
+          yellow: {
+            color: '#f59e0b', fg: '#fff'
+          }
+
+          ,
+          neutral: null,
+        }
+
+        ;
+
+        function updateNeutralSwatch() {
+          const dark=document.documentElement.classList.contains('dark');
+          const s=document.getElementById('cs-swatch-neutral');
+          if (s) s.style.background=dark ? '#fff' : '#000';
+        }
+
+        function applyAccent(name) {
+          const dark=document.documentElement.classList.contains('dark');
+          let color, fg;
+
+          if (name==='neutral') {
+            color=dark ? '#fff' : '#000';
+            fg=dark ? '#000' : '#fff';
+          }
+
+          else {
+            const e=CHAT_ACCENTS[name] ?? CHAT_ACCENTS.blue;
+            color=e.color; fg=e.fg;
+          }
+
+          document.documentElement.style.setProperty('--chat-accent', color);
+          document.documentElement.style.setProperty('--chat-accent-fg', fg);
+          const sendBtn=document.getElementById('chat-send-btn');
+          if (sendBtn) sendBtn.style.color=fg;
+          document.querySelectorAll('.cs-swatch').forEach(s=> s.classList.toggle('active', s.dataset.accent===name));
+          // Update inline SVG icon color
+          const inlineSvg=document.querySelector('#ai-chat-btn svg.ai-icon-inline');
+          if (inlineSvg) inlineSvg.style.color=color;
+        }
+
+        document.querySelectorAll('.cs-swatch').forEach(btn=> {
+            btn.addEventListener('click', ()=> {
+                localStorage.setItem('chat_accent', btn.dataset.accent);
+                applyAccent(btn.dataset.accent);
+              });
+          });
+
+        // ── Dark mode ────────────────────────────────────────────────────
+        function applyDark(isDark) {
+          document.documentElement.classList.toggle('dark', isDark);
+          const toggle=document.getElementById('cs-dark-toggle');
+          if (toggle) toggle.checked=isDark;
+          updateNeutralSwatch();
+          applyAccent(localStorage.getItem('chat_accent') || 'blue');
+        }
+
+        document.getElementById('cs-dark-toggle').addEventListener('change', function () {
+            const isDark=this.checked;
+            localStorage.setItem('dark_mode', isDark ? '1' : '0');
+            applyDark(isDark);
+          });
+
+        window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', e=> {
+
+            // Only follow system if user hasn't overridden
+            if (localStorage.getItem('dark_mode')===null) {
+              applyDark(e.matches);
+            }
+          });
+
+        // ── DOM refs ─────────────────────────────────────────────────────
+        const chatPanel=document.getElementById('chat-panel');
+        const chatHeader=document.getElementById('chat-header');
+        const chatWindow=document.getElementById('chat-window');
+        const chatScroll=document.getElementById('chat-scroll-container');
+        const chatFooter=document.getElementById('chat-footer');
+        const chatInput=document.getElementById('chat-input');
+        const chatSendBtn=document.getElementById('chat-send-btn');
+        const chatCloseBtn=document.getElementById('chat-close-btn');
+        const chatSettingsBtn=document.getElementById('chat-settings-btn');
+        const settingsOverlay=document.getElementById('chat-settings-overlay');
+        const settingsPanel=document.getElementById('chat-settings-panel');
+        const csDoneBtn=document.getElementById('cs-done-btn');
+        const csClearBtn=document.getElementById('cs-clear-btn');
+        const toastContainer=document.getElementById('chat-toast-container');
+
+        // ── State ─────────────────────────────────────────────────────────
+        let chatHistory=[];
+        let isSending=false;
+        let isAutoScroll=true;
+        let chatIsOpen=false;
+
+        // ── Init ─────────────────────────────────────────────────────────
+        window.addEventListener('load', ()=> {
+            // Dark mode: check localStorage first, then system preference
+            const stored=localStorage.getItem('dark_mode');
+            const prefersDark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+            const isDark=stored !==null ? stored==='1' : prefersDark;
+            applyDark(isDark);
+
+            updateNeutralSwatch();
+            applyAccent(localStorage.getItem('chat_accent') || 'blue');
+
+            // Inline SVG icon so it can be colored with CSS
+            const btn=document.getElementById('ai-chat-btn');
+            const img=document.getElementById('ai-chat-icon');
+
+            if (img) {
+              const h=document.getElementById('search')?.offsetHeight || 44;
+
+              fetch(img.src) .then(r=> r.text()) .then(svgText=> {
+                  const parser=new DOMParser();
+                  const doc=parser.parseFromString(svgText, 'image/svg+xml');
+                  const svg=doc.querySelector('svg');
+                  if ( !svg) return;
+
+                  // Replace all fills/strokes with currentColor (skip "none")
+                  svg.querySelectorAll('[fill]').forEach(el=> {
+                      if (el.getAttribute('fill') !=='none') el.setAttribute('fill', 'currentColor');
+                    });
+
+                  svg.querySelectorAll('[stroke]').forEach(el=> {
+                      if (el.getAttribute('stroke') !=='none') el.setAttribute('stroke', 'currentColor');
+                    });
+                  // If no explicit fill on root, set it
+                  if ( !svg.getAttribute('fill')) svg.setAttribute('fill', 'currentColor');
+                  svg.setAttribute('width', h + '');
+                  svg.setAttribute('height', h + '');
+                  svg.classList.add('ai-icon-inline');
+                  svg.style.display='block';
+                  img.replaceWith (svg);
+                  // Apply current accent to the inline SVG
+                  applyAccent(localStorage.getItem('chat_accent') || 'blue');
+
+                }) .catch(()=> {
+                  // If fetch fails, just resize the img
+                  img.style.width=h + 'px';
+                  img.style.height=h + 'px';
+                });
+            }
+          });
+
+        // ── Settings ─────────────────────────────────────────────────────
+        function openSettings() {
+          settingsOverlay.style.display='block';
+
+          requestAnimationFrame(()=> {
+              settingsOverlay.classList.add('visible');
+              settingsPanel.classList.add('open');
+            });
+        }
+
+        function closeSettings() {
+          settingsOverlay.classList.remove('visible');
+          settingsPanel.classList.remove('open');
+
+          setTimeout(()=> {
+              settingsOverlay.style.display='none';
+            }
+
+            , 320);
+        }
+
+        chatSettingsBtn.addEventListener('click', openSettings);
+        csDoneBtn.addEventListener('click', closeSettings);
+        settingsOverlay.addEventListener('click', closeSettings);
+
+        csClearBtn.addEventListener('click', ()=> {
+            if ( !chatHistory.length) {
+              closeSettings(); return;
+            }
+
+            if ( !confirm('チャット履歴をすべて消去しますか？')) return;
+            chatHistory=[];
+            chatScroll.innerHTML='';
+            closeSettings();
+          });
+
+        // ── Toast ─────────────────────────────────────────────────────────
+        function showChatToast(msg, dur=2800) {
+          const t=document.createElement('div');
+          t.style.cssText='background:rgba(30,30,30,0.88);color:#fff;font-size:13px;padding:8px 18px;border-radius:100px;box-shadow:0 4px 12px rgba(0,0,0,0.2);transition:opacity 0.3s;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis';
+          t.textContent=msg;
+          toastContainer.appendChild(t);
+
+          setTimeout(()=> {
+              t.style.opacity='0'; setTimeout(()=> t.remove(), 300);
+            }
+
+            , dur);
+        }
+
+        // ── Auto-resize textarea ──────────────────────────────────────────
+        chatInput.addEventListener('input', function () {
+            this.style.height='auto';
+            this.style.height=Math.min(this.scrollHeight, 160) + 'px';
+          });
+
+        chatWindow.addEventListener('scroll', ()=> {
+            const dist=chatWindow.scrollHeight - chatWindow.scrollTop - chatWindow.clientHeight;
+            isAutoScroll=dist < 120;
+          }
+
+          , {
+          passive: true
+        });
+
+      function scrollChatBottom(smooth=true) {
+        if ( !isAutoScroll) return;
+
+        chatWindow.scrollTo({
+          top: chatWindow.scrollHeight, behavior: smooth ? 'smooth' : 'instant'
         });
     }
-  </script>
 
-  <!-- ══ Chat Panel Logic ══════════════════════════════════════ -->
-  <script>
-    (() => {
-      'use strict';
+    // ── Markdown rendering ────────────────────────────────────────────
+    function safeMarkdown(text) {
+      if (typeof marked==='undefined') return '<p>' + text.replace(/</g, '&lt;') + '</p>';
+      return marked.parse(formatMath(text || ''));
+    }
 
-      // ── Accent color ─────────────────────────────────────────────────
-      const CHAT_ACCENTS = {
-        blue: { color: '#3b82f6', fg: '#fff' },
-        pink: { color: '#ec4899', fg: '#fff' },
-        green: { color: '#22c55e', fg: '#fff' },
-        yellow: { color: '#f59e0b', fg: '#fff' },
-        neutral: null,
-      };
+    function renderMarkdown(el, text) {
+      el.innerHTML=safeMarkdown(text);
+      el.classList.add('chat-prose');
+    }
 
-      function updateNeutralSwatch() {
-        const dark = window.matchMedia('(prefers-color-scheme:dark)').matches;
-        const s = document.getElementById('cs-swatch-neutral');
-        if (s) s.style.background = dark ? '#fff' : '#000';
+    // ── Message builders ─────────────────────────────────────────────
+    function appendUserMessage(text, hidden=false) {
+      const wrap=document.createElement('div');
+      wrap.className='chat-msg-user-wrap' + (hidden ? ' ghost-ready' : '');
+      const bubble=document.createElement('div');
+      bubble.className='chat-msg-user';
+      bubble.textContent=text;
+      wrap.appendChild(bubble);
+      chatScroll.appendChild(wrap);
+      scrollChatBottom();
+      return wrap;
+    }
+
+    function appendAssistantMessage(hidden=false) {
+      const wrap=document.createElement('div');
+      wrap.className='chat-msg-ai-wrap' + (hidden ? ' ghost-ready' : '');
+      const content=document.createElement('div');
+      content.className='chat-msg-ai';
+      content.innerHTML=`<span class="chat-thinking-dots" ><span>●</span><span>●</span><span>●</span></span>`;
+      wrap.appendChild(content);
+      chatScroll.appendChild(wrap);
+      scrollChatBottom();
+
+      return {
+        wrap, content
       }
 
-      function applyAccent(name) {
-        const dark = window.matchMedia('(prefers-color-scheme:dark)').matches;
-        let color, fg;
-        if (name === 'neutral') {
-          color = dark ? '#fff' : '#000';
-          fg = dark ? '#000' : '#fff';
-        } else {
-          const e = CHAT_ACCENTS[name] ?? CHAT_ACCENTS.blue;
-          color = e.color; fg = e.fg;
+      ;
+    }
+
+    // ── Stream answer from local data ─────────────────────────────────
+    function streamAnswer(contentEl, fullText, onDone) {
+      let idx=0, buf='';
+      isAutoScroll=true;
+      contentEl.innerHTML='';
+
+      function tick() {
+        if (idx < fullText.length) {
+          const chunk=Math.floor(Math.random() * 3) + 1;
+          buf +=fullText.slice(idx, idx + chunk);
+          idx +=chunk;
+          contentEl.innerHTML=safeMarkdown(buf) + '<span class="chat-cursor-blink"></span>';
+          contentEl.classList.add('chat-prose');
+          scrollChatBottom();
+          setTimeout(tick, Math.random() * 20 + 8);
         }
-        document.documentElement.style.setProperty('--chat-accent', color);
-        document.documentElement.style.setProperty('--chat-accent-fg', fg);
-        const sendBtn = document.getElementById('chat-send-btn');
-        if (sendBtn) sendBtn.style.color = fg;
-        document.querySelectorAll('.cs-swatch').forEach(s =>
-          s.classList.toggle('active', s.dataset.accent === name));
-      }
 
-      document.querySelectorAll('.cs-swatch').forEach(btn => {
-        btn.addEventListener('click', () => {
-          localStorage.setItem('chat_accent', btn.dataset.accent);
-          applyAccent(btn.dataset.accent);
-        });
-      });
-
-      window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => {
-        updateNeutralSwatch();
-        applyAccent(localStorage.getItem('chat_accent') || 'blue');
-      });
-
-      // ── DOM refs ─────────────────────────────────────────────────────
-      const chatPanel = document.getElementById('chat-panel');
-      const chatHeader = document.getElementById('chat-header');
-      const chatWindow = document.getElementById('chat-window');
-      const chatScroll = document.getElementById('chat-scroll-container');
-      const chatFooter = document.getElementById('chat-footer');
-      const chatInput = document.getElementById('chat-input');
-      const chatSendBtn = document.getElementById('chat-send-btn');
-      const chatCloseBtn = document.getElementById('chat-close-btn');
-      const chatSettingsBtn = document.getElementById('chat-settings-btn');
-      const settingsOverlay = document.getElementById('chat-settings-overlay');
-      const settingsPanel = document.getElementById('chat-settings-panel');
-      const csDoneBtn = document.getElementById('cs-done-btn');
-      const csClearBtn = document.getElementById('cs-clear-btn');
-      const toastContainer = document.getElementById('chat-toast-container');
-
-      // ── State ─────────────────────────────────────────────────────────
-      let chatHistory = [];
-      let isSending = false;
-      let isAutoScroll = true;
-      let chatIsOpen = false;
-
-      // ── Init ─────────────────────────────────────────────────────────
-      window.addEventListener('load', () => {
-        updateNeutralSwatch();
-        applyAccent(localStorage.getItem('chat_accent') || 'blue');
-
-        // Resize AI icon to match search input height
-        const searchInput = document.getElementById('search');
-        const icon = document.getElementById('ai-chat-icon');
-        if (searchInput && icon) {
-          const h = searchInput.offsetHeight;
-          icon.style.width = h + 'px';
-          icon.style.height = h + 'px';
+        else {
+          renderMarkdown(contentEl, fullText);
+          if (onDone) onDone();
         }
-      });
-
-      // ── Settings ─────────────────────────────────────────────────────
-      function openSettings() {
-        settingsOverlay.style.display = 'block';
-        requestAnimationFrame(() => {
-          settingsOverlay.classList.add('visible');
-          settingsPanel.classList.add('open');
-        });
       }
 
-      function closeSettings() {
-        settingsOverlay.classList.remove('visible');
-        settingsPanel.classList.remove('open');
-        setTimeout(() => { settingsOverlay.style.display = 'none'; }, 320);
-      }
+      tick();
+    }
 
-      chatSettingsBtn.addEventListener('click', openSettings);
-      csDoneBtn.addEventListener('click', closeSettings);
-      settingsOverlay.addEventListener('click', closeSettings);
+    // ── Open / Close animations ──────────────────────────────────────
 
-      csClearBtn.addEventListener('click', () => {
-        if (!chatHistory.length) { closeSettings(); return; }
-        if (!confirm('チャット履歴をすべて消去しますか？')) return;
-        chatHistory = [];
-        chatScroll.innerHTML = '';
-        closeSettings();
-      });
+    /** Measure text pixel width using canvas — fast, no DOM needed */
+    function measureTextPx(text, cssFont) {
+      const c=document.createElement('canvas');
+      const ctx=c.getContext('2d');
+      ctx.font=cssFont;
+      return ctx.measureText(text).width;
+    }
 
-      // ── Toast ─────────────────────────────────────────────────────────
-      function showChatToast(msg, dur = 2800) {
-        const t = document.createElement('div');
-        t.style.cssText = 'background:rgba(30,30,30,0.88);color:#fff;font-size:13px;padding:8px 18px;border-radius:100px;box-shadow:0 4px 12px rgba(0,0,0,0.2);transition:opacity 0.3s;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis';
-        t.textContent = msg;
-        toastContainer.appendChild(t);
-        setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, dur);
-      }
-
-      // ── Auto-resize textarea ──────────────────────────────────────────
-      chatInput.addEventListener('input', function () {
-        this.style.height = 'auto';
-        this.style.height = Math.min(this.scrollHeight, 160) + 'px';
-      });
-
-      chatWindow.addEventListener('scroll', () => {
-        const dist = chatWindow.scrollHeight - chatWindow.scrollTop - chatWindow.clientHeight;
-        isAutoScroll = dist < 120;
-      }, { passive: true });
-
-      function scrollChatBottom(smooth = true) {
-        if (!isAutoScroll) return;
-        chatWindow.scrollTo({ top: chatWindow.scrollHeight, behavior: smooth ? 'smooth' : 'instant' });
-      }
-
-      // ── Markdown rendering ────────────────────────────────────────────
-      function safeMarkdown(text) {
-        if (typeof marked === 'undefined') return '<p>' + text.replace(/</g, '&lt;') + '</p>';
-        return marked.parse(formatMath(text || ''));
-      }
-
-      function renderMarkdown(el, text) {
-        el.innerHTML = safeMarkdown(text);
-        el.classList.add('chat-prose');
-      }
-
-      // ── Message builders ─────────────────────────────────────────────
-      function appendUserMessage(text, hidden = false) {
-        const wrap = document.createElement('div');
-        wrap.className = 'chat-msg-user-wrap' + (hidden ? ' ghost-ready' : '');
-        const bubble = document.createElement('div');
-        bubble.className = 'chat-msg-user';
-        bubble.textContent = text;
-        wrap.appendChild(bubble);
-        chatScroll.appendChild(wrap);
-        scrollChatBottom();
-        return wrap;
-      }
-
-      function appendAssistantMessage(hidden = false) {
-        const wrap = document.createElement('div');
-        wrap.className = 'chat-msg-ai-wrap' + (hidden ? ' ghost-ready' : '');
-        const content = document.createElement('div');
-        content.className = 'chat-msg-ai';
-        content.innerHTML = `<span class="chat-thinking-dots"><span>●</span><span>●</span><span>●</span></span>`;
-        wrap.appendChild(content);
-        chatScroll.appendChild(wrap);
-        scrollChatBottom();
-        return { wrap, content };
-      }
-
-      // ── Stream answer from local data ─────────────────────────────────
-      function streamAnswer(contentEl, fullText, onDone) {
-        let idx = 0, buf = '';
-        isAutoScroll = true;
-        contentEl.innerHTML = '';
-
-        function tick() {
-          if (idx < fullText.length) {
-            const chunk = Math.floor(Math.random() * 3) + 1;
-            buf += fullText.slice(idx, idx + chunk);
-            idx += chunk;
-            contentEl.innerHTML = safeMarkdown(buf) + '<span class="chat-cursor-blink"></span>';
-            contentEl.classList.add('chat-prose');
-            scrollChatBottom();
-            setTimeout(tick, Math.random() * 20 + 8);
-          } else {
-            renderMarkdown(contentEl, fullText);
-            if (onDone) onDone();
-          }
-        }
-        tick();
-      }
-
-      // ── Open / Close animations ──────────────────────────────────────
-
-      /** Measure text pixel width using canvas — fast, no DOM needed */
-      function measureTextPx(text, cssFont) {
-        const c = document.createElement('canvas');
-        const ctx = c.getContext('2d');
-        ctx.font = cssFont;
-        return ctx.measureText(text).width;
-      }
-
-      /**
+    /**
        * Compute the geometry of the chat scroll container and
        * where user/AI bubbles will land — must match CSS layout exactly.
        *
@@ -2421,342 +2703,476 @@
        *  - .chat-msg-user: max-width 80% of content area, right-aligned
        *  - .chat-msg-ai: full content area width (88%)
        */
-      function chatLayout() {
-        const VW = window.innerWidth;
-        const SCROLL_MAX = 1152;
-        const SCROLL_PAD = 16;            // px-4 inside scroll container
-        const OUTER_PAD = 16;            // outer margin to keep from viewport edge
+    function chatLayout() {
+      const VW=window.innerWidth;
+      const SCROLL_MAX=1152;
+      const SCROLL_PAD=16; // px-4 inside scroll container
+      const OUTER_PAD=16; // outer margin to keep from viewport edge
 
-        // Scroll container: centered, no wider than SCROLL_MAX, with 16px outer margins
-        const containerW = Math.min(VW - OUTER_PAD * 2, SCROLL_MAX);
-        const containerL = (VW - containerW) / 2;
+      // Scroll container: centered, no wider than SCROLL_MAX, with 16px outer margins
+      const containerW=Math.min(VW - OUTER_PAD * 2, SCROLL_MAX);
+      const containerL=(VW - containerW) / 2;
 
-        // Content area (inside padding)
-        const contentW = containerW - SCROLL_PAD * 2;
-        const contentL = containerL + SCROLL_PAD;
-        const contentR = contentL + contentW;
+      // Content area (inside padding)
+      const contentW=containerW - SCROLL_PAD * 2;
+      const contentL=containerL + SCROLL_PAD;
+      const contentR=contentL + contentW;
 
-        return { VW, containerW, containerL, contentW, contentL, contentR, SCROLL_PAD };
+      return {
+        VW, containerW, containerL, contentW, contentL, contentR, SCROLL_PAD
       }
 
-      function openChatPanel() {
-        if (chatIsOpen) return;
-        chatIsOpen = true;
-        document.body.style.overflow = 'hidden';
+      ;
+    }
 
-        const btn = document.getElementById('ai-chat-btn');
-        const searchEl = document.getElementById('search');
-        const aiBox = document.getElementById('ai');
-        const btnRect = btn.getBoundingClientRect();
-        const inputRect = searchEl ? searchEl.getBoundingClientRect() : null;
+    function openChatPanel() {
+      if (chatIsOpen) return;
+      chatIsOpen=true;
+      document.body.style.overflow='hidden';
 
-        // Grab AI ANSWER element — works whether collapsed or expanded
-        const aiAnswerEl = aiBox
-          ? (aiBox.querySelector('.ai-answer') || aiBox.querySelector('[class*="ai"]'))
-          : null;
-        const aiRect = aiAnswerEl ? aiAnswerEl.getBoundingClientRect() : null;
+      const btn=document.getElementById('ai-chat-btn');
+      const searchEl=document.getElementById('search');
+      const aiBox=document.getElementById('ai');
+      const btnRect=btn.getBoundingClientRect();
+      const inputRect=searchEl ? searchEl.getBoundingClientRect() : null;
 
-        const queryText = typeof _chatContextQuery !== 'undefined' ? _chatContextQuery : '';
-        const answerText = typeof _chatContextAnswer !== 'undefined' ? _chatContextAnswer : '';
+      // Grab AI ANSWER element — works whether collapsed or expanded
+      const aiAnswerEl=aiBox ? (aiBox.querySelector('.ai-answer') || aiBox.querySelector('[class*="ai"]')) : null;
+      const aiRect=aiAnswerEl ? aiAnswerEl.getBoundingClientRect() : null;
 
-        // 1. Position panel at button rect (invisible contents)
-        chatHeader.style.opacity = '0';
-        chatWindow.style.opacity = '0';
-        chatFooter.style.opacity = '0';
+      const queryText=typeof _chatContextQuery !=='undefined' ? _chatContextQuery : '';
+      const answerText=typeof _chatContextAnswer !=='undefined' ? _chatContextAnswer : '';
 
-        chatPanel.style.cssText = [
-          'display:flex',
-          `top:${btnRect.top}px`,
-          `left:${btnRect.left}px`,
-          `width:${btnRect.width}px`,
-          `height:${btnRect.height}px`,
-        ].join(';');
+      // 1. Position panel at button rect (invisible contents)
+      chatHeader.style.opacity='0';
+      chatWindow.style.opacity='0';
+      chatFooter.style.opacity='0';
 
-        // 2. Build flying ghosts
-        const ghosts = [];
-        if (inputRect && queryText) ghosts.push(createQueryGhost(inputRect, queryText));
-        if (aiRect || answerText) ghosts.push(createAIAnswerGhost(aiRect, queryText, answerText));
+      chatPanel.style.cssText=[ 'display:flex',
+      `top:$ {
+        btnRect.top
+      }
 
-        // 3. Expand panel to fullscreen
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            chatPanel.classList.add('chat-fullscreen');
+      px`,
+      `left:$ {
+        btnRect.left
+      }
 
-            // 4. Animate ghosts 80ms after expansion starts (panel is still expanding)
-            setTimeout(() => {
-              const EASING = 'cubic-bezier(0.4,0,0.2,1)';
-              const DUR = '0.52s';
-              const TRANSITION = [
-                `top ${DUR} ${EASING}`,
-                `left ${DUR} ${EASING}`,
-                `width ${DUR} ${EASING}`,
-                `height ${DUR} ${EASING}`,
-                `border-radius ${DUR} ${EASING}`,
-                `padding ${DUR} ${EASING}`,
-                `font-size ${DUR} ease`,
-                `background ${DUR} ease`,
-                `border-color ${DUR} ease`,
-                `opacity 0.18s ease`,
-              ].join(',');
+      px`,
+      `width:$ {
+        btnRect.width
+      }
 
-              ghosts.forEach(g => {
-                if (!g) return;
-                g.el.style.transition = TRANSITION;
-                Object.assign(g.el.style, g.targetStyle);
-              });
-            }, 80);
-          });
+      px`,
+      `height:$ {
+        btnRect.height
+      }
+
+      px`,
+      ].join(';');
+
+      // 2. Build flying ghosts
+      const ghosts=[];
+      if (inputRect && queryText) ghosts.push(createQueryGhost(inputRect, queryText));
+      if (aiRect || answerText) ghosts.push(createAIAnswerGhost(aiRect, queryText, answerText));
+
+      // 3. Expand panel to fullscreen
+      requestAnimationFrame(()=> {
+          requestAnimationFrame(()=> {
+              chatPanel.classList.add('chat-fullscreen');
+
+              // 4. Animate ghosts 80ms after expansion starts (panel is still expanding)
+              setTimeout(()=> {
+                  const EASING='cubic-bezier(0.4,0,0.2,1)';
+                  const DUR='0.52s';
+
+                  const TRANSITION=[ `top $ {
+                    DUR
+                  }
+
+                  $ {
+                    EASING
+                  }
+
+                  `,
+                  `left $ {
+                    DUR
+                  }
+
+                  $ {
+                    EASING
+                  }
+
+                  `,
+                  `width $ {
+                    DUR
+                  }
+
+                  $ {
+                    EASING
+                  }
+
+                  `,
+                  `height $ {
+                    DUR
+                  }
+
+                  $ {
+                    EASING
+                  }
+
+                  `,
+                  `border-radius $ {
+                    DUR
+                  }
+
+                  $ {
+                    EASING
+                  }
+
+                  `,
+                  `padding $ {
+                    DUR
+                  }
+
+                  $ {
+                    EASING
+                  }
+
+                  `,
+                  `font-size $ {
+                    DUR
+                  }
+
+                  ease`,
+                  `background $ {
+                    DUR
+                  }
+
+                  ease`,
+                  `border-color $ {
+                    DUR
+                  }
+
+                  ease`,
+                  `opacity 0.18s ease`,
+                  ].join(',');
+
+                  ghosts.forEach(g=> {
+                      if ( !g) return;
+                      g.el.style.transition=TRANSITION;
+                      Object.assign(g.el.style, g.targetStyle);
+                    });
+                }
+
+                , 80);
+            });
         });
 
-        // 5. Reveal chat content after animation completes; then fade ghosts
-        setTimeout(() => {
-          // Fade ghosts now that chat content will appear
-          ghosts.forEach(g => { if (g) g.el.style.opacity = '0'; });
+      // 5. Reveal chat content after animation completes; then fade ghosts
+      setTimeout(()=> {
 
-          chatHeader.style.opacity = '1';
-          chatWindow.style.opacity = '1';
-          chatFooter.style.opacity = '1';
+          // Fade ghosts now that chat content will appear
+          ghosts.forEach(g=> {
+              if (g) g.el.style.opacity='0';
+            });
+
+          chatHeader.style.opacity='1';
+          chatWindow.style.opacity='1';
+          chatFooter.style.opacity='1';
 
           // Pre-populate with search context on first open
-          if (queryText && chatHistory.length === 0) {
-            const userWrap = appendUserMessage(queryText, true);
-            chatHistory.push({ role: 'user', content: queryText });
+          if (queryText && chatHistory.length===0) {
+            const userWrap=appendUserMessage(queryText, true);
 
-            if (answerText) {
-              const { wrap: aiWrap, content: aiContent } = appendAssistantMessage(true);
-              chatHistory.push({ role: 'assistant', content: answerText });
+            chatHistory.push({
+              role: 'user', content: queryText
+            });
 
-              setTimeout(() => {
-                userWrap.classList.remove('ghost-ready');
-                userWrap.style.animation = 'chatFadeIn 0.3s ease-out forwards';
-                setTimeout(() => {
-                  aiWrap.classList.remove('ghost-ready');
-                  aiWrap.style.animation = 'chatFadeIn 0.3s ease-out forwards';
-                  streamAnswer(aiContent, answerText, null);
-                }, 220);
-              }, 80);
-            } else {
-              setTimeout(() => {
-                userWrap.classList.remove('ghost-ready');
-                userWrap.style.animation = 'chatFadeIn 0.3s ease-out forwards';
-              }, 80);
+          if (answerText) {
+            const {
+              wrap: aiWrap, content: aiContent
             }
-          }
 
-          // Remove ghost elements from DOM
-          setTimeout(() => {
-            ghosts.forEach(g => { if (g && g.el.parentNode) g.el.parentNode.removeChild(g.el); });
-          }, 320);
+            =appendAssistantMessage(true);
 
-          isAutoScroll = true;
-          scrollChatBottom(false);
-        }, 580);
-      }
+            chatHistory.push({
+              role: 'assistant', content: answerText
+            });
 
-      function closeChatPanel() {
-        if (!chatIsOpen) return;
-        chatIsOpen = false;
+          setTimeout(()=> {
+              userWrap.classList.remove('ghost-ready');
+              userWrap.style.animation='chatFadeIn 0.3s ease-out forwards';
 
-        chatHeader.style.opacity = '0';
-        chatWindow.style.opacity = '0';
-        chatFooter.style.opacity = '0';
+              setTimeout(()=> {
+                  aiWrap.classList.remove('ghost-ready');
+                  aiWrap.style.animation='chatFadeIn 0.3s ease-out forwards';
+                  streamAnswer(aiContent, answerText, null);
+                }
 
-        if (settingsPanel.classList.contains('open')) {
-          settingsPanel.classList.remove('open');
-          settingsOverlay.classList.remove('visible');
-          settingsOverlay.style.display = 'none';
+                , 220);
+            }
+
+            , 80);
         }
 
-        chatPanel.classList.remove('chat-fullscreen');
+        else {
+          setTimeout(()=> {
+              userWrap.classList.remove('ghost-ready');
+              userWrap.style.animation='chatFadeIn 0.3s ease-out forwards';
+            }
 
-        setTimeout(() => {
-          chatPanel.style.display = 'none';
-          chatPanel.style.cssText = '';
-          document.body.style.overflow = '';
-        }, 520);
+            , 80);
+        }
       }
 
-      document.getElementById('ai-chat-btn').addEventListener('click', openChatPanel);
-      chatCloseBtn.addEventListener('click', closeChatPanel);
+      // Remove ghost elements from DOM
+      setTimeout(()=> {
+          ghosts.forEach(g=> {
+              if (g && g.el.parentNode) g.el.parentNode.removeChild(g.el);
+            });
+        }
 
-      document.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && chatIsOpen && !settingsPanel.classList.contains('open')) {
+        , 320);
+
+      isAutoScroll=true;
+      scrollChatBottom(false);
+    }
+
+    , 580);
+    }
+
+    function closeChatPanel() {
+      if ( !chatIsOpen) return;
+      chatIsOpen=false;
+
+      chatHeader.style.opacity='0';
+      chatWindow.style.opacity='0';
+      chatFooter.style.opacity='0';
+
+      if (settingsPanel.classList.contains('open')) {
+        settingsPanel.classList.remove('open');
+        settingsOverlay.classList.remove('visible');
+        settingsOverlay.style.display='none';
+      }
+
+      chatPanel.classList.remove('chat-fullscreen');
+
+      setTimeout(()=> {
+          chatPanel.style.display='none';
+          chatPanel.style.cssText='';
+          document.body.style.overflow='';
+        }
+
+        , 520);
+    }
+
+    document.getElementById('ai-chat-btn').addEventListener('click', openChatPanel);
+    chatCloseBtn.addEventListener('click', closeChatPanel);
+
+    document.addEventListener('keydown', e=> {
+        if (e.key==='Escape' && chatIsOpen && !settingsPanel.classList.contains('open')) {
           closeChatPanel();
         }
       });
 
-      // ── Ghost factories ───────────────────────────────────────────────
+    // ── Ghost factories ───────────────────────────────────────────────
 
-      function createQueryGhost(fromRect, text) {
-        const el = document.createElement('div');
-        el.className = 'fly-ghost';
+    function createQueryGhost(fromRect, text) {
+      const el=document.createElement('div');
+      el.className='fly-ghost';
 
-        const HEADER_H = chatHeader.offsetHeight || 56;
-        const layout = chatLayout();
+      const HEADER_H=chatHeader.offsetHeight || 56;
+      const layout=chatLayout();
+      const isDark=document.documentElement.classList.contains('dark');
 
-        // ── Source: looks exactly like the search input ──────────────
-        Object.assign(el.style, {
-          top: fromRect.top + 'px',
-          left: fromRect.left + 'px',
-          width: fromRect.width + 'px',
-          height: fromRect.height + 'px',
-          padding: '12px 16px',
-          fontSize: '16px',
-          lineHeight: '1.4',
-          background: '#ffffff',
-          border: '1px solid #ddd',
-          borderRadius: '999px',
-          color: '#111',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          opacity: '1',
-          boxSizing: 'border-box',
-        });
-        el.textContent = text;
-        document.body.appendChild(el);
+      // ── Source: looks exactly like the search input ──────────────
+      Object.assign(el.style, {
+        top: fromRect.top + 'px',
+        left: fromRect.left + 'px',
+        width: fromRect.width + 'px',
+        height: fromRect.height + 'px',
+        padding: '12px 16px',
+        fontSize: '16px',
+        lineHeight: '1.4',
+        background: isDark ? '#111' : '#ffffff',
+        border: isDark ? '1px solid #333' : '1px solid #ddd',
+        borderRadius: '999px',
+        color: isDark ? '#f2f2f2' : '#111',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        opacity: '1',
+        boxSizing: 'border-box',
+      });
+    el.textContent=text;
+    document.body.appendChild(el);
 
-        // ── Target: looks like a right-aligned user bubble ───────────
-        // Bubble max-width is 80% of content area
-        const bubbleMaxW = Math.floor(layout.contentW * 0.80);
-        // Measure natural width of text in bubble style (14px font, 28px padding)
-        const textPx = measureTextPx(text, '14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
-        const bubbleW = Math.min(bubbleMaxW, Math.ceil(textPx + 28));
-        // Right-align: right edge = content right edge
-        const bubbleLeft = layout.contentR - bubbleW;
-        const bubbleTop = HEADER_H + 20;
-        const bubbleH = fromRect.height; // height stays similar (both ~44px)
+    // ── Target: looks like a right-aligned user bubble ───────────
+    // Bubble max-width is 80% of content area
+    const bubbleMaxW=Math.floor(layout.contentW * 0.80);
+    // Measure natural width of text in bubble style (14px font, 28px padding)
+    const textPx=measureTextPx(text, '14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
+    const bubbleW=Math.min(bubbleMaxW, Math.ceil(textPx + 28));
+    // Right-align: right edge = content right edge
+    const bubbleLeft=layout.contentR - bubbleW;
+    const bubbleTop=HEADER_H + 20;
+    const bubbleH=fromRect.height; // height stays similar (both ~44px)
 
-        return {
-          el, targetStyle: {
-            top: bubbleTop + 'px',
-            left: bubbleLeft + 'px',
-            width: bubbleW + 'px',
-            height: bubbleH + 'px',
-            padding: '10px 14px',
-            fontSize: '14px',
-            background: '#f0f0f0',
-            border: '1px solid transparent',
-            borderRadius: '18px 18px 4px 18px',
-          }
-        };
+    return {
+      el, targetStyle: {
+        top: bubbleTop + 'px',
+        left: bubbleLeft + 'px',
+        width: bubbleW + 'px',
+        height: bubbleH + 'px',
+        padding: '10px 14px',
+        fontSize: '14px',
+        background: isDark ? '#1a1a1a' : '#f0f0f0',
+        border: '1px solid transparent',
+        borderRadius: '18px 18px 4px 18px',
       }
+    }
 
-      function createAIAnswerGhost(fromRect, queryText, answerText) {
-        const el = document.createElement('div');
-        el.className = 'fly-ghost';
+    ;
+    }
 
-        const HEADER_H = chatHeader.offsetHeight || 56;
-        const BUBBLE_H = 44;   // approximate user bubble height
-        const layout = chatLayout();
+    function createAIAnswerGhost(fromRect, queryText, answerText) {
+      const el=document.createElement('div');
+      el.className='fly-ghost';
 
-        // ── Target: left-aligned AI message area ─────────────────────
-        const aiTop = HEADER_H + 20 + BUBBLE_H + 12; // below user bubble
-        const aiLeft = layout.contentL;
-        const aiW = Math.floor(layout.contentW * 0.88); // matches .chat-msg-ai max-width
+      const HEADER_H=chatHeader.offsetHeight || 56;
+      const BUBBLE_H=44; // approximate user bubble height
+      const layout=chatLayout();
+      const isDark=document.documentElement.classList.contains('dark');
 
-        // ── Source: from AI ANSWER box, or synthesize if unavailable ─
-        const srcTop = fromRect ? fromRect.top : (aiTop - 200);
-        const srcLeft = fromRect ? fromRect.left : aiLeft;
-        const srcW = fromRect ? fromRect.width : aiW;
-        const srcH = fromRect ? Math.min(fromRect.height, 120) : 80;
+      // ── Target: left-aligned AI message area ─────────────────────
+      const aiTop=HEADER_H + 20 + BUBBLE_H + 12; // below user bubble
+      const aiLeft=layout.contentL;
+      const aiW=Math.floor(layout.contentW * 0.88); // matches .chat-msg-ai max-width
 
-        Object.assign(el.style, {
-          top: srcTop + 'px',
-          left: srcLeft + 'px',
-          width: srcW + 'px',
-          height: srcH + 'px',
-          padding: '16px',
-          background: '#fafafa',
-          border: '1px solid #e0e0e0',
-          borderRadius: '16px',
-          opacity: '1',
-          boxSizing: 'border-box',
-          overflow: 'hidden',
-          fontSize: '13px',
-          color: '#555',
-          lineHeight: '1.5',
-        });
+      // ── Source: from AI ANSWER box, or synthesize if unavailable ─
+      const srcTop=fromRect ? fromRect.top : (aiTop - 200);
+      const srcLeft=fromRect ? fromRect.left : aiLeft;
+      const srcW=fromRect ? fromRect.width : aiW;
+      const srcH=fromRect ? Math.min(fromRect.height, 120) : 80;
 
-        // Show a snippet of the answer text in the ghost
-        const snippet = answerText
-          ? answerText.replace(/[#*`\[\]]/g, '').slice(0, 120)
-          : '…';
-        el.innerHTML = `
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin-bottom:6px">AI Answer</div>
-        <div style="overflow:hidden;max-height:60px;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${snippet}</div>
-      `;
-        document.body.appendChild(el);
-
-        // Target: arrive at where the AI message bubble will be
-        return {
-          el, targetStyle: {
-            top: aiTop + 'px',
-            left: aiLeft + 'px',
-            width: aiW + 'px',
-            height: '60px',
-            padding: '12px 14px',
-            background: '#ffffff',
-            border: '1px solid transparent',
-            borderRadius: '4px',
-            fontSize: '14px',
-            opacity: '1',
-          }
-        };
-      }
-
-      // ── Send: use local search data, not network AI ───────────────────
-      chatSendBtn.addEventListener('click', handleSend);
-      chatInput.addEventListener('keydown', e => {
-        if (e.isComposing) return;
-        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handleSend(); }
+      Object.assign(el.style, {
+        top: srcTop + 'px',
+        left: srcLeft + 'px',
+        width: srcW + 'px',
+        height: srcH + 'px',
+        padding: '16px',
+        background: isDark ? '#0d0d0d' : '#fafafa',
+        border: isDark ? '1px solid #2a2a2a' : '1px solid #e0e0e0',
+        borderRadius: '16px',
+        opacity: '1',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+        fontSize: '13px',
+        color: isDark ? '#aaa' : '#555',
+        lineHeight: '1.5',
       });
 
-      function handleSend() {
-        if (isSending) return;
-        const text = chatInput.value.trim();
-        if (!text) return;
+    // Show a snippet of the answer text in the ghost
+    const snippet=answerText ? answerText.replace(/[#*`\[\]]/g, '').slice(0, 120) : '…';
 
-        isSending = true;
-        chatSendBtn.disabled = true;
-        chatInput.value = '';
-        chatInput.style.height = 'auto';
-        isAutoScroll = true;
+    el.innerHTML=` <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:${isDark ? '#666' : '#888'};margin-bottom:6px" >AI Answer</div> <div style="overflow:hidden;max-height:60px;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical" >$ {
+      snippet
+    }
 
-        appendUserMessage(text);
-        chatHistory.push({ role: 'user', content: text });
+    </div> `;
+    document.body.appendChild(el);
 
-        const { wrap: aiWrap, content: aiContent } = appendAssistantMessage();
+    // Target: arrive at where the AI message bubble will be
+    return {
+      el, targetStyle: {
+        top: aiTop + 'px',
+        left: aiLeft + 'px',
+        width: aiW + 'px',
+        height: '60px',
+        padding: '12px 14px',
+        background: isDark ? '#0a0a0a' : '#ffffff',
+        border: '1px solid transparent',
+        borderRadius: '4px',
+        fontSize: '14px',
+        opacity: '1',
+      }
+    }
 
-        // データが未ロードの場合は少し待つ
-        const attempt = () => {
-          if (!allData) {
-            setTimeout(attempt, 200);
-            return;
-          }
-          const result = searchTopResult(text);
-          if (result) {
-            chatHistory.push({ role: 'assistant', content: result.answer });
-            streamAnswer(aiContent, result.answer, () => {
-              isSending = false;
-              chatSendBtn.disabled = false;
-              scrollChatBottom();
-            });
-          } else {
-            const msg = '該当する物理の解説が見つかりませんでした。もう少し具体的なキーワードで試してみてください。';
-            chatHistory.push({ role: 'assistant', content: msg });
-            aiContent.textContent = msg;
-            isSending = false;
-            chatSendBtn.disabled = false;
-            scrollChatBottom();
-          }
-        };
-        attempt();
+    ;
+    }
+
+    // ── Send: use local search data, not network AI ───────────────────
+    chatSendBtn.addEventListener('click', handleSend);
+
+    chatInput.addEventListener('keydown', e=> {
+        if (e.isComposing) return;
+
+        if (e.key==='Enter' && (e.metaKey || e.ctrlKey)) {
+          e.preventDefault(); handleSend();
+        }
+      });
+
+    function handleSend() {
+      if (isSending) return;
+      const text=chatInput.value.trim();
+      if ( !text) return;
+
+      isSending=true;
+      chatSendBtn.disabled=true;
+      chatInput.value='';
+      chatInput.style.height='auto';
+      isAutoScroll=true;
+
+      appendUserMessage(text);
+
+      chatHistory.push({
+        role: 'user', content: text
+      });
+
+    const {
+      wrap: aiWrap, content: aiContent
+    }
+
+    =appendAssistantMessage();
+
+    // データが未ロードの場合は少し待つ
+    const attempt=()=> {
+      if ( !allData) {
+        setTimeout(attempt, 200);
+        return;
       }
 
+      const result=searchTopResult(text);
+
+      if (result) {
+        chatHistory.push({
+          role: 'assistant', content: result.answer
+        });
+
+      streamAnswer(aiContent, result.answer, ()=> {
+          isSending=false;
+          chatSendBtn.disabled=false;
+          scrollChatBottom();
+        });
+    }
+
+    else {
+      const msg='該当する物理の解説が見つかりませんでした。もう少し具体的なキーワードで試してみてください。';
+
+      chatHistory.push({
+        role: 'assistant', content: msg
+      });
+    aiContent.textContent=msg;
+    isSending=false;
+    chatSendBtn.disabled=false;
+    scrollChatBottom();
+    }
+    }
+
+    ;
+    attempt();
+    }
+
     })();
-  </script>
-
-</body>
-
-</html>
+    </script></body></html>
