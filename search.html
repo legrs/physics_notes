@@ -2377,8 +2377,16 @@
       });
 
       window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', e => {
-        // Only follow system if user hasn't overridden
-        if (localStorage.getItem('dark_mode') === null) {
+        const stored = localStorage.getItem('dark_mode');
+        if (stored !== null) {
+          // システム設定が手動設定に追いついた瞬間、overrideを解放して追従モードに戻る
+          // 例: 手動でdark(='1')にした後、システムもdarkになったらlocalStorageを削除
+          if (e.matches === (stored === '1')) {
+            localStorage.removeItem('dark_mode');
+          }
+          // 見た目は変わらないのでapplyDark不要
+        } else {
+          // override なし → システムに追従
           applyDark(e.matches);
         }
       });
