@@ -1,19 +1,18 @@
 name: Build JSON
 
-# q_and_a_data.json が push されたときだけ動く
-# （ビルドスクリプト自身の変更でも動かしたい場合は scripts/build.js を追加）
 on:
   push:
     paths:
       - 'q_and_a_data.json'
       - 'scripts/build.js'
-  workflow_dispatch: # 手動実行ボタンも有効化
+      - 'package.json'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # コミット・プッシュに必要
+      contents: write
 
     steps:
       - name: Checkout
@@ -23,6 +22,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: 'npm'          # node_modules をキャッシュして高速化
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Generate search_text
         run: node scripts/build.js
@@ -32,7 +35,6 @@ jobs:
           git config user.name  'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add q_and_a_data.json
-          # 変更がなければスキップ（終了コード 0 を保つ）
           git diff --staged --quiet \
             && echo "変更なし。コミットをスキップします。" \
             || git commit -m 'chore: auto-generate search_text [skip ci]'

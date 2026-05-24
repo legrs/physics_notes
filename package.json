@@ -1,0 +1,11 @@
+{
+    "name": "physics-notes-build",
+    "version": "1.0.0",
+    "description": "Build script for physics_notes JSON",
+    "scripts": {
+        "build": "node scripts/build.js"
+    },
+    "dependencies": {
+        "kuromoji": "^0.1.2"
+    }
+}
