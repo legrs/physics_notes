@@ -10,20 +10,20 @@
 //   node scripts/build.js --embed-only # Embedding のみ（search_text はスキップ）
 // =============================================================
 
-const fs       = require('fs');
-const path     = require('path');
+const fs = require('fs');
+const path = require('path');
 const kuromoji = require('kuromoji');
 
-const JSON_PATH       = path.join(__dirname, '..', 'q_and_a_data.json');
+const JSON_PATH = path.join(__dirname, '..', 'q_and_a_data.json');
 const EMBEDDINGS_PATH = path.join(__dirname, '..', 'embeddings.json');
 
-const DO_EMBED  = process.argv.includes('--embed') || process.argv.includes('--embed-only');
+const DO_EMBED = process.argv.includes('--embed') || process.argv.includes('--embed-only');
 const SKIP_TEXT = process.argv.includes('--embed-only');
 
 // ── モデル定義 ───────────────────────────────────────────────
 const MODELS = {
   small: { id: 'Xenova/multilingual-e5-small', dim: 384 },
-  large: { id: 'Xenova/multilingual-e5-large', dim: 768 },
+  large: { id: 'Xenova/multilingual-e5-large', dim: 1024 },
 };
 
 // ── LaTeX 除去 ──────────────────────────────────────────────
@@ -53,10 +53,10 @@ function getReading(tokenizer, text) {
 function buildSearchText(tokenizer, item) {
   const fields = [
     ...(item.questions || []),
-    item.description   || '',
-    ...(item.keywords  || []),
-    ...(item.synonyms  || []),
-    item.category      || '',
+    item.description || '',
+    ...(item.keywords || []),
+    ...(item.synonyms || []),
+    item.category || '',
   ];
   const cleaned = fields.map(s => stripLatex(String(s))).filter(Boolean).join(' ');
   const kata = getReading(tokenizer, cleaned);
@@ -90,7 +90,7 @@ async function buildEmbeddings(data) {
 
       // passage プレフィックスを付けた文書テキスト
       const text = `passage: ${item.questions[0]} ${item.description}`;
-      const out  = await extractor(text, { pooling: 'mean', normalize: true });
+      const out = await extractor(text, { pooling: 'mean', normalize: true });
       existing[key][item.id] = Array.from(out.data);
       updated++;
 
@@ -107,7 +107,7 @@ async function buildEmbeddings(data) {
 
 // ── メイン ────────────────────────────────────────────────
 async function main() {
-  const raw  = fs.readFileSync(JSON_PATH, 'utf-8');
+  const raw = fs.readFileSync(JSON_PATH, 'utf-8');
   const data = JSON.parse(raw);
 
   // 1. search_text 生成

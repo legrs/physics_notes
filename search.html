@@ -66,11 +66,12 @@
       position: absolute;
       top: calc(100% + 6px);
       left: 0;
-      right: 44px; /* AI ボタン分を除く */
+      right: 44px;
+      /* AI ボタン分を除く */
       background: var(--bg-card);
       border: 1px solid var(--border-mid);
       border-radius: 14px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
       overflow: hidden;
       z-index: 100;
       display: none;
@@ -88,7 +89,9 @@
       transition: background 0.12s;
     }
 
-    .suggest-item:last-child { border-bottom: none; }
+    .suggest-item:last-child {
+      border-bottom: none;
+    }
 
     .suggest-item:hover,
     .suggest-item.active {
@@ -122,7 +125,9 @@
       align-items: center;
     }
 
-    #filter-bar:empty { display: none; }
+    #filter-bar:empty {
+      display: none;
+    }
 
     .filter-group {
       display: flex;
@@ -131,7 +136,7 @@
       align-items: center;
     }
 
-    .filter-group + .filter-group {
+    .filter-group+.filter-group {
       padding-left: 10px;
       border-left: 1px solid var(--border-mid);
     }
@@ -421,7 +426,9 @@
       gap: 8px;
     }
 
-    #semantic-status.visible { display: flex; }
+    #semantic-status.visible {
+      display: flex;
+    }
 
     .semantic-spinner {
       width: 14px;
@@ -433,7 +440,12 @@
       flex-shrink: 0;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
     .result.kb-selected {
       background: var(--bg-elevated);
       outline: 2px solid var(--chat-accent);
@@ -1883,8 +1895,8 @@
 
       // ── アニメーションモード判定 ──────────────────────────────
       const urlMode = new URLSearchParams(location.search).get('mode')
-                      || localStorage.getItem('search_mode')
-                      || 'auto';
+        || localStorage.getItem('search_mode')
+        || 'auto';
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       // fast または reduced-motion のときはアニメーションなし
       const skipAnim = (urlMode === 'fast') || reducedMotion;
@@ -2220,11 +2232,11 @@
     function startStreaming(fullText, onComplete) {
       // ── モード判定（startSearchResults と同じロジック） ───────
       const _urlMode = new URLSearchParams(location.search).get('mode')
-                       || localStorage.getItem('search_mode') || 'auto';
+        || localStorage.getItem('search_mode') || 'auto';
       const _reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const _animMode = (_urlMode === 'fast') ? 'instant'
-                      : _reduced              ? 'line'
-                      :                        'char';
+        : _reduced ? 'line'
+          : 'char';
 
       isStreaming = true;
 
@@ -2434,18 +2446,18 @@
 
     // ── セマンティック検索エンジン ────────────────────────────
     const SEMANTIC_MODELS = {
-      pro:   { id: 'Xenova/multilingual-e5-small', dim: 384 },
-      ultra: { id: 'Xenova/multilingual-e5-large', dim: 768 },
+      pro: { id: 'Xenova/multilingual-e5-small', dim: 384 },
+      ultra: { id: 'Xenova/multilingual-e5-large', dim: 1024 },
     };
     const EMBEDDINGS_URL = 'https://legrs.github.io/physics_notes/embeddings.json';
 
     let _semanticPipeline = null;
     let _semanticModelKey = null;
-    let _embeddingsData   = null;
+    let _embeddingsData = null;
 
     function _cosineSim(a, b) {
       let dot = 0, na = 0, nb = 0;
-      for (let i = 0; i < a.length; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
+      for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
       return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-9);
     }
 
@@ -2454,7 +2466,7 @@
       const modelCfg = SEMANTIC_MODELS[modeKey];
       if (!modelCfg) return false;
 
-      const statusEl  = document.getElementById('semantic-status');
+      const statusEl = document.getElementById('semantic-status');
       const statusTxt = document.getElementById('semantic-status-text');
       statusEl.classList.add('visible');
       statusTxt.textContent = `モデルを読み込んでいます（初回のみ時間がかかります）…`;
@@ -2474,7 +2486,7 @@
             `;
             document.head.appendChild(s);
             document.addEventListener('transformers-ready', resolve, { once: true });
-            setTimeout(() => reject(new Error('Transformers.js load timeout')), 30000);
+            setTimeout(() => reject(new Error('Transformers.js load timeout')), 120000);
           });
         }
 
@@ -2492,6 +2504,7 @@
         statusEl.classList.remove('visible');
         return true;
       } catch (e) {
+        statusEl.classList.remove('visible');
         statusTxt.textContent = `⚠️ モデルの読み込みに失敗しました: ${e.message}`;
         console.error(e);
         return false;
@@ -2512,8 +2525,8 @@
         ...semanticRanked.map(r => r.id),
       ]);
       allIds.forEach(id => { scores[id] = 0; });
-      bm25Results.forEach((r, i)       => { scores[r.id] += 1 / (k + i + 1); });
-      semanticRanked.forEach((r, i)    => { scores[r.id] += 1 / (k + i + 1); });
+      bm25Results.forEach((r, i) => { scores[r.id] += 1 / (k + i + 1); });
+      semanticRanked.forEach((r, i) => { scores[r.id] += 1 / (k + i + 1); });
       return [...allIds]
         .map(id => ({ id, rrfScore: scores[id] }))
         .sort((a, b) => b.rrfScore - a.rrfScore);
@@ -2522,12 +2535,12 @@
     async function startSearchResults() {
       // ── このページのアニメーションモード ──────────────────────
       const _urlMode = new URLSearchParams(location.search).get('mode')
-                       || localStorage.getItem('search_mode') || 'auto';
+        || localStorage.getItem('search_mode') || 'auto';
       const _reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       // instant: 即時表示、line: 行単位、char: 文字単位（デフォルト）
       const _animMode = (_urlMode === 'fast') ? 'instant'
-                      : _reduced              ? 'line'
-                      :                        'char';
+        : _reduced ? 'line'
+          : 'char';
 
       const rawParam = (location.search.match(/[?&]q=([^&]*)/) || ['', ''])[1];
       const query = decodeURIComponent(rawParam).toLowerCase();
@@ -2608,7 +2621,7 @@
       }
 
       function escHtml(s) {
-        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       }
 
       input.addEventListener('input', () => updateSuggest(input.value.trim()));
@@ -2718,96 +2731,96 @@
       try {
         const r = await fetch('https://legrs.github.io/physics_notes/q_and_a_data.json', { cache: 'no-cache' });
         const data = await r.json();
-          if (!cachedBM25) cachedBM25 = _buildBM25Index(data);
-          allData = data;
-          buildFilterBar(data);
+        if (!cachedBM25) cachedBM25 = _buildBM25Index(data);
+        allData = data;
+        buildFilterBar(data);
 
-          const { words, expanded } = _expandQuery(query);
-          let bm25Results = _getCandidates(cachedBM25, data, expanded)
-            .map(item => ({ ...item, score: _scoreItem(item, words, expanded, query, cachedBM25) }))
-            .filter(i => i.score > 0)
-            .sort((a, b) => b.score - a.score);
-          const _topRel = new Set(bm25Results.slice(0, 3).flatMap(r => r.related || []));
-          bm25Results.forEach(r => { if (_topRel.has(r.id)) r.score += 0.5; });
-          bm25Results.sort((a, b) => b.score - a.score);
+        const { words, expanded } = _expandQuery(query);
+        let bm25Results = _getCandidates(cachedBM25, data, expanded)
+          .map(item => ({ ...item, score: _scoreItem(item, words, expanded, query, cachedBM25) }))
+          .filter(i => i.score > 0)
+          .sort((a, b) => b.score - a.score);
+        const _topRel = new Set(bm25Results.slice(0, 3).flatMap(r => r.related || []));
+        bm25Results.forEach(r => { if (_topRel.has(r.id)) r.score += 0.5; });
+        bm25Results.sort((a, b) => b.score - a.score);
 
-          // Pro / Ultra: セマンティック検索 + RRF
-          let results = bm25Results;
-          if ((_urlMode === 'pro' || _urlMode === 'ultra') && query.length > 0) {
-            const modeKey = _urlMode;
-            const loaded = await _loadSemanticModel(modeKey);
-            if (loaded && _embeddingsData?.[modeKey === 'pro' ? 'small' : 'large']) {
-              const embKey = modeKey === 'pro' ? 'small' : 'large';
-              const queryVec = await _getQueryEmbedding(query);
-              const embeddingsForMode = _embeddingsData[embKey];
+        // Pro / Ultra: セマンティック検索 + RRF
+        let results = bm25Results;
+        if ((_urlMode === 'pro' || _urlMode === 'ultra') && query.length > 0) {
+          const modeKey = _urlMode;
+          const loaded = await _loadSemanticModel(modeKey);
+          if (loaded && _embeddingsData?.[modeKey === 'pro' ? 'small' : 'large']) {
+            const embKey = modeKey === 'pro' ? 'small' : 'large';
+            const queryVec = await _getQueryEmbedding(query);
+            const embeddingsForMode = _embeddingsData[embKey];
 
-              // セマンティックスコアでランキング（全件対象）
-              const semanticRanked = data
-                .filter(item => embeddingsForMode[item.id])
-                .map(item => ({
-                  ...item,
-                  semScore: _cosineSim(queryVec, embeddingsForMode[item.id])
-                }))
-                .sort((a, b) => b.semScore - a.semScore);
+            // セマンティックスコアでランキング（全件対象）
+            const semanticRanked = data
+              .filter(item => embeddingsForMode[item.id])
+              .map(item => ({
+                ...item,
+                semScore: _cosineSim(queryVec, embeddingsForMode[item.id])
+              }))
+              .sort((a, b) => b.semScore - a.semScore);
 
-              // RRF で統合
-              const merged = _rrfMerge(bm25Results, semanticRanked);
-              const idToItem = Object.fromEntries(data.map(d => [d.id, d]));
-              results = merged
-                .map(r => ({ ...idToItem[r.id], score: r.rrfScore }))
-                .filter(Boolean);
-            }
+            // RRF で統合
+            const merged = _rrfMerge(bm25Results, semanticRanked);
+            const idToItem = Object.fromEntries(data.map(d => [d.id, d]));
+            results = merged
+              .map(r => ({ ...idToItem[r.id], score: r.rrfScore }))
+              .filter(Boolean);
           }
+        }
 
-          aiBox.innerHTML = '';
-          resultsBox.innerHTML = '';
+        aiBox.innerHTML = '';
+        resultsBox.innerHTML = '';
 
-          // ── もしかして（結果の有無に関わらず表示） ──────────────
-          // クエリに最も近い質問文をLevenshteinで探す
-          const didYouMean = (() => {
-            if (!query || query.length < 2) return null;
-            let best = null, bestDist = Infinity;
-            data.forEach(item => {
-              item.questions.forEach(q => {
-                const d = _levenshtein(query, q.toLowerCase());
-                // 完全一致はスキップ、一定範囲内のみ
-                if (d > 0 && d < bestDist && d <= Math.max(3, Math.floor(query.length * 0.4))) {
-                  bestDist = d; best = q;
-                }
-              });
+        // ── もしかして（結果の有無に関わらず表示） ──────────────
+        // クエリに最も近い質問文をLevenshteinで探す
+        const didYouMean = (() => {
+          if (!query || query.length < 2) return null;
+          let best = null, bestDist = Infinity;
+          data.forEach(item => {
+            item.questions.forEach(q => {
+              const d = _levenshtein(query, q.toLowerCase());
+              // 完全一致はスキップ、一定範囲内のみ
+              if (d > 0 && d < bestDist && d <= Math.max(3, Math.floor(query.length * 0.4))) {
+                bestDist = d; best = q;
+              }
             });
-            // 結果が十分あってスコアも高い場合は表示しない
-            const topScore = results[0]?.score ?? 0;
-            if (best && (results.length === 0 || topScore < 5)) return best;
-            return null;
-          })();
+          });
+          // 結果が十分あってスコアも高い場合は表示しない
+          const topScore = results[0]?.score ?? 0;
+          if (best && (results.length === 0 || topScore < 5)) return best;
+          return null;
+        })();
 
-          if (didYouMean) {
-            const dym = document.createElement('div');
-            dym.className = 'did-you-mean';
-            dym.innerHTML = `もしかして：<a id="dym-link">${didYouMean}</a>`;
-            resultsBox.before(dym);
-            document.getElementById('dym-link').addEventListener('click', () => {
-              location.href = `search.html?q=${encodeURIComponent(didYouMean)}`;
-            });
-          }
+        if (didYouMean) {
+          const dym = document.createElement('div');
+          dym.className = 'did-you-mean';
+          dym.innerHTML = `もしかして：<a id="dym-link">${didYouMean}</a>`;
+          resultsBox.before(dym);
+          document.getElementById('dym-link').addEventListener('click', () => {
+            location.href = `search.html?q=${encodeURIComponent(didYouMean)}`;
+          });
+        }
 
-          if (results.length === 0) {
-            resultsBox.innerHTML = `
+        if (results.length === 0) {
+          resultsBox.innerHTML = `
               <p style="color:var(--text-muted);padding:20px 0">結果が見つかりませんでした。</p>
               <div class="ask-ai-wrap">
                 <button class="ai-btn" id="ask-ai-btn">Ask AI ↗</button>
               </div>`;
-            document.getElementById('ask-ai-btn').addEventListener('click', () => {
-              window.open('https://chatgpt.com/?q=' + encodeURIComponent(query), '_blank', 'noopener');
-            });
-            return;
-          }
+          document.getElementById('ask-ai-btn').addEventListener('click', () => {
+            window.open('https://chatgpt.com/?q=' + encodeURIComponent(query), '_blank', 'noopener');
+          });
+          return;
+        }
 
-          // ── AI Answer（1位の回答をストリーミング表示） ──────────
-          const top = results[0];
-          _chatContextAnswer = top.answer; // チャットコンテキスト用にキャッシュ
-          aiBox.innerHTML = `
+        // ── AI Answer（1位の回答をストリーミング表示） ──────────
+        const top = results[0];
+        _chatContextAnswer = top.answer; // チャットコンテキスト用にキャッシュ
+        aiBox.innerHTML = `
         <div class="ai-answer">
           <div class="ai-label">AI Answer</div>
           <div class="ai-collapse-wrap" id="ai-collapse">
@@ -2820,147 +2833,147 @@
           </div>
         </div>
       `;
-          document.getElementById('dive-deeper-btn').addEventListener('click', () => {
-            window.open('https://chatgpt.com/?q=' + encodeURIComponent(query), '_blank', 'noopener');
-          });
+        document.getElementById('dive-deeper-btn').addEventListener('click', () => {
+          window.open('https://chatgpt.com/?q=' + encodeURIComponent(query), '_blank', 'noopener');
+        });
 
-          const aiProse = document.getElementById('ai-prose');
-          const aiCollapse = document.getElementById('ai-collapse');
-          const aiFade = document.getElementById('ai-fade');
-          const aiExpandBtn = document.getElementById('ai-expand-btn');
+        const aiProse = document.getElementById('ai-prose');
+        const aiCollapse = document.getElementById('ai-collapse');
+        const aiFade = document.getElementById('ai-fade');
+        const aiExpandBtn = document.getElementById('ai-expand-btn');
 
-          const LINE_HEIGHT = 15 * 1.8;
-          const THRESHOLD = LINE_HEIGHT * 10; // ≈270px
-          let overflowShown = false;
+        const LINE_HEIGHT = 15 * 1.8;
+        const THRESHOLD = LINE_HEIGHT * 10; // ≈270px
+        let overflowShown = false;
 
-          function checkOverflow() {
-            if (overflowShown) return;
-            if (aiProse.scrollHeight > THRESHOLD + 4) {
-              overflowShown = true;
-              aiFade.style.display = 'block';
-              aiExpandBtn.style.display = 'block';
-            }
+        function checkOverflow() {
+          if (overflowShown) return;
+          if (aiProse.scrollHeight > THRESHOLD + 4) {
+            overflowShown = true;
+            aiFade.style.display = 'block';
+            aiExpandBtn.style.display = 'block';
           }
+        }
 
-          // expand / collapse トグル
-          let aiExpanded = false;
-          aiExpandBtn.addEventListener('click', () => {
-            aiExpanded = !aiExpanded;
-            aiCollapse.classList.toggle('expanded', aiExpanded);
-            aiFade.style.opacity = aiExpanded ? '0' : '1';
-            aiExpandBtn.textContent = aiExpanded ? '折りたたむ ▴' : '続きを読む ▾';
-          });
+        // expand / collapse トグル
+        let aiExpanded = false;
+        aiExpandBtn.addEventListener('click', () => {
+          aiExpanded = !aiExpanded;
+          aiCollapse.classList.toggle('expanded', aiExpanded);
+          aiFade.style.opacity = aiExpanded ? '0' : '1';
+          aiExpandBtn.textContent = aiExpanded ? '折りたたむ ▴' : '続きを読む ▾';
+        });
 
-          // ストリーミング
-          let aiStreamTimer = null;
-          let aiBuf = '', aiIdx = 0;
-          const fullText = top.answer;
+        // ストリーミング
+        let aiStreamTimer = null;
+        let aiBuf = '', aiIdx = 0;
+        const fullText = top.answer;
 
-          function aiTick() {
-            if (_animMode === 'instant') {
-              // 即時表示
-              aiProse.innerHTML = marked.parse(formatMath(fullText));
-              checkOverflow();
-            } else if (_animMode === 'line') {
-              // 行単位：改行ごとに一括表示
-              const lines = fullText.split('\n');
-              let lineIdx = 0;
-              function nextLine() {
-                if (lineIdx >= lines.length) {
-                  aiProse.innerHTML = marked.parse(formatMath(fullText));
-                  checkOverflow();
-                  return;
-                }
-                aiBuf += (lineIdx > 0 ? '\n' : '') + lines[lineIdx++];
-                aiProse.innerHTML = marked.parse(formatMath(aiBuf)) + '<span class="cursor-blink"></span>';
-                checkOverflow();
-                aiStreamTimer = setTimeout(nextLine, 60);
-              }
-              nextLine();
-            } else {
-              // 文字単位（デフォルト）
-              if (aiIdx < fullText.length) {
-                const chunk = Math.floor(Math.random() * 3) + 1;
-                aiBuf += fullText.slice(aiIdx, aiIdx + chunk);
-                aiIdx += chunk;
-                aiProse.innerHTML = marked.parse(formatMath(aiBuf)) + '<span class="cursor-blink"></span>';
-                checkOverflow();
-                aiStreamTimer = setTimeout(aiTick, Math.random() * 20 + 8);
-              } else {
+        function aiTick() {
+          if (_animMode === 'instant') {
+            // 即時表示
+            aiProse.innerHTML = marked.parse(formatMath(fullText));
+            checkOverflow();
+          } else if (_animMode === 'line') {
+            // 行単位：改行ごとに一括表示
+            const lines = fullText.split('\n');
+            let lineIdx = 0;
+            function nextLine() {
+              if (lineIdx >= lines.length) {
                 aiProse.innerHTML = marked.parse(formatMath(fullText));
                 checkOverflow();
+                return;
               }
+              aiBuf += (lineIdx > 0 ? '\n' : '') + lines[lineIdx++];
+              aiProse.innerHTML = marked.parse(formatMath(aiBuf)) + '<span class="cursor-blink"></span>';
+              checkOverflow();
+              aiStreamTimer = setTimeout(nextLine, 60);
+            }
+            nextLine();
+          } else {
+            // 文字単位（デフォルト）
+            if (aiIdx < fullText.length) {
+              const chunk = Math.floor(Math.random() * 3) + 1;
+              aiBuf += fullText.slice(aiIdx, aiIdx + chunk);
+              aiIdx += chunk;
+              aiProse.innerHTML = marked.parse(formatMath(aiBuf)) + '<span class="cursor-blink"></span>';
+              checkOverflow();
+              aiStreamTimer = setTimeout(aiTick, Math.random() * 20 + 8);
+            } else {
+              aiProse.innerHTML = marked.parse(formatMath(fullText));
+              checkOverflow();
             }
           }
-          aiTick();
+        }
+        aiTick();
 
-          // ── 検索結果リスト ───────────────────────────────────────
-          const resultEls = [];
-          results.forEach(item => {
-            const el = document.createElement('div');
-            el.className = 'result';
-            el.dataset.category = item.category || '';
-            el.dataset.difficulty = String(item.difficulty || '');
-            const snippet = _extractSnippet(item, words);
-            el.innerHTML = `
+        // ── 検索結果リスト ───────────────────────────────────────
+        const resultEls = [];
+        results.forEach(item => {
+          const el = document.createElement('div');
+          el.className = 'result';
+          el.dataset.category = item.category || '';
+          el.dataset.difficulty = String(item.difficulty || '');
+          const snippet = _extractSnippet(item, words);
+          el.innerHTML = `
           <div class="result-title">${highlight(item.questions[0], words)}</div>
           <div class="result-desc">${highlight(snippet, words)}</div>
           <div class="result-hint">クリックして詳細を見る →</div>
         `;
-            el.addEventListener('click', () => openModal(el, item));
-            resultsBox.appendChild(el);
-            resultEls.push({ el, item });
-          });
+          el.addEventListener('click', () => openModal(el, item));
+          resultsBox.appendChild(el);
+          resultEls.push({ el, item });
+        });
 
-          // ── キーボードナビゲーション ─────────────────────────────
-          let kbIndex = -1;
+        // ── キーボードナビゲーション ─────────────────────────────
+        let kbIndex = -1;
 
-          function kbSelect(idx) {
-            if (kbIndex >= 0) resultEls[kbIndex]?.el.classList.remove('kb-selected');
-            kbIndex = idx;
-            if (kbIndex >= 0 && kbIndex < resultEls.length) {
-              const el = resultEls[kbIndex].el;
-              el.classList.add('kb-selected');
-              el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-            }
+        function kbSelect(idx) {
+          if (kbIndex >= 0) resultEls[kbIndex]?.el.classList.remove('kb-selected');
+          kbIndex = idx;
+          if (kbIndex >= 0 && kbIndex < resultEls.length) {
+            const el = resultEls[kbIndex].el;
+            el.classList.add('kb-selected');
+            el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          }
+        }
+
+        document.addEventListener('keydown', function onResultsKey(e) {
+          // モーダルが開いているときは無効
+          if (modalOverlay.classList.contains('fullscreen')) return;
+          // チャットパネルが表示中（display:none以外）は無効
+          const cp = document.getElementById('chat-panel');
+          if (cp && cp.style.display !== 'none' && cp.style.display !== '') return;
+          // チャット入力にフォーカスがある場合も無効
+          if (document.activeElement?.id === 'chat-input') return;
+
+          const searchInput = document.getElementById('search');
+
+          // / キー → 検索ボックスにフォーカス
+          if (e.key === '/' && document.activeElement !== searchInput) {
+            e.preventDefault();
+            searchInput.focus();
+            searchInput.select();
+            return;
           }
 
-          document.addEventListener('keydown', function onResultsKey(e) {
-            // モーダルが開いているときは無効
-            if (modalOverlay.classList.contains('fullscreen')) return;
-            // チャットパネルが表示中（display:none以外）は無効
-            const cp = document.getElementById('chat-panel');
-            if (cp && cp.style.display !== 'none' && cp.style.display !== '') return;
-            // チャット入力にフォーカスがある場合も無効
-            if (document.activeElement?.id === 'chat-input') return;
+          // 検索ボックスにフォーカス中はナビゲーション無効
+          if (document.activeElement === searchInput) return;
 
-            const searchInput = document.getElementById('search');
-
-            // / キー → 検索ボックスにフォーカス
-            if (e.key === '/' && document.activeElement !== searchInput) {
-              e.preventDefault();
-              searchInput.focus();
-              searchInput.select();
-              return;
-            }
-
-            // 検索ボックスにフォーカス中はナビゲーション無効
-            if (document.activeElement === searchInput) return;
-
-            if (e.key === 'ArrowDown') {
-              e.preventDefault();
-              kbSelect(Math.min(kbIndex + 1, resultEls.length - 1));
-            } else if (e.key === 'ArrowUp') {
-              e.preventDefault();
-              kbSelect(Math.max(kbIndex - 1, 0));
-            } else if (e.key === 'Enter' && kbIndex >= 0) {
-              e.preventDefault();
-              const { el, item } = resultEls[kbIndex];
-              openModal(el, item);
-            } else if (e.key === 'Escape' && kbIndex >= 0) {
-              kbSelect(-1);
-            }
-          });
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            kbSelect(Math.min(kbIndex + 1, resultEls.length - 1));
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            kbSelect(Math.max(kbIndex - 1, 0));
+          } else if (e.key === 'Enter' && kbIndex >= 0) {
+            e.preventDefault();
+            const { el, item } = resultEls[kbIndex];
+            openModal(el, item);
+          } else if (e.key === 'Escape' && kbIndex >= 0) {
+            kbSelect(-1);
+          }
+        });
       } catch (e) {
         console.error('検索データの取得に失敗しました:', e);
         document.getElementById('results').innerHTML =
@@ -3214,11 +3227,11 @@
       // ── Stream answer from local data ─────────────────────────────────
       function streamAnswer(contentEl, fullText, onDone) {
         const _urlMode = new URLSearchParams(location.search).get('mode')
-                         || localStorage.getItem('search_mode') || 'auto';
+          || localStorage.getItem('search_mode') || 'auto';
         const _reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         const _animMode = (_urlMode === 'fast') ? 'instant'
-                        : _reduced              ? 'line'
-                        :                        'char';
+          : _reduced ? 'line'
+            : 'char';
 
         isAutoScroll = true;
         contentEl.innerHTML = '';
