@@ -2790,9 +2790,13 @@
           }
 
           document.addEventListener('keydown', function onResultsKey(e) {
-            // モーダルやチャットが開いているときは無効
+            // モーダルが開いているときは無効
             if (modalOverlay.classList.contains('fullscreen')) return;
-            if (document.getElementById('chat-panel')?.classList.contains('open')) return;
+            // チャットパネルが表示中（display:none以外）は無効
+            const cp = document.getElementById('chat-panel');
+            if (cp && cp.style.display !== 'none' && cp.style.display !== '') return;
+            // チャット入力にフォーカスがある場合も無効
+            if (document.activeElement?.id === 'chat-input') return;
 
             const searchInput = document.getElementById('search');
 
