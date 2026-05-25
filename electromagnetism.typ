@@ -53,6 +53,7 @@
 
 
 
+//==============================================================================
 
 
 = _Electric Field_
@@ -1143,7 +1144,8 @@ $
 * The work which battery has done :$W = Q V$. ( V=const. )*
 Therefoe Work:$1/2 Q V$ is wasted.
 
-#align(center,box(width:15cm, height:5cm, clip:true)[
+#figure(
+align(center,box(width:15cm, height:5cm, clip:true)[
   #place(center + horizon)[
     #cetz.canvas({
       import cetz.draw: *
@@ -1191,6 +1193,43 @@ Therefoe Work:$1/2 Q V$ is wasted.
     })
   ]
 ])
+,caption:[The start of charging]
+)
+
+#pagebreak()
+
+
+//==============================================================================
+
+
+
+= _Electric Current_
+\
+== Current
+\
+*Electric Current* - A flow of charged particles.
+
+- *Direct Current* - a current that is one-directional
+- *Alternating Current* - a current that periodically reverses direction
+
+\
+
+I : current (constant),
+Q : amount of charge,
+t : time
+$
+  I := Q / t
+$
+$unit("A") = unit("C/s")$
+
+//ダニエル電池で，Zn → Zn2+ + 2e-となって，亜鉛板に電子ができて，セロハンを通ってきたCu2+がその亜鉛板に来て，Cu2+ + 2e- → Cu とならない理由はなんですか？
+
+== Ohm's law
+
+
+
+
+
 
 
 
