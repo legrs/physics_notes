@@ -2775,23 +2775,44 @@
         aiBox.innerHTML = '';
         resultsBox.innerHTML = '';
 
-        // ── もしかして（結果の有無に関わらず表示） ──────────────
-        // クエリに最も近い質問文をLevenshteinで探す
+        // ── もしかして ────────────────────────────────────────────
         const didYouMean = (() => {
           if (!query || query.length < 2) return null;
-          let best = null, bestDist = Infinity;
+
+          // Levenshtein距離1〜2の候補を収集（質問文 + キーワードから）
+          const maxDist = Math.min(2, Math.floor(query.length * 0.4));
+          const candidates = new Set();
           data.forEach(item => {
             item.questions.forEach(q => {
               const d = _levenshtein(query, q.toLowerCase());
-              // 完全一致はスキップ、一定範囲内のみ
-              if (d > 0 && d < bestDist && d <= Math.max(3, Math.floor(query.length * 0.4))) {
-                bestDist = d; best = q;
-              }
+              if (d > 0 && d <= maxDist) candidates.add(q);
+            });
+            item.keywords?.forEach(k => {
+              const d = _levenshtein(query, k.toLowerCase());
+              if (d > 0 && d <= maxDist) candidates.add(k);
             });
           });
-          // 結果が十分あってスコアも高い場合は表示しない
-          const topScore = results[0]?.score ?? 0;
-          if (best && (results.length === 0 || topScore < 5)) return best;
+
+          if (!candidates.size) return null;
+
+          const currentCount = results.length;
+
+          // 各候補の結果件数を計算して最良候補を選ぶ
+          let best = null, bestCount = 0;
+          for (const cand of candidates) {
+            const cl = cand.toLowerCase();
+            const { words: cw, expanded: ce } = _expandQuery(cl);
+            const candCount = _getCandidates(cachedBM25, data, ce)
+              .filter(item => _scoreItem(item, cw, ce, cl, cachedBM25) > 0)
+              .length;
+            if (candCount > bestCount) { bestCount = candCount; best = cand; }
+          }
+
+          if (!best) return null;
+
+          // 表示条件：現在0件 OR 候補が大幅に多い（2倍以上 or +3件以上）
+          if (currentCount === 0) return best;
+          if (bestCount >= currentCount * 2 || bestCount - currentCount >= 3) return best;
           return null;
         })();
 
