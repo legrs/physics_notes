@@ -29,6 +29,7 @@
 //#set enum(numbering: "1.",)
 #set heading(numbering: "1.1.a ",)
 #set page(numbering: "1")
+#set math.equation(numbering:"(1)")
 #show heading : set align(center)
 #show heading.where(level:1) : set text(size: 30pt)
 #show heading.where(level:2) : set text(size: 20pt)
@@ -1219,7 +1220,7 @@ Q : amount of charge,
 t : time
 $
   I := Q / t
-$
+$<eq_i>
 $unit("A") = unit("C/s")$
 
 //ダニエル電池で，Zn → Zn2+ + 2e-となって，亜鉛板に電子ができて，セロハンを通ってきたCu2+がその亜鉛板に来て，Cu2+ + 2e- → Cu とならない理由はなんですか？
@@ -1262,7 +1263,7 @@ Let elementary charge $e$
   ]
 ])
 $Q = e dot n dot v t dot S\
-therefore I = e n v S
+therefore I = e n v S 
 $
 #align(center,box(width:15cm, height:7cm, clip:true)[
   #place(center + horizon)[
@@ -1275,9 +1276,9 @@ $
         line((0,2,0),(0,2,10))
         line((0,-2,0),(0,-2,10))
 
-        line((1,0,5.5),(1,0,2), mark:(end:">",fill:black),stroke:(thickness:0.05))
-        content((1,0,5.9),$bold(e)$)
-        content((1,-0.5,3.5),$bold(v)="const."$)
+        line((1,0.2,6),(1,0.2,2), mark:(end:">",fill:black),stroke:(thickness:0.06))
+        line((1,0,6),(1,0,4), mark:(end:">",fill:black))
+        line((1,0,6),(1,0,8), mark:(end:">",fill:black))
 
         let AXIS_LENGTH = 2.5
         //line((0, 0, 0), (AXIS_LENGTH, 0, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "x-axis")
@@ -1287,7 +1288,12 @@ $
         //content("y-axis.end", [$y$], anchor: "south")
         //content("z-axis.end", [$z$], anchor: "north-east")
       })
-      circle((6,0),radius:0.5)
+      circle((6,0),radius:0.5,fill:white)
+      content((6,0),$bold(e)$)
+      content((4,0.5),$bold(v)="const."$)
+
+      content((4.8,-0.5),$bold(e dot V/l)$)
+      content((7.2,-0.4),$bold(k v)$)
 
       content((0,1),$bold(S)$)
       line((0,0),(-1,0))
@@ -1302,18 +1308,32 @@ $
       content((5,-2.8),$bold(V)$)
 
       line((0,-1.7),(10,-1.7),mark:(start:">",end:">", fill:black))
-      content((5,-1.4),$bold(l)$)
+      content((5,-1.7),text(fill:white)[#highlight(fill:white)[　]])
+      content((5,-1.7),$bold(l)$)
     })
   ]
 ])
+There shoud be force $bold(k v) ( bold(k)="const." )$ which against electric force $bold(e dot V/l)$,
+because velocity of electron $bold(v) = "const."$ 
 
+#h(2em)
+$k v = e V/l \
+<=> v = e V/(l k) \
+<=> I = e n dot e V/(l k) dot S ( because I = e n v S ) \
+<=> I = e^2 n S / (k l) dot V \
+$
 
+Let $ k l / (e^2 n S)$ as $R$,
 
-
+#h(2em)
+$I = V / R
+$
 
 $
-  bold(V = R I)
+  therefore bold(V = R I)
 $
+
+#text(size:10pt)[ ※ energyが低い$eq.not$安定]
 
 
 
