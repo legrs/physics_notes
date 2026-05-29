@@ -2864,5 +2864,162 @@
         "updated_at": "2026-05-27",
         "search_text": "雨粒に撃ち抜かれて死ぬ人がいないのはなぜ？ スピードが増すにつれて、ぶつかる氷の粒が増え、重力を抑えるように抵抗力が働き、重力と抵抗力が一致したとき（ のとき）に定常状態になる。 つまり、 は に漸近していく。よって となる。 電流 アマツブニウチヌカレテシヌヒトガイナイノハナゼ？ スピードガマスニツレテ、ブツカルコオリノツブガフエ、ジュウリョクヲオサエルヨウニテイコウリョクガハタラキ、ジュウリョクトテイコウリョクガイッチシタトキ（ ノトキ）ニテイジョウジョウタイニナル。 ツマリ、 ハ ニゼンキンシテイク。ヨッテ トナル。 デンリュウ あまつぶにうちぬかれてしぬひとがいないのはなぜ？ すぴーどがますにつれて、ぶつかるこおりのつぶがふえ、じゅうりょくをおさえるようにていこうりょくがはたらき、じゅうりょくとていこうりょくがいっちしたとき（ のとき）にていじょうじょうたいになる。 つまり、 は にぜんきんしていく。よって となる。 でんりゅう",
         "_note": ""
+    },
+    {
+        "id": "00114",
+        "questions": [
+            "$ \\omega^3=1 $から$ 1+\\omega+\\omega^2=0 $が導かれるのはなぜ？"
+        ],
+        "answer": "$$ 1-\\omega^3=0 $$\n$$ \\left(1-\\omega\\right)\\left(1+\\omega+\\omega^2\\right) $$\nよって$ 1-\\omega=0 $または$ 1+\\omega+\\omega^2=0 $\n$ 1-\\omega\\ne0 $より$ 1+\\omega+\\omega^2=0 $",
+        "description": "",
+        "keywords": [
+            "複素数"
+        ],
+        "synonyms": [],
+        "category": "",
+        "difficulty": "",
+        "priority": 0,
+        "related": [],
+        "updated_at": "",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "00115",
+        "questions": [
+            "$ \\omega $の絶対値は？"
+        ],
+        "answer": "$$ z=x+iy $$\n$$ \\left|z\\right|^2=z\\cdot\\overline{z}=x^2+y^2 $$\n$$ \\left|z\\right|=\\sqrt{x^2+y^2} $$",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": "",
+        "difficulty": "",
+        "priority": 0,
+        "related": [],
+        "updated_at": "",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "00116",
+        "questions": [
+            "$ \\omega^2 $の値は？"
+        ],
+        "answer": "$$ \\omega^2=-\\frac{1}{2}-i\\frac{\\sqrt{3}}{2} $$\n$$ \\omega=\\cos120^{\\circ}+i\\sin120^{\\circ} $$",
+        "description": "",
+        "keywords": [
+            "ド・モアブル"
+        ],
+        "synonyms": [],
+        "category": "",
+        "difficulty": "",
+        "priority": 0,
+        "related": [],
+        "updated_at": "",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "00117",
+        "questions": [
+            "$ \\omega $の絶対値は？"
+        ],
+        "answer": "$$ z=\\frac{1}{\\sqrt{2}}+i\\frac{1}{\\sqrt{2}} $$\n$$ z^2=i $$",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": "",
+        "difficulty": "",
+        "priority": 0,
+        "related": [],
+        "updated_at": "",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "00118",
+        "questions": [
+            "$ \\omega $の位相は？"
+        ],
+        "answer": "",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": "",
+        "difficulty": "",
+        "priority": 0,
+        "related": [],
+        "updated_at": "",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "00119",
+        "questions": [
+            "$ 1+\\omega+\\omega^2=0 $を物理の視点から導け。"
+        ],
+        "answer": "力学の考え方を使う。\nベクトルの足し算をすると、3つのベクトルの和は$ \\vec{0} $になる。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": "",
+        "difficulty": "",
+        "priority": 0,
+        "related": [],
+        "updated_at": "",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "00120",
+        "questions": [
+            "加法定理を証明せよ。"
+        ],
+        "answer": "教科書には載っていない方法で証明する。\n$$ Z\\left(\\theta\\right)=\\cos\\theta+i\\sin\\theta $$\n$$ Z\\left(\\alpha+\\beta\\right)=Z\\left(\\beta\\right)\\cdot Z\\left(\\alpha\\right) $$\n$$ Z\\left(\\alpha+\\beta\\right)=\\cos\\left(\\alpha+\\beta\\right)+i\\sin\\left(\\alpha+\\beta\\right) $$\n$$ \\displaylines{Z\\left(\\beta\\right)\\cdot Z\\left(\\alpha\\right)=\\left(\\cos b+\\imaginaryI\\sin\\beta\\right)\\cdot\\left(\\cos\\alpha+\\imaginaryI\\sin\\alpha\\right)\\\\ =\\left(\\cos\\alpha\\cos\\beta-\\sin\\alpha\\sin\\beta\\right)+\\imaginaryI\\left(\\sin\\alpha\\cos\\beta+\\cos\\alpha\\sin\\beta\\right)} $$\nこれで、$ sin $と$ cos $双方の加法定理が証明された。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": "",
+        "difficulty": "",
+        "priority": 0,
+        "related": [],
+        "updated_at": "",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "00121",
+        "questions": [
+            "$ \\overline{\\omega} $はいくら？"
+        ],
+        "answer": "$$ \\overline{\\omega}=-\\frac{1}{2}-i\\frac{\\sqrt{3}}{2}=\\omega^2 $$",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": "",
+        "difficulty": "",
+        "priority": 0,
+        "related": [],
+        "updated_at": "",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "00122",
+        "questions": [
+            "$ \\overline{\\omega }=\\omega ^2 $となるのはなぜ？"
+        ],
+        "answer": "$ \\overline{\\omega}=\\omega^{-1} $より、\n$ \\overline{\\omega} $は$ -120^{\\circ} $回転、\n$ \\omega^2 $は$ 240^{\\circ} $回転であり、これらは同じである。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": "",
+        "difficulty": "",
+        "priority": 0,
+        "related": [],
+        "updated_at": "",
+        "search_text": "",
+        "_note": ""
     }
 ]
