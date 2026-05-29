@@ -2876,11 +2876,11 @@
             "複素数"
         ],
         "synonyms": [],
-        "category": "",
+        "category": "数学",
         "difficulty": "",
         "priority": 0,
         "related": [],
-        "updated_at": "",
+        "updated_at": "2026-05-29",
         "search_text": "から が導かれるのはなぜ？ よって または より 複素数 カラ ガミチビカレルノハナゼ？ ヨッテ マタハ ヨリ フクソスウ から がみちびかれるのはなぜ？ よって または より ふくそすう",
         "_note": ""
     },
@@ -2891,13 +2891,15 @@
         ],
         "answer": "$$ z=x+iy $$\n$$ \\left|z\\right|^2=z\\cdot\\overline{z}=x^2+y^2 $$\n$$ \\left|z\\right|=\\sqrt{x^2+y^2} $$",
         "description": "",
-        "keywords": [],
+        "keywords": [
+            "複素数"
+        ],
         "synonyms": [],
-        "category": "",
+        "category": "数学",
         "difficulty": "",
         "priority": 0,
         "related": [],
-        "updated_at": "",
+        "updated_at": "2026-05-29",
         "search_text": "の絶対値は？ ノゼッタイチハ？ のぜったいちは？",
         "_note": ""
     },
@@ -2909,14 +2911,15 @@
         "answer": "$$ \\omega^2=-\\frac{1}{2}-i\\frac{\\sqrt{3}}{2} $$\n$$ \\omega=\\cos120^{\\circ}+i\\sin120^{\\circ} $$",
         "description": "",
         "keywords": [
+            "複素数",
             "ド・モアブル"
         ],
         "synonyms": [],
-        "category": "",
+        "category": "数学",
         "difficulty": "",
         "priority": 0,
         "related": [],
-        "updated_at": "",
+        "updated_at": "2026-05-29",
         "search_text": "の値は？ ド・モアブル ノネハ？ ド・モアブル のねは？ ど・もあぶる",
         "_note": ""
     },
@@ -2927,13 +2930,15 @@
         ],
         "answer": "$$ z=\\frac{1}{\\sqrt{2}}+i\\frac{1}{\\sqrt{2}} $$\n$$ z^2=i $$",
         "description": "",
-        "keywords": [],
+        "keywords": [
+            "複素数"
+        ],
         "synonyms": [],
-        "category": "",
+        "category": "数学",
         "difficulty": "",
         "priority": 0,
         "related": [],
-        "updated_at": "",
+        "updated_at": "2026-05-29",
         "search_text": "の絶対値は？ ノゼッタイチハ？ のぜったいちは？",
         "_note": ""
     },
@@ -2944,13 +2949,15 @@
         ],
         "answer": "",
         "description": "",
-        "keywords": [],
+        "keywords": [
+            "複素数"
+        ],
         "synonyms": [],
-        "category": "",
+        "category": "数学",
         "difficulty": "",
         "priority": 0,
         "related": [],
-        "updated_at": "",
+        "updated_at": "2026-05-29",
         "search_text": "の位相は？ ノイソウハ？ のいそうは？",
         "_note": ""
     },
@@ -2961,13 +2968,15 @@
         ],
         "answer": "力学の考え方を使う。\nベクトルの足し算をすると、3つのベクトルの和は$ \\vec{0} $になる。",
         "description": "",
-        "keywords": [],
+        "keywords": [
+            "複素数"
+        ],
         "synonyms": [],
-        "category": "",
+        "category": "数学",
         "difficulty": "",
         "priority": 0,
         "related": [],
-        "updated_at": "",
+        "updated_at": "2026-05-29",
         "search_text": "を物理の視点から導け。 力学の考え方を使う。 ベクトルの足し算をすると、3つのベクトルの和は になる。 ヲブツリノシテンカラミチビケ。 リキガクノカンガエカタヲツカウ。 ベクトルノタシザンヲスルト、3ツノベクトルノワハ ニナル。 をぶつりのしてんからみちびけ。 りきがくのかんがえかたをつかう。 べくとるのたしざんをすると、3つのべくとるのわは になる。",
         "_note": ""
     },
@@ -2978,13 +2987,15 @@
         ],
         "answer": "教科書には載っていない方法で証明する。\n$$ Z\\left(\\theta\\right)=\\cos\\theta+i\\sin\\theta $$\n$$ Z\\left(\\alpha+\\beta\\right)=Z\\left(\\beta\\right)\\cdot Z\\left(\\alpha\\right) $$\n$$ Z\\left(\\alpha+\\beta\\right)=\\cos\\left(\\alpha+\\beta\\right)+i\\sin\\left(\\alpha+\\beta\\right) $$\n$$ \\displaylines{Z\\left(\\beta\\right)\\cdot Z\\left(\\alpha\\right)=\\left(\\cos b+\\imaginaryI\\sin\\beta\\right)\\cdot\\left(\\cos\\alpha+\\imaginaryI\\sin\\alpha\\right)\\\\ =\\left(\\cos\\alpha\\cos\\beta-\\sin\\alpha\\sin\\beta\\right)+\\imaginaryI\\left(\\sin\\alpha\\cos\\beta+\\cos\\alpha\\sin\\beta\\right)} $$\nこれで、$ sin $と$ cos $双方の加法定理が証明された。",
         "description": "",
-        "keywords": [],
+        "keywords": [
+            "複素数"
+        ],
         "synonyms": [],
-        "category": "",
+        "category": "数学",
         "difficulty": "",
         "priority": 0,
         "related": [],
-        "updated_at": "",
+        "updated_at": "2026-05-29",
         "search_text": "加法定理を証明せよ。 教科書には載っていない方法で証明する。 これで、 と 双方の加法定理が証明された。 カホウテイリヲショウメイセヨ。 キョウカショニハノッテイナイホウホウデショウメイスル。 コレデ、 ト ソウホウノカホウテイリガショウメイサレタ。 かほうていりをしょうめいせよ。 きょうかしょにはのっていないほうほうでしょうめいする。 これで、 と そうほうのかほうていりがしょうめいされた。",
         "_note": ""
     },
@@ -2995,13 +3006,15 @@
         ],
         "answer": "$$ \\overline{\\omega}=-\\frac{1}{2}-i\\frac{\\sqrt{3}}{2}=\\omega^2 $$",
         "description": "",
-        "keywords": [],
+        "keywords": [
+            "複素数"
+        ],
         "synonyms": [],
-        "category": "",
+        "category": "数学",
         "difficulty": "",
         "priority": 0,
         "related": [],
-        "updated_at": "",
+        "updated_at": "2026-05-29",
         "search_text": "はいくら？ ハイクラ？",
         "_note": ""
     },
@@ -3012,13 +3025,15 @@
         ],
         "answer": "$ \\overline{\\omega}=\\omega^{-1} $より、\n$ \\overline{\\omega} $は$ -120^{\\circ} $回転、\n$ \\omega^2 $は$ 240^{\\circ} $回転であり、これらは同じである。",
         "description": "",
-        "keywords": [],
+        "keywords": [
+            "複素数"
+        ],
         "synonyms": [],
-        "category": "",
+        "category": "数学",
         "difficulty": "",
         "priority": 0,
         "related": [],
-        "updated_at": "",
+        "updated_at": "2026-05-29",
         "search_text": "となるのはなぜ？ より、 は 回転、 は 回転であり、これらは同じである。 トナルノハナゼ？ ヨリ、 ハ カイテン、 ハ カイテンデアリ、コレラハオナジデアル。 となるのはなぜ？ より、 は かいてん、 は かいてんであり、これらはおなじである。",
         "_note": ""
     }
