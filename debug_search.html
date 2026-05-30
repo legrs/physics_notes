@@ -17,7 +17,11 @@
   </script>
 
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     :root {
       --bg: #ffffff;
@@ -57,7 +61,9 @@
       --score-border: #2d2d5e;
     }
 
-    html.dark body { color-scheme: dark; }
+    html.dark body {
+      color-scheme: dark;
+    }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -119,7 +125,9 @@
       transition: border-color 0.15s;
     }
 
-    .search-input:focus { border-color: var(--accent); }
+    .search-input:focus {
+      border-color: var(--accent);
+    }
 
     .search-btn {
       padding: 12px 28px;
@@ -134,8 +142,14 @@
       flex-shrink: 0;
     }
 
-    .search-btn:hover { opacity: 0.85; }
-    .search-btn:disabled { opacity: 0.4; cursor: default; }
+    .search-btn:hover {
+      opacity: 0.85;
+    }
+
+    .search-btn:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
 
     /* ── Status bar ────────────────────────────── */
     #status-bar {
@@ -151,7 +165,9 @@
       color: var(--text-muted);
     }
 
-    #status-bar.visible { display: flex; }
+    #status-bar.visible {
+      display: flex;
+    }
 
     .status-spinner {
       width: 14px;
@@ -163,7 +179,11 @@
       flex-shrink: 0;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
 
     /* ── Grid ──────────────────────────────────── */
     .mode-grid {
@@ -173,11 +193,15 @@
     }
 
     @media (max-width: 1100px) {
-      .mode-grid { grid-template-columns: repeat(2, 1fr); }
+      .mode-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
 
     @media (max-width: 600px) {
-      .mode-grid { grid-template-columns: 1fr; }
+      .mode-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     /* ── Mode column ──────────────────────────── */
@@ -205,15 +229,37 @@
       letter-spacing: 0.05em;
     }
 
-    .mode-col[data-mode="legacy"] .mode-name { color: var(--legacy-color); }
-    .mode-col[data-mode="fast"] .mode-name { color: var(--fast-color); }
-    .mode-col[data-mode="pro"] .mode-name { color: var(--pro-color); }
-    .mode-col[data-mode="ultra"] .mode-name { color: var(--ultra-color); }
+    .mode-col[data-mode="legacy"] .mode-name {
+      color: var(--legacy-color);
+    }
 
-    .mode-col[data-mode="legacy"] { border-top: 3px solid var(--legacy-color); }
-    .mode-col[data-mode="fast"] { border-top: 3px solid var(--fast-color); }
-    .mode-col[data-mode="pro"] { border-top: 3px solid var(--pro-color); }
-    .mode-col[data-mode="ultra"] { border-top: 3px solid var(--ultra-color); }
+    .mode-col[data-mode="fast"] .mode-name {
+      color: var(--fast-color);
+    }
+
+    .mode-col[data-mode="pro"] .mode-name {
+      color: var(--pro-color);
+    }
+
+    .mode-col[data-mode="ultra"] .mode-name {
+      color: var(--ultra-color);
+    }
+
+    .mode-col[data-mode="legacy"] {
+      border-top: 3px solid var(--legacy-color);
+    }
+
+    .mode-col[data-mode="fast"] {
+      border-top: 3px solid var(--fast-color);
+    }
+
+    .mode-col[data-mode="pro"] {
+      border-top: 3px solid var(--pro-color);
+    }
+
+    .mode-col[data-mode="ultra"] {
+      border-top: 3px solid var(--ultra-color);
+    }
 
     .mode-count {
       font-size: 12px;
@@ -300,7 +346,9 @@
       color: var(--text-secondary);
     }
 
-    .score-details.open { display: block; }
+    .score-details.open {
+      display: block;
+    }
 
     .score-line {
       display: flex;
@@ -308,7 +356,9 @@
       align-items: center;
     }
 
-    .score-line-label { flex: 1; }
+    .score-line-label {
+      flex: 1;
+    }
 
     .score-line-value {
       font-weight: 700;
@@ -317,9 +367,17 @@
       text-align: right;
     }
 
-    .score-line-value.positive { color: #22c55e; }
-    .score-line-value.zero { color: var(--text-muted); }
-    .score-line-value.multiplier { color: var(--ultra-color); }
+    .score-line-value.positive {
+      color: #22c55e;
+    }
+
+    .score-line-value.zero {
+      color: var(--text-muted);
+    }
+
+    .score-line-value.multiplier {
+      color: var(--ultra-color);
+    }
 
     .score-toggle {
       font-size: 11px;
@@ -331,7 +389,9 @@
       font-weight: 500;
     }
 
-    .score-toggle:hover { text-decoration: underline; }
+    .score-toggle:hover {
+      text-decoration: underline;
+    }
 
     /* ── Dark mode toggle ─────────────────────── */
     .dark-toggle {
@@ -346,7 +406,64 @@
       transition: background 0.15s;
     }
 
-    .dark-toggle:hover { background: var(--border-dark); }
+    .dark-toggle:hover {
+      background: var(--border-dark);
+    }
+
+    /* ── RRF weight slider ──────────────────────── */
+    .rrf-control {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-mid);
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .rrf-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .rrf-badge {
+      background: var(--pro-color);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      min-width: 36px;
+      text-align: center;
+    }
+
+    .rrf-slider-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .rrf-tick {
+      font-size: 11px;
+      color: var(--text-muted);
+      min-width: 24px;
+    }
+
+    #rrf-weight-slider {
+      flex: 1;
+      accent-color: var(--pro-color);
+      cursor: pointer;
+    }
+
+    .rrf-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
 
     /* ── Info box ──────────────────────────────── */
     .info-box {
@@ -360,7 +477,9 @@
       line-height: 1.7;
     }
 
-    .info-box strong { color: var(--text-primary); }
+    .info-box strong {
+      color: var(--text-primary);
+    }
 
     .mode-tag {
       display: inline-block;
@@ -373,10 +492,21 @@
       color: #fff;
     }
 
-    .mode-tag.legacy { background: var(--legacy-color); }
-    .mode-tag.fast { background: var(--fast-color); }
-    .mode-tag.pro { background: var(--pro-color); }
-    .mode-tag.ultra { background: var(--ultra-color); }
+    .mode-tag.legacy {
+      background: var(--legacy-color);
+    }
+
+    .mode-tag.fast {
+      background: var(--fast-color);
+    }
+
+    .mode-tag.pro {
+      background: var(--pro-color);
+    }
+
+    .mode-tag.ultra {
+      background: var(--ultra-color);
+    }
 
     /* Elapsed time */
     .mode-time {
@@ -399,10 +529,25 @@
 
     <div class="info-box">
       <strong>使い方：</strong>検索クエリを入力して実行すると、4つの検索モードでの結果を並べて比較できます。<br>
-      <span class="mode-tag legacy">Legacy</span> 旧スコアリング（完全一致+10, search_text全文+5, 質問部分+3, 単語+1, keywords+2, synonyms+2, フレーズ+2, typo+1~2, n-gram+0.5, related+0.5, priority乗算）<br>
+      <span class="mode-tag legacy">Legacy</span> 旧スコアリング（完全一致+10, search_text全文+5, 質問部分+3, 単語+1, keywords+2,
+      synonyms+2, フレーズ+2, typo+1~2, n-gram+0.5, related+0.5, priority乗算）<br>
       <span class="mode-tag fast">Fast</span> BM25 + フィールドブースト（現行のfast/autoモード）
       <span class="mode-tag pro">Pro</span> BM25 + E5-small セマンティック + RRF
       <span class="mode-tag ultra">Ultra</span> BM25 + E5-large セマンティック + RRF
+    </div>
+
+    <div class="rrf-control">
+      <label class="rrf-label">
+        セマンティック重み
+        <span class="rrf-badge" id="rrf-weight-val">2.0</span>
+      </label>
+      <div class="rrf-slider-row">
+        <span class="rrf-tick">1×</span>
+        <input type="range" id="rrf-weight-slider" min="1" max="5" step="0.1" value="2.0">
+        <span class="rrf-tick">5×</span>
+      </div>
+      <div class="rrf-hint">BM25: 1.0 × 1/(k+rank)　Semantic: <span id="rrf-weight-hint">2.0</span> × 1/(k+rank)　Pro /
+        Ultra に適用</div>
     </div>
 
     <div class="search-row">
@@ -471,13 +616,27 @@
     let semanticModelKey = null;
 
     const EMBEDDINGS_URL = 'https://legrs.github.io/physics_notes/embeddings.json';
-    const DATA_URL       = 'https://legrs.github.io/physics_notes/q_and_a_data.json';
+    const DATA_URL = 'https://legrs.github.io/physics_notes/q_and_a_data.json';
     const SEMANTIC_MODELS = {
-      pro:   { id: 'Xenova/multilingual-e5-small', dim: 384  },
-      ultra: { id: 'Xenova/multilingual-e5-large',  dim: 1024 },
+      pro: { id: 'Xenova/multilingual-e5-small', dim: 384 },
+      ultra: { id: 'Xenova/multilingual-e5-large', dim: 1024 },
     };
 
     // ── Dark mode toggle ──────────────────────────────────────────────
+    // ── RRF weight slider ─────────────────────────────────────
+    function getSemanticWeight() {
+      return parseFloat(document.getElementById('rrf-weight-slider').value);
+    }
+
+    const rrfSlider = document.getElementById('rrf-weight-slider');
+    const rrfValEl = document.getElementById('rrf-weight-val');
+    const rrfHintEl = document.getElementById('rrf-weight-hint');
+    rrfSlider.addEventListener('input', () => {
+      const v = parseFloat(rrfSlider.value).toFixed(1);
+      rrfValEl.textContent = v;
+      rrfHintEl.textContent = v;
+    });
+
     document.getElementById('dark-toggle').addEventListener('click', () => {
       const isDark = !document.documentElement.classList.contains('dark');
       document.documentElement.classList.toggle('dark', isDark);
@@ -746,7 +905,7 @@
       return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-9);
     }
 
-    function rrfMerge(bm25Results, semanticRanked, k = 60) {
+    function rrfMerge(bm25Results, semanticRanked, k = 60, semanticWeight = 2.0) {
       const scores = {};
       const allIds = new Set([
         ...bm25Results.map(r => r.id),
@@ -754,7 +913,7 @@
       ]);
       allIds.forEach(id => { scores[id] = 0; });
       bm25Results.forEach((r, i) => { scores[r.id] = (scores[r.id] || 0) + 1 / (k + i + 1); });
-      semanticRanked.forEach((r, i) => { scores[r.id] = (scores[r.id] || 0) + 1 / (k + i + 1); });
+      semanticRanked.forEach((r, i) => { scores[r.id] = (scores[r.id] || 0) + semanticWeight / (k + i + 1); });
       return [...allIds]
         .map(id => ({ id, rrfScore: scores[id] }))
         .sort((a, b) => b.rrfScore - a.rrfScore);
@@ -841,7 +1000,7 @@
         }))
         .sort((a, b) => b.semScore - a.semScore);
 
-      const merged = rrfMerge(bm25Results, semanticRanked);
+      const merged = rrfMerge(bm25Results, semanticRanked, 60, getSemanticWeight());
       const idToItem = Object.fromEntries(data.map(d => [d.id, d]));
 
       // Find BM25 rank and semantic rank for breakdown

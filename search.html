@@ -2529,7 +2529,8 @@
     }
 
     // RRF スコア統合
-    function _rrfMerge(bm25Results, semanticRanked, k = 60) {
+    // semanticWeight: セマンティックランキングの重み（デフォルト2.0でBM25の2倍）
+    function _rrfMerge(bm25Results, semanticRanked, k = 60, semanticWeight = 2.0) {
       const scores = {};
       const allIds = new Set([
         ...bm25Results.map(r => r.id),
@@ -2537,7 +2538,7 @@
       ]);
       allIds.forEach(id => { scores[id] = 0; });
       bm25Results.forEach((r, i) => { scores[r.id] += 1 / (k + i + 1); });
-      semanticRanked.forEach((r, i) => { scores[r.id] += 1 / (k + i + 1); });
+      semanticRanked.forEach((r, i) => { scores[r.id] += semanticWeight / (k + i + 1); });
       return [...allIds]
         .map(id => ({ id, rrfScore: scores[id] }))
         .sort((a, b) => b.rrfScore - a.rrfScore);
