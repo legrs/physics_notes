@@ -6,11 +6,44 @@
   <title>Search Results</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Marked.js (Markdown) -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <!-- KaTeX (数式) -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <!-- Marked.js (Markdown) — バージョン固定 + SRI -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"
+    integrity="sha384-948ahk4ZmxYVYOc+rxN1H2gM1EJ2Duhp7uHtZ4WSLkV4Vtx5MUqnV+l7u9B+jFv+"
+    crossorigin="anonymous"></script>
+  <!-- KaTeX (数式) — SRI -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+    integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
+    integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8"
+    crossorigin="anonymous"></script>
+
+  <!-- ── セキュリティユーティリティ ──────────────────────────── -->
+  <!-- escHtml: 全スクリプトブロックから参照できるよう最初に定義 -->
+  <script>
+    /* HTML特殊文字をエスケープ（XSS防止用グローバルヘルパー） */
+    function escHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    /* mode パラメータの許可リスト（予期しない値を排除） */
+    const VALID_MODES = new Set(['auto', 'fast', 'pro', 'ultra']);
+
+    /**
+     * URL/localStorage から mode を安全に取得。
+     * 許可リスト外の値は 'auto' にフォールバック。
+     */
+    function getSafeMode() {
+      const urlMode = new URLSearchParams(location.search).get('mode') || '';
+      const lsMode = localStorage.getItem('search_mode') || '';
+      const candidate = urlMode || lsMode;
+      return VALID_MODES.has(candidate) ? candidate : 'auto';
+    }
+  </script>
 
   <!-- ダークモード初期化（FLOCKを防ぐためpaint前に実行） -->
   <script>
@@ -1894,8 +1927,7 @@
       const appEl = document.getElementById('app');
 
       // ── アニメーションモード判定 ──────────────────────────────
-      const urlMode = new URLSearchParams(location.search).get('mode')
-        || localStorage.getItem('search_mode')
+      const urlMode = getSafeMode()
         || 'auto';
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       // fast または reduced-motion のときはアニメーションなし
@@ -2080,6 +2112,20 @@
 
   <!-- ══ Modal + Search Logic ══════════════════════════════════════ -->
   <script>
+    /* ── marked.js セキュリティ設定 ─────────────────────────────────
+       JSON データ内の生 HTML を実行させない。
+       renderer.html を上書きして raw HTML ブロック/インラインをエスケープ。 */
+    (function configureMark() {
+      if (typeof marked === 'undefined') return;
+      const renderer = new marked.Renderer();
+      // html トークン（<!-- --> ブロックや <div> など）をそのまま出力せずエスケープ
+      renderer.html = function (token) {
+        const raw = typeof token === 'string' ? token : (token.text || token.raw || '');
+        return escHtml(raw);
+      };
+      marked.use({ renderer });
+    })();
+
     /* ── 数式変換（KaTeX） ── $$...$$ ブロック → $...$ インライン の順に処理 */
     function formatMath(text) {
       // CommonMark の right-flanking delimiter 制約への対応:
@@ -2163,8 +2209,8 @@
         const card = document.createElement('div');
         card.className = 'related-card';
         card.innerHTML = `
-          <div class="related-card-title">${ri.questions[0]}</div>
-          <div class="related-card-desc">${ri.description}</div>
+          <div class="related-card-title">${escHtml(ri.questions[0])}</div>
+          <div class="related-card-desc">${escHtml(ri.description)}</div>
         `;
         card.addEventListener('click', () => {
           stopStreaming();
@@ -2231,8 +2277,7 @@
     /* onComplete コールバックを追加 */
     function startStreaming(fullText, onComplete) {
       // ── モード判定（startSearchResults と同じロジック） ───────
-      const _urlMode = new URLSearchParams(location.search).get('mode')
-        || localStorage.getItem('search_mode') || 'auto';
+      const _urlMode = getSafeMode();
       const _reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const _animMode = (_urlMode === 'fast') ? 'instant'
         : _reduced ? 'line'
@@ -2509,6 +2554,7 @@
         if (!_embeddingsData) {
           statusTxt.textContent = 'Embeddingデータを取得中…';
           const res = await fetch(EMBEDDINGS_URL);
+          if (!res.ok) throw new Error(`Embedding取得失敗: HTTP ${res.status}`);
           _embeddingsData = await res.json();
         }
 
@@ -2546,10 +2592,8 @@
 
     async function startSearchResults() {
       // ── このページのアニメーションモード ──────────────────────
-      const _urlMode = new URLSearchParams(location.search).get('mode')
-        || localStorage.getItem('search_mode') || 'auto';
+      const _urlMode = getSafeMode();
       const _reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      // instant: 即時表示、line: 行単位、char: 文字単位（デフォルト）
       const _animMode = (_urlMode === 'fast') ? 'instant'
         : _reduced ? 'line'
           : 'char';
@@ -2599,7 +2643,7 @@
 
       function goSuggest(q) {
         hideSuggest();
-        const mode = new URLSearchParams(location.search).get('mode') || localStorage.getItem('search_mode') || 'auto';
+        const mode = getSafeMode();
         location.href = `search.html?q=${encodeURIComponent(q)}&mode=${mode}`;
       }
 
@@ -2632,9 +2676,7 @@
         showSuggest(items.slice(0, 8));
       }
 
-      function escHtml(s) {
-        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      }
+      // escHtml はグローバルスコープ（先頭の <script> ブロック）に定義済み
 
       input.addEventListener('input', () => updateSuggest(input.value.trim()));
       input.addEventListener('focus', () => { if (input.value.trim()) updateSuggest(input.value.trim()); });
@@ -2725,16 +2767,22 @@
         if (e.key === 'Enter' && !e.isComposing) {
           const q = input.value.trim();
           if (!q) return;
-          const mode = new URLSearchParams(location.search).get('mode') || localStorage.getItem('search_mode') || 'auto';
+          const mode = getSafeMode();
           const newUrl = `search.html?q=${encodeURIComponent(q)}&mode=${mode}`;
-          if (location.href.endsWith(newUrl)) { location.reload(); }
+          // endsWith は origin が異なる URL に対して誤判定するため pathname+search で比較
+          const newPath = `/physics_notes/search.html?q=${encodeURIComponent(q)}&mode=${mode}`;
+          if (location.pathname + location.search === newPath) { location.reload(); }
           else { location.href = newUrl; }
         }
       });
 
       function highlight(text, words) {
-        let r = text;
-        words.forEach(w => { r = r.replace(new RegExp(`(${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'), '<mark>$1</mark>'); });
+        // まず HTML エスケープしてから <mark> を挿入（XSS防止）
+        let r = escHtml(text);
+        words.forEach(w => {
+          const safe = escHtml(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          r = r.replace(new RegExp(`(${safe})`, 'gi'), '<mark>$1</mark>');
+        });
         return r;
       }
 
@@ -2742,6 +2790,7 @@
 
       try {
         const r = await fetch('https://legrs.github.io/physics_notes/q_and_a_data.json', { cache: 'no-cache' });
+        if (!r.ok) throw new Error(`データ取得失敗: HTTP ${r.status}`);
         const data = await r.json();
         if (!cachedBM25) cachedBM25 = _buildBM25Index(data);
         allData = data;
@@ -2831,7 +2880,7 @@
         if (didYouMean) {
           const dym = document.createElement('div');
           dym.className = 'did-you-mean';
-          dym.innerHTML = `もしかして：<a id="dym-link">${didYouMean}</a>`;
+          dym.innerHTML = `もしかして：<a id="dym-link">${escHtml(didYouMean)}</a>`;
           resultsBox.before(dym);
           document.getElementById('dym-link').addEventListener('click', () => {
             location.href = `search.html?q=${encodeURIComponent(didYouMean)}`;
@@ -3166,9 +3215,9 @@
               img.style.height = h + 'px';
             });
         }
-        // ?mode= パラメータを読んで localStorage に保存
+        // ?mode= パラメータを検証してから localStorage に保存（許可リスト外は無視）
         const modeParam = new URLSearchParams(location.search).get('mode');
-        if (modeParam) localStorage.setItem('search_mode', modeParam);
+        if (modeParam && VALID_MODES.has(modeParam)) localStorage.setItem('search_mode', modeParam);
       });
       function openSettings() {
         settingsOverlay.style.display = 'block';
@@ -3259,8 +3308,7 @@
 
       // ── Stream answer from local data ─────────────────────────────────
       function streamAnswer(contentEl, fullText, onDone) {
-        const _urlMode = new URLSearchParams(location.search).get('mode')
-          || localStorage.getItem('search_mode') || 'auto';
+        const _urlMode = getSafeMode();
         const _reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         const _animMode = (_urlMode === 'fast') ? 'instant'
           : _reduced ? 'line'
@@ -3591,9 +3639,9 @@
           lineHeight: '1.5',
         });
 
-        // Show a snippet of the answer text in the ghost
+        // Show a snippet of the answer text in the ghost（XSSを防ぐためエスケープ）
         const snippet = answerText
-          ? answerText.replace(/[#*`\[\]]/g, '').slice(0, 120)
+          ? escHtml(answerText.replace(/[#*`\[\]]/g, '').slice(0, 120))
           : '…';
         el.innerHTML = `
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:${isDark ? '#666' : '#888'};margin-bottom:6px">AI Answer</div>
