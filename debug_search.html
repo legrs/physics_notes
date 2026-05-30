@@ -516,6 +516,14 @@
         const kata = w.replace(/[\u3041-\u3096]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60));
         if (hira !== w) all.add(hira);
         if (kata !== w) all.add(kata);
+
+        // CJKバイグラム展開（形態素レベルのBM25トークンと一致させる）
+        const cjk = w.replace(/[^\u3000-\u9fff\uff00-\uffef]/g, '');
+        if (cjk.length >= 2) {
+          for (let i = 0; i < cjk.length - 1; i++) {
+            all.add(cjk.slice(i, i + 2));
+          }
+        }
       });
       return { words, expanded: [...all] };
     }
