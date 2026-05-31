@@ -1000,33 +1000,50 @@
         }))
         .sort((a, b) => b.semScore - a.semScore);
 
-      const merged = rrfMerge(bm25Results, semanticRanked, 60, getSemanticWeight());
+      // ── 中間結果をキャッシュしてスライダー変更時に再マージできるようにする
       const idToItem = Object.fromEntries(data.map(d => [d.id, d]));
-
-      // Find BM25 rank and semantic rank for breakdown
       const bm25RankMap = {};
       bm25Results.forEach((r, i) => { bm25RankMap[r.id] = { rank: i + 1, score: r.score }; });
       const semRankMap = {};
       semanticRanked.forEach((r, i) => { semRankMap[r.id] = { rank: i + 1, score: r.semScore }; });
 
-      return merged
-        .filter(r => r.rrfScore > 0)
-        .map(r => {
-          const item = idToItem[r.id];
-          if (!item) return null;
-          return {
-            ...item,
-            score: r.rrfScore,
-            breakdown: {
-              rrf_score: r.rrfScore,
-              bm25_rank: bm25RankMap[r.id]?.rank || '–',
-              bm25_score: bm25RankMap[r.id]?.score?.toFixed(2) || '0',
-              sem_rank: semRankMap[r.id]?.rank || '–',
-              sem_score: semRankMap[r.id]?.score?.toFixed(4) || '0',
-            }
-          };
-        })
-        .filter(Boolean);
+      function buildResults(weight) {
+        const merged = rrfMerge(bm25Results, semanticRanked, 60, weight);
+        return merged
+          .filter(r => r.rrfScore > 0)
+          .map(r => {
+            const item = idToItem[r.id];
+            if (!item) return null;
+            return {
+              ...item,
+              score: r.rrfScore,
+              breakdown: {
+                rrf_score: r.rrfScore,
+                bm25_rank: bm25RankMap[r.id]?.rank || '–',
+                bm25_score: bm25RankMap[r.id]?.score?.toFixed(2) || '0',
+                sem_rank: semRankMap[r.id]?.rank || '–',
+                sem_score: semRankMap[r.id]?.score?.toFixed(4) || '0',
+              }
+            };
+          })
+          .filter(Boolean);
+      }
+
+      // スライダーにリアルタイム再描画ハンドラを登録（前のハンドラは上書き）
+      const prevHandler = rrfSlider[`_live_${modeKey}`];
+      if (prevHandler) rrfSlider.removeEventListener('input', prevHandler);
+      const liveHandler = () => {
+        const w = getSemanticWeight();
+        const results = buildResults(w);
+        renderResults(modeKey, results, 0);
+        // タイム表示を「再計算」に更新
+        const timeEl = document.getElementById(`time-${modeKey}`);
+        if (timeEl) timeEl.textContent = '再計算';
+      };
+      rrfSlider[`_live_${modeKey}`] = liveHandler;
+      rrfSlider.addEventListener('input', liveHandler);
+
+      return buildResults(getSemanticWeight());
     }
 
     // ══════════════════════════════════════════════════════════════════
