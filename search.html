@@ -2114,14 +2114,17 @@
   <script>
     /* ── marked.js セキュリティ設定 ─────────────────────────────────
        JSON データ内の生 HTML を実行させない。
-       renderer.html を上書きして raw HTML ブロック/インラインをエスケープ。 */
+       renderer.html を上書きして raw HTML ブロック/インラインをエスケープ。
+       ただし formatMath が生成する KaTeX HTML（math-block / math-inline / katex）は通す。 */
     (function configureMark() {
       if (typeof marked === 'undefined') return;
       const renderer = new marked.Renderer();
-      // html トークン（<!-- --> ブロックや <div> など）をそのまま出力せずエスケープ
+      // KaTeX が生成したHTMLかどうかを判定
+      const KATEX_RE = /class="(math-block|math-inline|katex)/;
       renderer.html = function (token) {
         const raw = typeof token === 'string' ? token : (token.text || token.raw || '');
-        return escHtml(raw);
+        // KaTeX 出力はそのまま通す、それ以外はエスケープ
+        return KATEX_RE.test(raw) ? raw : escHtml(raw);
       };
       marked.use({ renderer });
     })();
