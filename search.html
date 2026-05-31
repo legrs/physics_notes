@@ -2211,6 +2211,8 @@
       const askCard = document.createElement('div');
       askCard.className = 'related-card';
       askCard.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;';
+      askCard.setAttribute('tabindex', '0');
+      askCard.setAttribute('role', 'button');
       askCard.innerHTML = `
         <div>
           <div class="related-card-title">Ask AI</div>
@@ -2220,9 +2222,11 @@
           <path d="M7 17L17 7M17 7H7M17 7v10"/>
         </svg>
       `;
-      askCard.addEventListener('click', () => {
+      const openAskAI = () => {
         window.open('https://chatgpt.com/?q=' + encodeURIComponent(item.questions[0]), '_blank', 'noopener');
-      });
+      };
+      askCard.addEventListener('click', openAskAI);
+      askCard.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAskAI(); } });
       askSection.appendChild(askCard);
       modalRelated.appendChild(askSection);
 
@@ -2237,11 +2241,13 @@
       relItems.forEach(ri => {
         const card = document.createElement('div');
         card.className = 'related-card';
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('role', 'button');
         card.innerHTML = `
           <div class="related-card-title">${escHtml(ri.questions[0])}</div>
           <div class="related-card-desc">${escHtml(ri.description)}</div>
         `;
-        card.addEventListener('click', () => {
+        const openRelated = () => {
           stopStreaming();
           modalTitle.textContent = ri.questions[0];
           modalContent.innerHTML = '';
@@ -2249,7 +2255,9 @@
           modalBody.scrollTop = 0;
           isUserScrolling = false;
           startStreaming(ri.answer, () => renderRelated(ri));
-        });
+        };
+        card.addEventListener('click', openRelated);
+        card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openRelated(); } });
         section.appendChild(card);
       });
       modalRelated.appendChild(section);
@@ -2370,6 +2378,25 @@
     backdrop.addEventListener('click', closeModal);
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape' && modalOverlay.style.display !== 'none') closeModal();
+
+      // / キー → 検索ボックスにフォーカス（モーダル・チャット未表示時のみ）
+      const searchInput = document.getElementById('search');
+      const suggestBox = document.getElementById('suggest-box');
+      if (e.key === '/' &&
+        document.activeElement !== searchInput &&
+        !modalOverlay.classList.contains('fullscreen') &&
+        document.getElementById('chat-panel')?.style.display === 'none') {
+        e.preventDefault();
+        searchInput?.focus();
+        searchInput?.select();
+        return;
+      }
+
+      // Escape → 検索ボックスのフォーカス解除 + サジェスト非表示
+      if (e.key === 'Escape' && document.activeElement === searchInput) {
+        searchInput.blur();
+        if (suggestBox) suggestBox.style.display = 'none';
+      }
     });
 
     /* ── 検索ロジック ────────────────────────────────────────────── */
@@ -3064,15 +3091,6 @@
           if (document.activeElement?.id === 'chat-input') return;
 
           const searchInput = document.getElementById('search');
-
-          // / キー → 検索ボックスにフォーカス
-          if (e.key === '/' && document.activeElement !== searchInput) {
-            e.preventDefault();
-            searchInput.focus();
-            searchInput.select();
-            return;
-          }
-
           // 検索ボックスにフォーカス中はナビゲーション無効
           if (document.activeElement === searchInput) return;
 
