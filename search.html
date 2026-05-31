@@ -479,6 +479,34 @@
       }
     }
 
+    /* ── 思考中ドットアニメーション ─────────────────────────── */
+    @keyframes thinking {
+
+      0%,
+      100% {
+        opacity: .2;
+      }
+
+      50% {
+        opacity: 1;
+      }
+    }
+
+    .thinking-dot {
+      display: inline-block;
+      font-size: 18px;
+      color: var(--chat-accent);
+      animation: thinking 1.4s ease-in-out infinite;
+    }
+
+    .thinking-dot:nth-child(2) {
+      animation-delay: .22s;
+    }
+
+    .thinking-dot:nth-child(3) {
+      animation-delay: .44s;
+    }
+
     .result.kb-selected {
       background: var(--bg-elevated);
       outline: 2px solid var(--chat-accent);
@@ -2997,6 +3025,8 @@
           el.className = 'result';
           el.dataset.category = item.category || '';
           el.dataset.difficulty = String(item.difficulty || '');
+          el.setAttribute('tabindex', '0');
+          el.setAttribute('role', 'button');
           const snippet = _extractSnippet(item, words);
           el.innerHTML = `
           <div class="result-title">${highlight(item.questions[0], words)}</div>
@@ -3004,6 +3034,9 @@
           <div class="result-hint">クリックして詳細を見る →</div>
         `;
           el.addEventListener('click', () => openModal(el, item));
+          el.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(el, item); }
+          });
           resultsBox.appendChild(el);
           resultEls.push({ el, item });
         });
@@ -3690,13 +3723,12 @@
 
         const { wrap: aiWrap, content: aiContent } = appendAssistantMessage();
 
-        // データが未ロードの場合は少し待つ
-        const attempt = () => {
-          if (!allData) {
-            setTimeout(attempt, 200);
-            return;
-          }
-          const result = searchTopResult(text);
+        // 思考中ドット表示
+        const showDots = () => {
+          aiContent.innerHTML = `<span class="thinking-dot">●</span><span class="thinking-dot">●</span><span class="thinking-dot">●</span>`;
+        };
+
+        const finish = (result) => {
           if (result) {
             chatHistory.push({ role: 'assistant', content: result.answer });
             streamAnswer(aiContent, result.answer, () => {
@@ -3713,6 +3745,56 @@
             scrollChatBottom();
           }
         };
+
+        const attempt = async () => {
+          if (!allData) { setTimeout(attempt, 200); return; }
+
+          const urlMode = new URLSearchParams(location.search).get('mode')
+            || localStorage.getItem('search_mode') || 'auto';
+
+          if (urlMode === 'pro' || urlMode === 'ultra') {
+            // セマンティックモード: モデルが未ロードなら読み込んでから検索
+            const needsLoad = !_semanticPipeline || _semanticModelKey !== urlMode;
+            if (needsLoad) showDots();
+
+            const loaded = await _loadSemanticModel(urlMode);
+            const embKey = urlMode === 'pro' ? 'small' : 'large';
+
+            if (loaded && _embeddingsData?.[embKey]) {
+              showDots(); // ベクトル計算中もドット継続
+              try {
+                const queryVec = await _getQueryEmbedding(text);
+                const embs = _embeddingsData[embKey];
+                const q = text.toLowerCase();
+                const { words, expanded } = _expandQuery(q);
+                const bm25idx = _buildBM25Index(allData);
+                const bm25Results = _getCandidates(bm25idx, allData, expanded)
+                  .map(item => ({ ...item, score: _scoreItem(item, words, expanded, q, bm25idx) }))
+                  .filter(i => i.score > 0)
+                  .sort((a, b) => b.score - a.score);
+
+                const semanticRanked = allData
+                  .filter(item => embs[item.id])
+                  .map(item => ({ ...item, semScore: _cosineSim(queryVec, embs[item.id]) }))
+                  .sort((a, b) => b.semScore - a.semScore);
+
+                const merged = _rrfMerge(bm25Results, semanticRanked);
+                const idToItem = Object.fromEntries(allData.map(d => [d.id, d]));
+                const top = merged[0] ? idToItem[merged[0].id] : null;
+                finish(top || null);
+              } catch (e) {
+                console.error('Semantic chat error:', e);
+                finish(searchTopResult(text)); // フォールバック
+              }
+            } else {
+              finish(searchTopResult(text)); // フォールバック
+            }
+          } else {
+            // auto / fast: BM25のみ（即時）
+            finish(searchTopResult(text));
+          }
+        };
+
         attempt();
       }
 
