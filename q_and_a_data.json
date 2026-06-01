@@ -2997,7 +2997,7 @@
         "questions": [
             "加法定理を証明せよ。"
         ],
-        "answer": "教科書には載っていない方法で証明する。\n$$ Z\\left(\\theta\\right)=\\cos\\theta+i\\sin\\theta $$\n$$ Z\\left(\\alpha+\\beta\\right)=Z\\left(\\beta\\right)\\cdot Z\\left(\\alpha\\right) $$\n$$ Z\\left(\\alpha+\\beta\\right)=\\cos\\left(\\alpha+\\beta\\right)+i\\sin\\left(\\alpha+\\beta\\right) $$\n$$ Z\\left(\\beta\\right)\\cdot Z\\left(\\alpha\\right)=\\left(\\cos\\beta+\\imaginaryI\\sin\\beta\\right)\\cdot\\left(\\cos\\alpha+\\imaginaryI\\sin\\alpha\\right)=\\left(\\cos\\alpha\\cos\\beta-\\sin\\alpha\\sin\\beta\\right)+\\imaginaryI\\left(\\sin\\alpha\\cos\\beta+\\cos\\alpha\\sin\\beta\\right) $$\nこれで、$ sin $と$ cos $双方の加法定理が証明された。",
+        "answer": "教科書には載っていない方法で証明する。\n$$ Z\\left(\\theta\\right)=\\cos\\theta+i\\sin\\theta $$\n$$ Z\\left(\\alpha+\\beta\\right)=Z\\left(\\beta\\right)\\cdot Z\\left(\\alpha\\right) $$\n$$ Z\\left(\\alpha+\\beta\\right)=\\cos\\left(\\alpha+\\beta\\right)+i\\sin\\left(\\alpha+\\beta\\right) $$\n$$ Z\\left(\\beta\\right)\\cdot Z\\left(\\alpha\\right)=\\left(\\cos\\beta+i\\sin\\beta\\right)\\cdot\\left(\\cos\\alpha+i\\sin\\alpha\\right)=\\left(\\cos\\alpha\\cos\\beta-\\sin\\alpha\\sin\\beta\\right)+i\\left(\\sin\\alpha\\cos\\beta+\\cos\\alpha\\sin\\beta\\right) $$\nこれで、$ sin $と$ cos $双方の加法定理が証明された。",
         "description": "",
         "keywords": [
             "複素数"
