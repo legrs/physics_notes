@@ -1316,11 +1316,14 @@ $
 There shoud be force $bold(k v) ( bold(k)="const." )$ which against electric force $bold(e dot V/l)$,
 because velocity of electron $bold(v) = "const."$ 
 
+
+#text(size:10pt)[ ※ energyが低い$eq.not$安定]
+
 #h(2em)
 $k v = e V/l \
-<=> v = e V/(l k) \
-<=> I = e n dot e V/(l k) dot S ( because I = e n v S ) \
-<=> I = e^2 n S / (k l) dot V \
+<=> v = e V/(l k) quad ( v prop E )\
+<=> I = e n dot e V/(l k) dot S quad ( because I = e n v S ) \
+<=> I = e^2 n S / (k l) dot V  \ 
 $
 
 Let $ k l / (e^2 n S)$ as $R$,
@@ -1333,14 +1336,48 @@ $
   therefore bold(V = R I)
 $
 
-#text(size:10pt)[ ※ energyが低い$eq.not$安定]
+\
+
+#h(2em)
+$R = 1/(e^2 n) dot l/S wide$ Let $1/(e^2 n)$ as $rho$, 
+$
+  bold(R = rho l/S)
+$
+
+$rho$ is called *resistivity* and depends on substances. ( resistivity of alminium is $tilde num("2.7e-8")$ )
+
+
+#text(size:10pt)[ちうがくせいのころよく分からなかったのが解消されていってたのしー！！]
+
+#pagebreak()
+
+Resistivity also depends on templature  due to thermal motion.
+$
+  rho approx rho_0 dot ( 1 + a t )
+$
+$rho_0$ is resistivity at $t=0$, t is templature.
+$alpha$ is called *templature coefficient of resistivity*.
+
+
 
 // 0529 物理はすすめずに複素数やりました
 
 
 
 
+#text(size:10pt)[ いまさらだが保存力ってけっこう難しい．fieldを解析してどうなったら保存力なんだろう．位置にのみ依存することが必要条件になってはいそう．十分条件はなんなの　直感的な理解が足りていません。百足らず様がお通りになられたせいでしょうか。]
 
+
+
+// IDE「電位差があることと電場が生まれることの間にはどのような関係がある」
+// 電位は単位電荷の持つpotential energyなので，電位が位置によって違うということは，そこには力の場が存在する必要があるから
+
+
+
+// spacing in equation  :  thin med thick quad wide
+// 保存力
+
+// 力が位置にのみ依存することは，保存力であることの必要条件ですか？
 
 
 
