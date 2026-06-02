@@ -1035,6 +1035,12 @@
       will-change: top, left, width, height, border-radius;
     }
 
+    /* リサイズ中はフルスクリーン要素のtransitionを無効化（即時追従） */
+    body.resizing #chat-panel.chat-fullscreen,
+    body.resizing #modal-overlay.fullscreen {
+      transition: none !important;
+    }
+
     #chat-panel.chat-fullscreen {
       top: 0 !important;
       left: 0 !important;
@@ -3114,6 +3120,14 @@
           '<p style="color:var(--text-muted);padding:20px 0">データの取得に失敗しました。再読み込みしてください。</p>';
       }
     }
+
+    // リサイズ中だけ body.resizing クラスを付けてtransitionを無効化
+    let _resizeTimer;
+    window.addEventListener('resize', () => {
+      document.body.classList.add('resizing');
+      clearTimeout(_resizeTimer);
+      _resizeTimer = setTimeout(() => document.body.classList.remove('resizing'), 150);
+    }, { passive: true });
 
     // キャンバスアニメーションがスキップされた場合はここから直接起動
     if (window._animSkipped) startSearchResults();
