@@ -63,7 +63,7 @@
 \
 - *electrification* - A process getting charge
 - *static electoricity* - static charge
-- *electoric charge* - 
+- *electoric charge* - $upright(T I)$
 - *point charge* - charge which can be ignored the size
 \
 *Electrostatic force* is an interraction between charged particles.
@@ -556,7 +556,7 @@ $
   ]
 ])
 $V_("AB") = V_A - V_B $  (reference is $B$)\
-$V_("AB")$ is also called *voltage*.
+$V_("AB")$ is also called *voltage*$[upright(M L^2 T^(-3) I^(-1))]$.
 
 
 #align(center,box(width:15cm, height:4cm, clip:true)[
@@ -889,8 +889,12 @@ align(center,box(width:15cm, height:3cm, clip:true)[
 
 \
 $
-  bold( C := V / Q )
+  bold( C := Q / V )
 $
+
+$C$ is called *electric capacity* $[upright(M^(-1) L^(-2) T^(-2) I^2)]$
+
+#text(size:10pt)[なにこに次元は…電磁気の次元解析ってけっこう魔境…？独自文字で置いてやろうか]
 
 * Parallel-plate capacitor makes uniform electric field. *\
 It makes $4 pi k Q "lines of electric force"$ .
@@ -1001,7 +1005,7 @@ $
 Electric capacity depends on $k$ , $S$ ,and $d$.
 
 Where, let $epsilon = 1/(4 pi k)$ ,
-$epsilon$ is called permitivity.
+$epsilon$ is called permitivity $[upright(M^(-1) L^(-3) T^4 I^2)]$.
 $
   C = epsilon dot S / d
 $
@@ -1209,7 +1213,7 @@ align(center,box(width:15cm, height:5cm, clip:true)[
 \
 == Current
 \
-*Electric Current* - A flow of charged particles.
+*Electric Current*$"[I]"$ - A flow of charged particles. 
 
 - *Direct Current* - a current that is one-directional
 - *Alternating Current* - a current that periodically reverses direction
@@ -1333,9 +1337,11 @@ Let $ k l / (e^2 n S)$ as $R$,
 $I = V / R
 $
 
+
 $
   therefore bold(V = R I)
 $
+V : a.k.a voltage dump
 
 \
 // 0529 物理はすすめずに複素数やりました
@@ -1369,7 +1375,35 @@ $alpha$ is called *templature coefficient of resistivity*.
 
 #text(size:10pt)[ たまに千石電商の服きてたらついに指摘されてちょっとうれしい．普通のこの服はデザインセンスがあると思う．高いだけある]
 
-// 物理はすすめずに区分求積をやりました
+// 物理はすすめずに「区分求積法とは？How does it work?」をやりました
+
+== Joule heat
+
+$W $ : generating heat by current  - *Joule heat*
+$
+  bold(W = I V t = Q V)
+$
+
+- *Electrical Energy*$[upright(M L T^(-2))]$(電力量) - Work which is done by current(charge)
+
+- *Electrical Power*$[upright(M L T^(-3))]$(電力) - work per unit time
+
+#text(size:10pt)[ 教員：電力量という訳はうれしくない　　←それ]
+
+$
+  bold(P"(power)" = I V = I^2 R)
+$
+
+work which done from field $ W = e dot V/l dot v t  dot n S l = e n v S dot V dot t = I V t$
+
+
+//#text(size:10pt)[ 教員：日本語はscienceに向いていない　←用語だけenglishにするのはよく見る]
+
+
+
+
+
+
 
 
 
