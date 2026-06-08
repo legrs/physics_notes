@@ -1408,13 +1408,13 @@ work which done from field $ W = e dot V/l dot v t  dot n S l = e n v S dot V do
 
 
 
-// IDE「電位差があることと電場が生まれることの間にはどのような関係がある」
+// IDE「電位差があることと電場が生まれることの間にはどのような関係がある」　-> id 00010, 00108, 00109
 // 電位は単位電荷の持つpotential energyなので，電位が位置によって違うということは，そこには力の場が存在する必要があるから
 
 
 
 // spacing in equation  :  thin med thick quad wide
-// 保存力
+// 保存力 -> id 00018
 
 // 力が位置にのみ依存することは，保存力であることの必要条件ですか？
 
