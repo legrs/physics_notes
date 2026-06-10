@@ -1397,7 +1397,7 @@ $
   bold(P"(power)" = I V = I^2 R)
 $
 
-work which done from field $ W = e dot V/l dot v t  dot n S l = e n v S dot V dot t = I V t$
+work which done by field $ W = e dot V/l dot v t  dot n S l = e n v S dot V dot t = I V t$
 
 
 //#text(size:10pt)[ 教員：日本語はscienceに向いていない　←用語だけenglishにするのは割とアリだと思うんだけどな…]
@@ -1410,6 +1410,102 @@ work which done from field $ W = e dot V/l dot v t  dot n S l = e n v S dot V do
 
 // 授業で初「perfect answer」が出ました
 // 
+
+#pagebreak()
+
+== Composite of Resistors
+
+#align(center,box(width:15cm, height:8cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      let resistor(l,p,q)={
+        let (x1,y1) = p
+        let (x2,y2) = q
+        let d1 = x2 -x1
+        let d2 = y2 -y1
+        let d_a = calc.sqrt(d1*d1 + d2*d2)
+        let d_e1 = d1/d_a
+        let d_e2 = d2/d_a
+
+        let d_a7 = d_a/7
+
+        let rot(a,b)={
+          let (a1,a2) = a
+          let (b1,b2) = b
+          let x_ = b1*d_e1 - b2*d_e2
+          let y_ = b1*d_e2 + b2*d_e1
+          let a_2 = (a1+x_,a2+y_)
+          return a_2
+        }
+
+
+        let pre = (x1,y1)
+        let dif = (d_a7,-l)
+        let a = rot(pre,dif)
+        line(pre,a)
+        pre = a
+          dif = (d_a7,2*l)
+        a = rot(pre,dif)
+        line(pre,a)
+        pre = a
+          dif = (d_a7,-2*l)
+        a = rot(pre,dif)
+        line(pre,a)
+        pre = a
+          dif = (d_a7,2*l)
+        a = rot(pre,dif)
+        line(pre,a)
+        pre = a
+          dif = (d_a7,-2*l)
+        a = rot(pre,dif)
+        line(pre,a)
+        pre = a
+          dif = (d_a7,2*l)
+        a = rot(pre,dif)
+        line(pre,a)
+        pre = a
+          dif = (d_a7,-l)
+        a = rot(pre,dif)
+        line(pre,a)
+        pre = a
+      }
+
+      line((0,4),(0,3))
+      resistor(0.5,(0,3),(0,1))
+      line((0,1),(0,-1))
+      resistor(0.5,(0,-1),(0,-3))
+      line((0,-3),(0,-4))
+
+      content((1,2),$R_1$)
+      content((1,-2),$R_2$)
+      content((0,0), highlight(fill:white)[　])
+      content((0,0),$bold(R = R_1 + R_2)$)
+
+
+      line((9,4),(9,3))
+      line((8,3),(10,3))
+      line((8,3),(8,1))
+      line((10,3),(10,1))
+      resistor(0.5,(8,1),(8,-1))
+      resistor(0.5,(10,1),(10,-1))
+      line((8,-3),(10,-3))
+      line((8,-3),(8,-1))
+      line((10,-3),(10,-1))
+      line((9,-4),(9,-3))
+
+      content((9,0),$R_1$)
+      content((11,0),$R_2$)
+      content((9,-2), highlight(fill:white)[　　　　　　])
+      content((9,-2),$bold(R^(-1) = R_1^(-1) + R_2^(-1))$)
+
+
+    })
+  ]
+])
+// 抵抗描画便利
+
 
 
 
@@ -1424,8 +1520,6 @@ work which done from field $ W = e dot V/l dot v t  dot n S l = e n v S dot V do
 
 // spacing in equation  :  thin med thick quad wide
 // 保存力 -> id 00018
-
-// 力が位置にのみ依存することは，保存力であることの必要条件ですか？
 
 
 
