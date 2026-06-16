@@ -1701,12 +1701,12 @@ work which done by field $ W = e dot V/l dot v t  dot n S l = e n v S dot V dot 
 
 #pagebreak()
 
-=== How to observe Electromotive Force
+=== How to Determine Electromotive Force
 
 - *Electromotive Force* - "起電力"
 
 
-#align(center,box(width:15cm, height:5cm, clip:true)[
+#align(center,box(width:15cm, height:6cm, clip:true)[
   #place(center + horizon)[
     #cetz.canvas({
       import cetz.draw: *
@@ -1777,6 +1777,8 @@ work which done by field $ W = e dot V/l dot v t  dot n S l = e n v S dot V dot 
 
       line((-2,1),(-0.5,1))
       resistor(0.2,(-0.5,1),(0.5,1))
+      line((-0.5,0.7),(0.5,1.3),mark:(end:">", fill:black))
+      content((0,0.5),$bold(R)$)
       line((0.5,1),(2,1))
 
       circle((0,2),radius:0.5)
@@ -1789,13 +1791,134 @@ work which done by field $ W = e dot V/l dot v t  dot n S l = e n v S dot V dot 
       content((-2,0),"A")
 
       line((-2.2,0.7),(-2.2,2), mark:(end:">", fill:black))
-      content((-2.5,1.3),$I$)
+      content((-2.5,1.3),$bold(I)$)
+
+      line((-2,2.6),(2,2.6), mark:(start: ">",end:">", fill:black))
+      line((-2,3),(-2,2))
+      line((2,3),(2,2))
+      content((0,3),$bold(V)$)
     })
   ]
 ])
+$V = E - r I
+$
+
+Observing multiple $(V,I)$ points, we can determine $E$ and $I$.
+
+=== How to Determine Resistance
+*Wheatstone bridge*
 
 
+#align(center,box(width:15cm, height:8cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
 
+      let resistor(l,p,q)={
+        let (x1,y1) = p
+        let (x2,y2) = q
+        let d1 = x2 -x1
+        let d2 = y2 -y1
+        let d_a = calc.sqrt(d1*d1 + d2*d2)
+        let d_e1 = d1/d_a
+        let d_e2 = d2/d_a
+
+        let d_a7 = d_a/7
+
+        let rot(a,b)={
+          let (a1,a2) = a
+          let (b1,b2) = b
+          let x_ = b1*d_e1 - b2*d_e2
+          let y_ = b1*d_e2 + b2*d_e1
+          let a_2 = (a1+x_,a2+y_)
+          return a_2
+        }
+
+
+        let pre = (x1,y1)
+        let dif = (d_a7,-l)
+        let a = rot(pre,dif)
+        line(pre,a)
+        pre = a
+          dif = (d_a7,2*l)
+        a = rot(pre,dif)
+        line(pre,a)
+        pre = a
+          dif = (d_a7,-2*l)
+        a = rot(pre,dif)
+        line(pre,a)
+        pre = a
+          dif = (d_a7,2*l)
+        a = rot(pre,dif)
+        line(pre,a)
+        pre = a
+          dif = (d_a7,-2*l)
+        a = rot(pre,dif)
+        line(pre,a)
+        pre = a
+          dif = (d_a7,2*l)
+        a = rot(pre,dif)
+        line(pre,a)
+        pre = a
+          dif = (d_a7,-l)
+        a = rot(pre,dif)
+        line(pre,a)
+        pre = a
+      }
+
+
+      line((-0.1,-0.5),(-0.1,-1.5))
+      line((0.1,-0.7),(0.1,-1.3))
+      content((0,-1.8),$bold(V)$)
+
+      line((-0.1,-1),(-4,-1))
+      line((0.1,-1),(4,-1))
+
+      line((-4,-1),(-4,2))
+      line((4,-1),(4,2))
+
+      line((-4,2),(-3,2))
+      line((4,2),(3,2))
+
+      line((-3,2),(-2,2 + 1 * 2 / 3))
+      resistor(0.2,(-2,2 + 1 * 2 / 3),(-1,2 + 2 * 2 / 3))
+      line((-1,2 + 2 * 2 / 3),(0,2 + 3 * 2 / 3))
+      line((3,2),(2,2 + 1 * 2 / 3))
+      resistor(0.2,(2,2 + 1 * 2 / 3),(1,2 + 2 * 2 / 3))
+      line((0.9,3),(2.1,3),mark:(end:">", fill:black))
+      line((1,2 + 2 * 2 / 3),(0,2 + 3 * 2 / 3))
+
+      line((-3,2),(-2,2 - 1 * 2 / 3))
+      resistor(0.2,(-2,2 - 1 * 2 / 3),(-1,2 - 2 * 2 / 3))
+      line((-1,2 - 2 * 2 / 3),(0,2 - 3 * 2 / 3))
+      line((3,2),(2,2 - 1 * 2 / 3))
+      resistor(0.2,(2,2 - 1 * 2 / 3),(1,2 - 2 * 2 / 3))
+      line((1,2 - 2 * 2 / 3),(0,2 - 3 * 2 / 3))
+
+      line((0,0),(0,4))
+
+      circle((0,2),radius:0.5, fill:white)
+      content((0,2),"G")
+
+      content((-1.5,3.8),$R_1$)
+      content((-1.5,0.2),$R_2$)
+      content((1.5,3.8),$R_3$)
+      content((1.5,0.2),$R_x$)
+
+    })
+  ]
+])
+When current at G equals to $0$,
+
+$R_1 I_1 = R_2 I_2\
+R_3 I_1 = R_x I_2\
+<=> 
+
+$
+
+#pagebreak()
+
+== 
 
 
 
