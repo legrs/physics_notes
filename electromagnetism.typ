@@ -1993,48 +1993,9 @@ $=>$ They have hole of electrons ( positive hole ).
 
       circle((0,0),radius:0.4,stroke:(paint:red))
       line((0.25,0.25),(3,2.5),stroke:(paint:red))
-      content((3,2.5),highlight(fill:white)[*recombination*])
+      content((3,2.5),text(fill:red)[#highlight(fill:white)[recombination]])
 
 
-      /*
-      line((-0.1,-0.5),(-0.1,-1.5))
-      line((0.1,-0.7),(0.1,-1.3))
-      content((0,-1.8),$bold(V)$)
-
-      line((-0.1,-1),(-4,-1))
-      line((0.1,-1),(4,-1))
-
-      line((-4,-1),(-4,2))
-      line((4,-1),(4,2))
-
-      line((-4,2),(-3,2))
-      line((4,2),(3,2))
-
-      line((-3,2),(-2,2 + 1 * 2 / 3))
-      resistor(0.2,(-2,2 + 1 * 2 / 3),(-1,2 + 2 * 2 / 3))
-      line((-1,2 + 2 * 2 / 3),(0,2 + 3 * 2 / 3))
-      line((3,2),(2,2 + 1 * 2 / 3))
-      resistor(0.2,(2,2 + 1 * 2 / 3),(1,2 + 2 * 2 / 3))
-      line((0.9,3),(2.1,3),mark:(end:">", fill:black))
-      line((1,2 + 2 * 2 / 3),(0,2 + 3 * 2 / 3))
-
-      line((-3,2),(-2,2 - 1 * 2 / 3))
-      resistor(0.2,(-2,2 - 1 * 2 / 3),(-1,2 - 2 * 2 / 3))
-      line((-1,2 - 2 * 2 / 3),(0,2 - 3 * 2 / 3))
-      line((3,2),(2,2 - 1 * 2 / 3))
-      resistor(0.2,(2,2 - 1 * 2 / 3),(1,2 - 2 * 2 / 3))
-      line((1,2 - 2 * 2 / 3),(0,2 - 3 * 2 / 3))
-
-      line((0,0),(0,4))
-
-      circle((0,2),radius:0.5, fill:white)
-      content((0,2),"G")
-
-      content((-1.5,3.8),$R_1$)
-      content((-1.5,0.2),$R_2$)
-      content((1.5,3.8),$R_3$)
-      content((1.5,0.2),$R_x$)
-      */
 
     })
   ]
