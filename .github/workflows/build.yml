@@ -7,11 +7,6 @@ on:
       - 'scripts/build.js'
       - 'package.json'
   workflow_dispatch:
-    inputs:
-      embed:
-        description: 'Embeddingも生成する'
-        type: boolean
-        default: false
 
 jobs:
   build:
@@ -28,6 +23,14 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: hf-models-${{ runner.os }}-e5
+          restore-keys: |
+            hf-models-${{ runner.os }}-
 
       - name: Install dependencies
         run: npm ci
