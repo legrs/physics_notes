@@ -1345,7 +1345,7 @@ $
 V : a.k.a voltage dump
 
 \
-// 0529 物理はすすめずに複素数やりました
+// 0529 物理はすすめずに複素数やりました．
 
 $R = 1/(e^2 n) dot l/S wide$ Let $1/(e^2 n)$ as $bold(rho)$, 
 $
@@ -1376,7 +1376,7 @@ $alpha$ is called *templature coefficient of resistivity*.
 
 #text(size:10pt)[ たまに千石電商の服きてたらついに指摘されてちょっとうれしい．普通のこの服はデザインセンスがあると思う．高いだけある]
 
-// 物理はすすめずに「区分求積法とは？How does it work?」をやりました
+// 物理はすすめずに「区分求積法とは？How does it work?」をやりました．
 
 == Joule heat
 
@@ -1923,8 +1923,8 @@ When a capacitor is connetced with a battery, charge of capacitor is proportiona
 
 = Semiconductor
 
-- *Intrinsic Semiconductor*真性 - Simple substance of *$"Si"$* or *$"Ge"$*. In low templature, they cannot conduct electron. In high templature, They can conduct electron.
-- *Extrinsic Semiconductor*不純物 - substance which have trace amount of *$"P"$* or *$"Al"$* in *$"Si"$* or *$"Ge"$*.
+- *Intrinsic Semiconductor*真性半導体 - Simple substance of *$"Si"$* or *$"Ge"$*. In low templature, they cannot conduct electron. In high templature, They can conduct electron.
+- *Extrinsic Semiconductor*不純物半導体 - Substance which have trace amount of *$"P"$* or *$"Al"$* in *$"Si"$* or *$"Ge"$*.
 
 \
 
@@ -1939,7 +1939,7 @@ $=>$ They have hole of electrons ( positive hole ).
 #text(size:10pt)[( なんでこれ共有結合できるの？の？？オクテッドソクみたさなひ)]
 
 
-== P-N Junction
+== P-N Junction / Diode
 #align(center,box(width:15cm, height:6cm, clip:true)[
   #place(center + horizon)[
     #cetz.canvas({
@@ -2005,9 +2005,9 @@ $=>$ They have hole of electrons ( positive hole ).
 
 
 
-// 陽イオンの振動→高い温度→熱が高いところから低いところへ伝わる→うわあっつ!! -> id 00129
+// 陽イオンの振動→高い温度→熱が高いところ(導線)から低いところ(空気)へ伝わる→うわあっつ!! -> id 00129
 
-// IDE「電位差があることと電場が生まれることの間にはどのような関係がある」
+// IDE「電位差があることと電場が生まれることの間にはどのような関係があるか？」 -> id 00098
 // how is this:電位は単位電荷の持つpotential energyなので，電位が位置によって違うということは，そこには力の場が存在する必要があるから
 
 
