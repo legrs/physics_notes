@@ -83,7 +83,13 @@ function buildSearchText(tokenizer, item) {
 // ── Embedding 生成 ─────────────────────────────────────────
 // e5 モデルは文書に "passage: " プレフィックスが必要
 async function buildEmbeddings(data) {
-  const { pipeline } = await import('@xenova/transformers');
+  const os = require('os');
+  const { pipeline, env } = await import('@xenova/transformers');
+
+  // デフォルトでは node_modules/@xenova/transformers/.cache/ に保存されてしまい、
+  // GitHub Actions の actions/cache でキャッシュしづらいため、
+  // ホームディレクトリ配下の分かりやすい場所に明示的に変更する
+  env.cacheDir = path.join(os.homedir(), '.cache', 'huggingface', 'transformers-js');
 
   const existing = fs.existsSync(EMBEDDINGS_PATH)
     ? JSON.parse(fs.readFileSync(EMBEDDINGS_PATH, 'utf-8'))
