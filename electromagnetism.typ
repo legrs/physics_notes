@@ -2012,10 +2012,10 @@ $=>$ They have hole of electrons ( positive hole ).
       import cetz.draw: *
 
       rect((-2,1),(0.2,-1))
-      rect((2,1),(-0.2,-1))
+      rect((2.5,1),(-0.2,-1))
 
       line((-2,0),(-3,0))
-      line((2,0),(3,0))
+      line((2.5,0),(3,0))
       line((0,-1),(0,-2))
       content((-3.2,0.5),[Emitter])
       content((3.5,0.5),[Collector])
@@ -2042,10 +2042,10 @@ $=>$ They have hole of electrons ( positive hole ).
       import cetz.draw: *
 
       rect((-2,1),(0.2,-1))
-      rect((2,1),(-0.2,-1))
+      rect((2.5,1),(-0.2,-1))
 
       line((-2,0),(-3,0))
-      line((2,0),(3,0))
+      line((2.5,0),(3,0))
       line((0,-1),(0,-2))
       content((-3.2,0.5),[Emitter])
       content((3.5,0.5),[Collector])
