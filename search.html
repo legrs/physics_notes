@@ -1861,7 +1861,7 @@
   <!-- ══ Search Results ════════════════════════════════════════════ -->
   <div id="app">
     <div class="container">
-      <a href="https://legrs.github.io/physics_notes/index.html" class="back-link">
+      <a href="index.html" class="back-link">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
           stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6" />
@@ -2582,7 +2582,7 @@
       pro: { id: 'Xenova/multilingual-e5-small', dim: 384 },
       ultra: { id: 'Xenova/multilingual-e5-large', dim: 1024 },
     };
-    const EMBEDDINGS_URL = 'https://legrs.github.io/physics_notes/embeddings.json';
+    const EMBEDDINGS_URL = 'embeddings.json';
 
     let _semanticPipeline = null;
     let _semanticModelKey = null;
@@ -2894,9 +2894,9 @@
           if (!q) return;
           const mode = getSafeMode();
           const newUrl = `search.html?q=${encodeURIComponent(q)}&mode=${mode}`;
-          // endsWith は origin が異なる URL に対して誤判定するため pathname+search で比較
-          const newPath = `/physics_notes/search.html?q=${encodeURIComponent(q)}&mode=${mode}`;
-          if (location.pathname + location.search === newPath) { location.reload(); }
+          // origin/パスに依存しないようクエリ文字列だけで同一判定する
+          const newSearch = `?q=${encodeURIComponent(q)}&mode=${mode}`;
+          if (location.search === newSearch) { location.reload(); }
           else { location.href = newUrl; }
         }
       });
@@ -2914,7 +2914,7 @@
       let cachedBM25 = null;
 
       try {
-        const r = await fetch('https://legrs.github.io/physics_notes/q_and_a_data.json', { cache: 'no-cache' });
+        const r = await fetch('q_and_a_data.json', { cache: 'no-cache' });
         if (!r.ok) throw new Error(`データ取得失敗: HTTP ${r.status}`);
         const data = await r.json();
         if (!cachedBM25) cachedBM25 = _buildBM25Index(data);

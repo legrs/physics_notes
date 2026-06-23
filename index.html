@@ -140,7 +140,7 @@
             <button class="mode-btn" data-mode="fast">Fast</button>
             <button class="mode-btn" data-mode="pro">Pro</button>
             <button class="mode-btn" data-mode="ultra">Ultra</button>
-            <a href="https://legrs.github.io/physics_notes/electromagnetism.pdf" target="_blank" rel="noopener"
+            <a href="electromagnetism.pdf" target="_blank" rel="noopener"
                 class="link-btn" style="text-decoration: none;">Note</a>
 
         </div>
@@ -223,7 +223,7 @@
         function goSearch() {
             const query = input.value.trim();
             if (!query) return;
-            const url = `https://legrs.github.io/physics_notes/search.html?q=${encodeURIComponent(query)}&mode=${currentMode}`;
+            const url = `search.html?q=${encodeURIComponent(query)}&mode=${currentMode}`;
             window.location.href = url;
         }
 
