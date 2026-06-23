@@ -1,4 +1,7 @@
-/*
+Apache License
+                           Version 2.0, January 2004
+                        <http://www.apache.org/licenses/>
+
    Copyright 2026 Igarin & Legrs
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,15 +15,3 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-*/
-
-#import "@preview/physica:0.9.5": *
-#import "@preview/unify:0.7.1": *
-#import "@preview/cetz:0.4.2": canvas, draw
-
-#let lined(p1, p2, ..style) = {
-  let (x2, y2) = p2
-  let p2 = (x2 * calc.cos(y2) , x2 * calc.sin(y2))
-  draw.line(p1, p1 + p2, ..style)
-}
-
