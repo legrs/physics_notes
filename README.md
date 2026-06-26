@@ -143,3 +143,7 @@ query.split(" ").every(word => item.search_text.includes(word))
 ---
 
 このルールに従うことで、シンプルな実装でも十分に実用的な検索が可能になります。
+
+くぁｗせｄｒｆｔｇｙふじこｌｐ；＠：「」
+qawsedrftgyhujikolp;@:[]
+
