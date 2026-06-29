@@ -2072,11 +2072,31 @@ $=>$ They have hole of electrons ( positive hole ).
 
 #text(size:10pt)[( なんでこれスイッチングできる？？dificult)]
 
-// npn型トランジスタのベースにからエミッタに電流を流したときなんですけど，
-//p型半導体には常に一定数の電子のホールがないといけないから結局エミッタとコレクタは導通しないんじゃないですか？
+#text(size:10pt)[　(P-N Junctionすると，recombinationがある程度起きて平衡になる．そのときN→Pへの電場が
+発生していて，そのおかげでEmitterからCollectorには電子が移動できない．
+
+その電場をEmitter-Base間の電圧で相殺することで，ポテンシャルの壁が消えて流れるようになる．
+
+ってこと？Emitte-Base間に電流が流れてしまうのは副産物的なもの？
+
+なおBase層が薄いのは，potentialだけじゃ説明できなくて，electron/holeが失われる量を
+
+防ぐため，と理解(あってるのだろうか…))]
+
+#text(size:10pt)[　(ついでに電池というものを「酸化還元の動的平衡」と捉えるべきであると思った
+電流が流れ続けるのをLeChatelierの原理で説明できるし，電圧が発生するのも非常に直感的．教科書を書き換えよう))]
+
 
 
 //amplify
+
+
+= Electric Current and Magnetic Field
+
+== Magnetic Field
+
+
+
 
 
 
@@ -2090,7 +2110,6 @@ $=>$ They have hole of electrons ( positive hole ).
 
 // spacing in equation  :  thin med thick quad wide
 // 保存力 -> id 00018
-
 //#text(size:10pt)[( なんでこれ共有結合できるの？の？？オクテッドソクみたさなひ)]
 
 //高校物理「仕事は保存される」 
