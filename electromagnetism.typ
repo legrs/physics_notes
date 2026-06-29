@@ -2088,6 +2088,12 @@ $=>$ They have hole of electrons ( positive hole ).
 
 #text(size:10pt)[( なんでこれスイッチングできる？？dificult)]
 
+ここで、p型半導体を薄くしたご利益が現れる。
+電子が一度流れると、その後も流れてしまう。
+
+るいじせい＝アナロジー
+
+
 #text(size:10pt)[　(P-N Junctionすると，recombinationがある程度起きて平衡になる．そのときN→Pへの電場が
 発生していて，そのおかげでEmitterからCollectorには電子が移動できない．
 
