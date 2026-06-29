@@ -2084,43 +2084,89 @@ $=>$ They have hole of electrons ( positive hole ).
 ])
 
 
-- Base semiconductor is very thin.
+- Base semiconductor is very thin. これはトランジスタの増幅作用のときに役に立つ。
 
-#text(size:10pt)[( なんでこれスイッチングできる？？dificult)]
+#text(size:10pt)[( なんでこれスイッチングできる？？It's too dificult to understand.)]
 
-ここで、p型半導体を薄くしたご利益が現れる。
-電子が一度流れると、その後も流れてしまう。
+#text(size:10pt)[ここで、baseを薄くしたご利益が現れる。
 
-るいじせい＝アナロジー
+電子が一度流れると、その後も流れてしまう。]
 
 
-#text(size:10pt)[　(P-N Junctionすると，recombinationがある程度起きて平衡になる．そのときN→Pへの電場が
+
+#text(size:10pt)[　(P-N Junctionすると，recombination（再結合）がある程度起きて平衡になる．そのときN→Pへの電場が
 発生していて，そのおかげでEmitterからCollectorには電子が移動できない．
 
 その電場をEmitter-Base間の電圧で相殺することで，ポテンシャルの壁が消えて流れるようになる．
 
-ってこと？Emitte-Base間に電流が流れてしまうのは副産物的なもの？
+ってこと？Emitte-Base間に電流が流れてしまうのは副産物的なもの？ // id 00190
 
 なおBase層が薄いのは，potentialだけじゃ説明できなくて，electron/holeが失われる量を
 
 防ぐため，と理解(あってるのだろうか…))]
 
-#text(size:10pt)[　(ついでに電池というものを「酸化還元の動的平衡」と捉えるべきであると思った
+#text(size:10pt)[　(ついでに電池というものを「酸化還元の動的平衡」と捉えるべきであると思った // なお、これは id 00069 で解決済み。
 電流が流れ続けるのをLeChatelierの原理で説明できるし，電圧が発生するのも非常に直感的．教科書を書き換えよう))]
 
 
 
-//amplify
+//amplifyは、増幅という意味。音楽バンドなどが使うアンプという言葉でよく知られている。
+
+//1学期期末考査の範囲はここまで。
+
+#pagebreak() // ここから別単元。2学期中間考査はここから。
+
+= Electric Current and Magnetic Field 電流と磁場// 教科書P190
+
+== Magnetic Field 磁場 // 教科書P190
+
+- *magnetic charge* - 
+- *magnetic pole* - the term represents *N* and *S*
 
 
-= Electric Current and Magnetic Field
+#align(center,box(width:15cm, height:4cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
 
-== Magnetic Field
+      rect((-3,5),(-2,0),fill:rgb("dddddd"))
+      rect((3,-5),(2,0),fill:rgb("dddddd"))
 
 
+      circle((-2.5,0),radius:0.07,fill:black)
+      line((-2.5,0),(-0.5,0), mark:(end:">", fill:black),stroke:(thickness:0.05))
+      circle(( 2.5,0),radius:0.07,fill:black)
+      line((2.5,0),(0.5,0), mark:(end:">", fill:black),stroke:(thickness:0.05))
+
+      content((-2.5,0.5),text(fill:red)[N])
+      content((2.5,-0.5),text(fill:blue)[S])
+
+      content((-1.5,-0.3),$bold(F)$)
+      content((1.5,-0.3),$bold(F)$)
+
+      line((-2.5,-1.5),(2.5,-1.5), mark:(start:">",end:">", fill:black))
+      line((-2.5,0.2),(-2.5,-1.6))
+      line((2.5,0.2),(2.5,-1.6))
+
+      content((0,-1.7),$bold(r)$)
 
 
+      content((-3.5,0.0),$bold(m_1)$)
+      content((3.5,0.0),$bold(m_2)$)
 
+    })
+  ]
+])
+$
+  bold(F = k_m dot (m_1 m_2) / r^2)
+$
+
+$m_1$,$m_2$ is *magnetic charge*( which means amount of magnetic charge ). //電気の時と同じような式。
+
+// 教科書P191
+
+類似性＝アナロジー // 2026-06-29の名言
+物理においては、同じ式は同じような扱い方ができる。 // id 00198
 
 
 // 陽イオンの振動→高い温度→熱が高いところ(導線)から低いところ(空気)へ伝わる→うわあっつ!! -> id 00129
