@@ -79,6 +79,15 @@ function _generateUUID() {
 }
 
 /* ================================================================
+   UUID 判定（8-4-4-4-12 の16進形式）
+   既に UUID 化済みの ID を移行対象から除外するために使う。
+================================================================ */
+function _isUUID(val) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    .test(String(val ?? '').trim());
+}
+
+/* ================================================================
    インポート（URL から取得）
 ================================================================ */
 function importFromURL() {
@@ -366,6 +375,105 @@ function assignMissingUUIDs() {
 }
 
 /* ================================================================
+   既存の数値 ID を UUID へ一括移行
+
+   - 数値 ID の各行へ新しい UUID を割り当てる。
+   - related 列の参照も同じ対応表で UUID へ置換する。
+   - シートは ID 順に並んでいるとは限らないため、まず全行を読んで
+     「旧ID(正規化) → 新UUID」の対応表を作り、その後で id 列・related 列を
+     一括置換する（位置に依存しない）。
+   - 既に UUID の ID はスキップ（再実行しても二重移行しない）。
+   - 対応表に無い related 参照（既存UUID・他所への参照・欠番）は
+     正規化した値のまま温存する。
+   - 破壊的操作のため実行前に確認ダイアログを出す。
+
+   ※ ID が変わると embeddings.json のキーも変わるため、移行後は
+     必ず Embedding を再生成すること（node scripts/build.js --embed）。
+================================================================ */
+function migrateToUUID() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    ui.alert(`"${SHEET_NAME}" シートが見つかりません。`);
+    return;
+  }
+
+  const idCol  = COLUMNS.indexOf('id') + 1;
+  const relCol = COLUMNS.indexOf('related') + 1;
+  const lastRow = sheet.getLastRow();
+  if (idCol <= 0 || lastRow < 2) {
+    ui.alert('移行対象の行がありません。');
+    return;
+  }
+
+  const resp = ui.alert(
+    'UUID への移行',
+    '既存の数値 ID をすべて UUID へ置き換え、related 参照も連動して書き換えます。\n' +
+    'この操作は元に戻せません。続行しますか？\n\n' +
+    '（移行後は Embedding の再生成が必要です）',
+    ui.ButtonSet.YES_NO
+  );
+  if (resp !== ui.Button.YES) return;
+
+  const n = lastRow - 1;
+
+  // ── 1) 全 id を読み、旧ID(正規化) → 新UUID の対応表を作る ──────────
+  const idValues = sheet.getRange(2, idCol, n, 1).getValues();
+  const idMap = {};            // 正規化済み旧ID -> 新UUID
+  const newIds = new Array(n);  // 書き戻し用（[[uuid], ...]）
+  let migrated = 0, skipped = 0;
+
+  for (let i = 0; i < n; i++) {
+    const norm = _normalizeId(idValues[i][0]);
+    if (norm === '') {            // 空行はそのまま
+      newIds[i] = [''];
+      continue;
+    }
+    if (_isUUID(norm)) {           // 既に UUID ならスキップ
+      newIds[i] = [norm];
+      skipped++;
+      continue;
+    }
+    // 同じ旧IDは同じ UUID に対応させる（related 置換の一貫性のため）
+    if (!idMap[norm]) idMap[norm] = _generateUUID();
+    newIds[i] = [idMap[norm]];
+    migrated++;
+  }
+
+  // ── 2) related 列を対応表で置換 ──────────────────────────────────
+  let newRels = null;
+  if (relCol > 0) {
+    const relValues = sheet.getRange(2, relCol, n, 1).getValues();
+    newRels = relValues.map(([cell]) => {
+      const s = String(cell ?? '');
+      if (s.trim() === '') return [''];
+      const replaced = s.split(SEP)
+        .map(p => p.trim())
+        .filter(Boolean)
+        .map(p => {
+          const norm = _normalizeId(p);
+          return idMap[norm] || norm; // 対応表にあれば UUID、無ければ正規化値を温存
+        });
+      return [replaced.join(SEP)];
+    });
+  }
+
+  // ── 3) 書き戻し（id・related ともテキスト書式で保存）─────────────
+  sheet.getRange(2, idCol, n, 1).setNumberFormat('@').setValues(newIds);
+  if (newRels) {
+    sheet.getRange(2, relCol, n, 1).setNumberFormat('@').setValues(newRels);
+  }
+
+  ui.alert(
+    `✅ ${migrated} 件の数値 ID を UUID へ移行しました` +
+    (skipped ? `（既存 UUID ${skipped} 件はスキップ）` : '') + '。\n' +
+    'related 参照も置換済みです。\n\n' +
+    '⚠️ Embedding の再生成を忘れずに：node scripts/build.js --embed'
+  );
+}
+
+/* ================================================================
    メニュー
 ================================================================ */
 function onOpen() {
@@ -378,5 +486,6 @@ function onOpen() {
     .addItem('🔼 エクスポート → Drive に保存',     'exportToDrive')
     .addSeparator()
     .addItem('🆔 空の ID に UUID を割り当て',      'assignMissingUUIDs')
+    .addItem('🔄 数値 ID を UUID へ一括移行',       'migrateToUUID')
     .addToUi();
 }

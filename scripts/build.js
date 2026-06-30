@@ -120,6 +120,10 @@ async function buildEmbeddings(data) {
     ? JSON.parse(fs.readFileSync(EMBEDDINGS_PATH, 'utf-8'))
     : {};
 
+  // 現在のデータに存在する（正規化済み）ID 集合。
+  // ID 移行（数値 → UUID）後に残る旧キーを掃除するために使う。
+  const validIds = new Set(data.map(item => normalizeId(item.id)));
+
   for (const [key, model] of Object.entries(MODELS)) {
     console.log(`\n📐 ${key}（${model.id}）のEmbeddingを生成中...`);
     const extractor = await pipeline('feature-extraction', model.id, { quantized: true });
@@ -139,7 +143,14 @@ async function buildEmbeddings(data) {
         process.stdout.write(`  ${i + 1}/${data.length} 件完了\r`);
       }
     }
-    console.log(`  ✅ ${key}: ${updated} 件更新`);
+
+    // 現在のデータに無いキー（ID 移行前の旧 ID など）を除去
+    let pruned = 0;
+    for (const k of Object.keys(existing[key])) {
+      if (!validIds.has(k)) { delete existing[key][k]; pruned++; }
+    }
+
+    console.log(`  ✅ ${key}: ${updated} 件更新` + (pruned ? `, ${pruned} 件の旧キーを削除` : ''));
   }
 
   fs.writeFileSync(EMBEDDINGS_PATH, JSON.stringify(existing), 'utf-8');
