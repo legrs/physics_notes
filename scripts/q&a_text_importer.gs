@@ -88,18 +88,48 @@ function importFromURL() {
 }
 
 /* ================================================================
-   インポート（"json_input" シートの A1 セルから取得）
+   インポート（"json_input" シートの A 列から取得）
+
+   エクスポート（exportToSheet）は JSON を改行ごとに 1 行 1 セルへ
+   分割して書き出す。JSON が大きくなり 1 セルの文字数上限
+   （約 50,000 文字）を超えても扱えるようにするためで、インポートも
+   同じ形式に合わせる。
+     - A 列の各セル = JSON の 1 行
+     - これらを改行で結合して元の JSON 文字列を復元する
+   後方互換：A1 セルに JSON 全体を貼り付けた従来形式も、結合後に
+   そのままパースできるため引き続き動作する。
 ================================================================ */
 function importFromPaste() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const inputSheet = ss.getSheetByName('json_input');
   if (!inputSheet) {
     SpreadsheetApp.getUi().alert(
-      '"json_input" という名前のシートを作り、A1 セルにJSONを貼り付けてください。'
+      '"json_input" という名前のシートを作り、A 列にJSONを貼り付けてください。'
     );
     return;
   }
-  const data = JSON.parse(inputSheet.getRange('A1').getValue());
+
+  const lastRow = inputSheet.getLastRow();
+  if (lastRow < 1) {
+    SpreadsheetApp.getUi().alert('"json_input" シートが空です。');
+    return;
+  }
+
+  // A 列を上から全行取得し、改行で結合して JSON 文字列を復元する
+  const lines = inputSheet.getRange(1, 1, lastRow, 1).getValues();
+  const text = lines.map(row => String(row[0] ?? '')).join('\n');
+
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    SpreadsheetApp.getUi().alert(
+      'JSON の解析に失敗しました。"json_input" シートの A 列に、' +
+      'エクスポート時と同じ形式（1 行 1 セル）で貼り付けてください。\n\n' +
+      e.message
+    );
+    return;
+  }
   _populateSheet(data);
 }
 
