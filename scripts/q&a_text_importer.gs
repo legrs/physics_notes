@@ -20,6 +20,14 @@
 //   - 'category'  列を追加（例: "力学", "電磁気学", "熱力学"）
 //   - 'difficulty' 列を追加（例: "基礎", "標準", "発展"）
 //
+// 変更点（Phase 1）: ID の正規化
+//   - 数値 ID は先頭ゼロを付けない正規形で扱う（"00001" → "1"）。
+//     規模拡大に伴う桁数固定（5桁）の制約を撤廃する。
+//   - ID は数値とは限らない前提で実装する。UUID 等の非数値 ID は
+//     そのまま保持する（_normalizeId が数値判定で分岐）。
+//   - 番号を意識せず項目を追加できるよう、空の id セルへ UUID を
+//     一括付与する assignMissingUUIDs() を用意した（メニューから実行）。
+//
 // ============================================================
 
 const SHEET_NAME   = 'q_and_a_data';
@@ -40,6 +48,35 @@ const COLUMNS = [
 const JSON_URL   = 'https://raw.githubusercontent.com/legrs/physics_notes/refs/heads/master/q_and_a_data.json';
 const FILE_NAME  = 'q_and_a_data.json';
 const DRIVE_PATH = 'おべんきょ/legrs_physics_notes';
+
+/* ================================================================
+   ID 正規化（インポート／エクスポート共通）
+
+   保存形式（ゼロ埋めの有無、数値型かテキスト型か）に依存せず、
+   常に「正規形」の文字列 ID を返す。これが ID 操作の唯一の入口で
+   あり、検索側（search.html / build.js）も同じ規則で正規化する。
+
+     - 数値 ID         : 先頭ゼロを除去（"00001" → "1", 1.0 → "1"）
+     - UUID 等の非数値 : トリムのみ。そのまま保持（将来の UUID 移行用）
+     - 空              : "" を返す
+================================================================ */
+function _normalizeId(val) {
+  const s = String(val ?? '').trim();
+  if (s === '') return '';
+  // 純粋な数値文字列: 先頭ゼロを除去（少なくとも1桁は残す）
+  if (/^\d+$/.test(s)) return s.replace(/^0+(?=\d)/, '');
+  // スプレッドシートが数値として保持し "1.0" 等になった場合の整数化
+  if (/^\d+\.0+$/.test(s)) return s.replace(/\.0+$/, '');
+  // UUID 等の非数値 ID はそのまま（将来 UUID を導入してもコード変更不要）
+  return s;
+}
+
+/* ================================================================
+   UUID 生成（将来の UUID 運用向けヘルパー）
+================================================================ */
+function _generateUUID() {
+  return Utilities.getUuid();
+}
 
 /* ================================================================
    インポート（URL から取得）
@@ -83,7 +120,13 @@ function _populateSheet(data) {
 
   const rows = data.map(item =>
     COLUMNS.map(col => {
-      const val = item[col];
+      let val = item[col];
+      // id 列・related 列は正規形（先頭ゼロなし／UUIDはそのまま）で取り込む
+      if (col === 'id') {
+        val = _normalizeId(val);
+      } else if (col === 'related' && Array.isArray(val)) {
+        val = val.map(_normalizeId);
+      }
       if (Array.isArray(val)) {
         const joined = val.join(SEP);
         return joined.startsWith("'") ? "'" + joined : joined;
@@ -93,10 +136,15 @@ function _populateSheet(data) {
     })
   );
 
-  const relatedColIdx = COLUMNS.indexOf('related') + 1;
-  if (relatedColIdx > 0) {
-    sheet.getRange(2, relatedColIdx, Math.max(rows.length, 1), 1).setNumberFormat('@');
-  }
+  // id 列・related 列はテキスト書式にして、Sheets による数値化
+  // （先頭ゼロの消失や UUID の破損）を防ぐ
+  const textCols = ['id', 'related'];
+  textCols.forEach(col => {
+    const idx = COLUMNS.indexOf(col) + 1;
+    if (idx > 0) {
+      sheet.getRange(2, idx, Math.max(rows.length, 1), 1).setNumberFormat('@');
+    }
+  });
 
   if (rows.length > 0) {
     sheet.getRange(2, 1, rows.length, COLUMNS.length).setValues(rows);
@@ -176,13 +224,12 @@ function _buildJSON() {
         let val = row[j];
         if (ARRAY_FIELDS.includes(col)) {
           const arr = val ? String(val).split(SEP).map(s => s.trim()).filter(Boolean) : [];
-          item[col] = col === 'related'
-            ? arr.map(s => /^\d+$/.test(s) ? s.padStart(5, '0') : s)
-            : arr;
+          // related も id と同じ規則で正規化（先頭ゼロなし／UUIDはそのまま）
+          item[col] = col === 'related' ? arr.map(_normalizeId) : arr;
         } else if (col === 'priority') {
           item[col] = Number(val) || 0;
         } else if (col === 'id') {
-          item[col] = String(Math.floor(Number(val))).padStart(5, '0');
+          item[col] = _normalizeId(val);
         } else {
           item[col] = val instanceof Date ? _formatDate(val) : String(val ?? '');
         }
@@ -253,6 +300,42 @@ function _getOrCreateFolder(path_) {
 }
 
 /* ================================================================
+   空の id セルに UUID を一括付与
+
+   「番号を気にせず項目を追加する」運用を可能にするための補助。
+   id 列が空の行へ UUID を割り当て、テキスト書式で保存する。
+   既存の数値 ID はそのまま残るため、数値運用と UUID 運用を併用できる。
+================================================================ */
+function assignMissingUUIDs() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    SpreadsheetApp.getUi().alert(`"${SHEET_NAME}" シートが見つかりません。`);
+    return;
+  }
+
+  const idCol = COLUMNS.indexOf('id') + 1;
+  const lastRow = sheet.getLastRow();
+  if (idCol <= 0 || lastRow < 2) {
+    SpreadsheetApp.getUi().alert('対象となる行がありません。');
+    return;
+  }
+
+  const range = sheet.getRange(2, idCol, lastRow - 1, 1);
+  const values = range.getValues();
+  let filled = 0;
+  for (let i = 0; i < values.length; i++) {
+    if (String(values[i][0]).trim() === '') {
+      values[i][0] = _generateUUID();
+      filled++;
+    }
+  }
+
+  range.setNumberFormat('@').setValues(values);
+  SpreadsheetApp.getUi().alert(`✅ ${filled} 件の空 ID に UUID を割り当てました。`);
+}
+
+/* ================================================================
    メニュー
 ================================================================ */
 function onOpen() {
@@ -263,5 +346,7 @@ function onOpen() {
     .addSeparator()
     .addItem('🔼 エクスポート → シートに書き出し', 'exportToSheet')
     .addItem('🔼 エクスポート → Drive に保存',     'exportToDrive')
+    .addSeparator()
+    .addItem('🆔 空の ID に UUID を割り当て',      'assignMissingUUIDs')
     .addToUi();
 }

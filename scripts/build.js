@@ -40,6 +40,17 @@ const MODELS = {
   large: { id: 'Xenova/multilingual-e5-large' },
 };
 
+// ── ID 正規化 ───────────────────────────────────────────────
+// search.html / q&a_text_importer.gs と同じ規則。
+// 数値 ID は先頭ゼロを除去（"00001" → "1"）、UUID 等の非数値 ID は
+// そのまま返す（将来の UUID 移行に対応）。embeddings のキーを正規形に
+// そろえることで、保存形式に依存せず検索側と一致させる。
+function normalizeId(id) {
+  if (id == null) return '';
+  const s = String(id).trim();
+  return /^\d+$/.test(s) ? s.replace(/^0+(?=\d)/, '') : s;
+}
+
 // ── LaTeX 除去 ──────────────────────────────────────────────
 function stripLatex(str) {
   return str
@@ -121,7 +132,7 @@ async function buildEmbeddings(data) {
 
       const text = `passage: ${item.questions[0]} ${item.description}`;
       const out = await extractor(text, { pooling: 'mean', normalize: true });
-      existing[key][item.id] = Array.from(out.data);
+      existing[key][normalizeId(item.id)] = Array.from(out.data);
       updated++;
 
       if ((i + 1) % 10 === 0 || i === data.length - 1) {

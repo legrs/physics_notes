@@ -2215,6 +2215,39 @@
     let isStreaming = false, streamTimer = null, isUserScrolling = false;
     let allData = null; // fetch後にキャッシュ
 
+    // ── ID 正規化 ───────────────────────────────────────────────
+    // データ・related・embeddings のキーを保存形式に依存せず統一する。
+    // 数値 ID は先頭ゼロを除去（"00001" → "1"）、UUID 等の非数値 ID は
+    // そのまま返す（将来の UUID 移行を見据えた設計）。
+    // .gs / build.js と同じ規則。ID 比較は必ずこの正規形で行う。
+    function normalizeId(id) {
+      if (id == null) return '';
+      const s = String(id).trim();
+      return /^\d+$/.test(s) ? s.replace(/^0+(?=\d)/, '') : s;
+    }
+
+    // データ配列の id・related をその場で正規化する
+    function normalizeData(data) {
+      data.forEach(item => {
+        item.id = normalizeId(item.id);
+        if (Array.isArray(item.related)) item.related = item.related.map(normalizeId);
+      });
+      return data;
+    }
+
+    // embeddings のトップレベル（モデル別）キーを正規化して詰め替える
+    function normalizeEmbeddings(emb) {
+      if (!emb) return emb;
+      for (const modelKey of Object.keys(emb)) {
+        const src = emb[modelKey];
+        if (!src || typeof src !== 'object') continue;
+        const remapped = {};
+        for (const k of Object.keys(src)) remapped[normalizeId(k)] = src[k];
+        emb[modelKey] = remapped;
+      }
+      return emb;
+    }
+
     modalBody.addEventListener('wheel', () => { if (isStreaming) isUserScrolling = true; }, { passive: true });
     modalBody.addEventListener('touchstart', () => { if (isStreaming) isUserScrolling = true; }, { passive: true });
     modalBody.addEventListener('scroll', () => {
@@ -2680,7 +2713,7 @@
           const buf = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
           let offset = 0;
           for (const chunk of chunks) { buf.set(chunk, offset); offset += chunk.length; }
-          _embeddingsData = JSON.parse(new TextDecoder().decode(buf));
+          _embeddingsData = normalizeEmbeddings(JSON.parse(new TextDecoder().decode(buf)));
         }
 
         statusEl.classList.remove('visible');
@@ -2916,7 +2949,7 @@
       try {
         const r = await fetch('q_and_a_data.json', { cache: 'no-cache' });
         if (!r.ok) throw new Error(`データ取得失敗: HTTP ${r.status}`);
-        const data = await r.json();
+        const data = normalizeData(await r.json());
         if (!cachedBM25) cachedBM25 = _buildBM25Index(data);
         allData = data;
         buildFilterBar(data);

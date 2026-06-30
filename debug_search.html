@@ -630,6 +630,32 @@
     let semanticPipeline = null;
     let semanticModelKey = null;
 
+    // ── ID 正規化（search.html / build.js / .gs と同じ規則）────────────
+    // 数値 ID は先頭ゼロを除去（"00001" → "1"）、UUID 等はそのまま返す。
+    function normalizeId(id) {
+      if (id == null) return '';
+      const s = String(id).trim();
+      return /^\d+$/.test(s) ? s.replace(/^0+(?=\d)/, '') : s;
+    }
+    function normalizeData(data) {
+      data.forEach(item => {
+        item.id = normalizeId(item.id);
+        if (Array.isArray(item.related)) item.related = item.related.map(normalizeId);
+      });
+      return data;
+    }
+    function normalizeEmbeddings(emb) {
+      if (!emb) return emb;
+      for (const modelKey of Object.keys(emb)) {
+        const src = emb[modelKey];
+        if (!src || typeof src !== 'object') continue;
+        const remapped = {};
+        for (const k of Object.keys(src)) remapped[normalizeId(k)] = src[k];
+        emb[modelKey] = remapped;
+      }
+      return emb;
+    }
+
     const EMBEDDINGS_URL = 'embeddings.json';
     const DATA_URL = 'q_and_a_data.json';
     const SEMANTIC_MODELS = {
@@ -966,7 +992,7 @@
         if (!embeddingsData) {
           showStatus('Embeddingデータを取得中…');
           const res = await fetch(EMBEDDINGS_URL);
-          embeddingsData = await res.json();
+          embeddingsData = normalizeEmbeddings(await res.json());
         }
 
         hideStatus();
@@ -1256,7 +1282,7 @@
       showStatus('Q&Aデータを読み込み中…');
       try {
         const r = await fetch(DATA_URL, { cache: 'no-cache' });
-        allData = await r.json();
+        allData = normalizeData(await r.json());
         hideStatus();
 
         // If URL has ?q=..., auto-run
