@@ -17,7 +17,7 @@
 #import "@preview/physica:0.9.5": *
 #import "@preview/unify:0.7.1": *
 #import "@preview/cetz:0.4.2"
-#import "phy.typ": lined
+#import "phy.typ": drawc_t, drawc
 
 #set page(
   paper: "a4",
@@ -2180,31 +2180,24 @@ $m_1$,$m_2$ is *magnetic charge*.
 
       ortho(x:30deg, y:150deg,{
         let AXIS_LENGTH = 2.5
-        //line((0, 0, 0), (AXIS_LENGTH, 0, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "x-axis")
-        //line((0, 0, 0), (0, AXIS_LENGTH, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "y-axis")
-        //line((0, 0, 0), (0, 0, AXIS_LENGTH), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "z-axis")
-        //content("x-axis.end", [$x$], anchor: "west")
-        //content("y-axis.end", [$y$], anchor: "south")
-        //content("z-axis.end", [$z$], anchor: "north-east")
 
-        line((0,0,-3),(0,0,3),mark:(end:">",fill:black),stroke:(thickness:0.1))
-        content((0,-0.7,2),$bold(I)$)
+        line((0,0,-3),(0,0,3),mark:(end:">",fill:red),stroke:(paint:red,thickness:0.1))
+        content((0,-0.7,2),text(fill:red)[$bold(I)$])
 
-        let drawc(r)={
-          circle((0,0,0),radius:r)
-          line((-0.1,-r,0),(0.1,-r,0),mark:(end:">",fill:black))
-          line((0.1,r,0),(-0.1,r,0),mark:(end:">",fill:black))
-          line((r,-0.1,0),(r,0.1,0),mark:(end:">",fill:black))
-          line((-r,0.1,0),(-r,-0.1,0),mark:(end:">",fill:black))
-        }
+        line((0,0,-3),(0,0,-0.05),stroke:(paint:red,thickness:0.1))
 
-        drawc(0.1)
-        drawc(0.2)
-        drawc(0.4)
-        drawc(0.8)
-        drawc(1.6)
-        drawc(3.6)
+        drawc((0,0,0),0.1,(0,180deg,0),blue,0.04)
+        drawc((0,0,0),0.2,(0,180deg,0),blue,0.04)
+        drawc((0,0,0),0.4,(0,180deg,0),blue,0.04)
+        drawc((0,0,0),0.8,(0,180deg,0),blue,0.04)
+        drawc((0,0,0),1.6,(0,180deg,0),blue,0.04)
+        drawc((0,0,0),3.6,(0,180deg,0),blue,0.04)
 
+        line((0,0,0),(-2,1,0),mark:(start:">",end:">",fill:black))
+        content((-1.0,1.0,0),$bold(r)$)
+        content((-2,1,0),text(fill:blue)[・])
+        line((-2,1,0),(-2 - 1, 1 - 2,0),mark:(end:">",fill:blue),stroke:(paint:blue,thickness:0.1))
+        content((-2.1,0,0),text(fill:blue)[$bold(H)$])
 
       })
     })
@@ -2232,32 +2225,24 @@ $"[N/Wb]"$ = $"[A/m]"$
         //content("y-axis.end", [$y$], anchor: "south")
         //content("z-axis.end", [$z$], anchor: "north-east")
 
-
-        let drawc(p,r,q)={
-          group({
-            let (r_x,r_y,r_z) = q
-            rotate(x:r_x,y:r_y,z:r_z)
-            translate(p)
-            circle((0,0,0),radius:r)
-            line((-0.1,-r,0),(0.1,-r,0),mark:(end:">",fill:black))
-            line((0.1,r,0),(-0.1,r,0),mark:(end:">",fill:black))
-            line((r,-0.1,0),(r,0.1,0),mark:(end:">",fill:black))
-            line((-r,0.1,0),(-r,-0.1,0),mark:(end:">",fill:black))
-          })
-        }
-        let drawc_t(r)={
-          circle((0,0,0),radius:r,stroke:(thickness:0.1))
-          line((-0.1,-r,0),(0.1,-r,0),mark:(end:">",fill:black),stroke:(thickness:0.1))
-          line((0.1,r,0),(-0.1,r,0),mark:(end:">",fill:black),stroke:(thickness:0.1))
-          line((r,-0.1,0),(r,0.1,0),mark:(end:">",fill:black),stroke:(thickness:0.1))
-          line((-r,0.1,0),(-r,-0.1,0),mark:(end:">",fill:black),stroke:(thickness:0.1))
+        drawc((0,0,0),2,(0,180deg,0),red,0.1)
+        let angl = 60deg
+        drawc((0,2,0),0.2,(angl,90deg,0),blue,0.04)
+        drawc((0,2,0),0.4,(angl,90deg,0),blue,0.04)
+        drawc((0,2,0),1.0,(angl,90deg,0),blue,0.04)
+        for i in range(3){
+          angl += 90deg
+          drawc((0,2,0),0.2,(angl,90deg,0),blue,0.04)
+          drawc((0,2,0),0.4,(angl,90deg,0),blue,0.04)
+          drawc((0,2,0),1.0,(angl,90deg,0),blue,0.04)
         }
 
-        drawc_t(2)
-        drawc((0,2,0),0.4,(0,90,0))
+        line((0,0,-3),(0,0,3),mark:(end:">",fill:blue),stroke:(paint:blue,thickness:0.1))
+        content((0,2.5,0),text(fill:red)[$bold(I)$])
 
-        line((0,0,-3),(0,0,3),mark:(end:">",fill:black))
-        content((0,2.5,0),$bold(I)$)
+        line((-2,0,0),(0,0,0),mark:(start:">",end:">",fill:black))
+        content((-1,0.3,0),$bold(r)$)
+        content((-0.2,0.2,1),text(fill:blue)[$bold(H)$])
 
       })
     })
@@ -2267,8 +2252,73 @@ $"[N/Wb]"$ = $"[A/m]"$
 $
   bold(H = I / (2 r))
 $
+#text(size:10pt)[( さすがにこの相互作用の説明はされないのか…)]
 
-// ここから教科書P191
+#align(center,box(width:15cm, height:5cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      ortho(x:30deg, y:150deg,{
+        let AXIS_LENGTH = 2.5
+        //line((0, 0, 0), (AXIS_LENGTH, 0, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "x-axis")
+        //line((0, 0, 0), (0, AXIS_LENGTH, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "y-axis")
+        //line((0, 0, 0), (0, 0, AXIS_LENGTH), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "z-axis")
+        //content("x-axis.end", [$x$], anchor: "west")
+        //content("y-axis.end", [$y$], anchor: "south")
+        //content("z-axis.end", [$z$], anchor: "north-east")
+
+        drawc((0,0,0),2,(0,180deg,0),red,0.1)
+        let angl = 60deg
+        drawc((0,2,0),0.2,(angl,90deg,0),blue,0.04)
+        drawc((0,2,0),0.4,(angl,90deg,0),blue,0.04)
+        drawc((0,2,0),1.0,(angl,90deg,0),blue,0.04)
+        for i in range(3){
+          angl += 90deg
+          drawc((0,2,0),0.2,(angl,90deg,0),blue,0.04)
+          drawc((0,2,0),0.4,(angl,90deg,0),blue,0.04)
+          drawc((0,2,0),1.0,(angl,90deg,0),blue,0.04)
+        }
+
+        line((0,0,-3),(0,0,3),mark:(end:">",fill:blue),stroke:(paint:blue,thickness:0.1))
+        content((0,2.5,0),text(fill:red)[$bold(I)$])
+
+        line((-2,0,0),(0,0,0),mark:(start:">",end:">",fill:black))
+        content((-1,0.3,0),$bold(r)$)
+        content((-0.2,0.2,1),text(fill:blue)[$bold(H)$])
+
+      })
+    })
+  ]
+])
+
+=== Force
+
+#align(center,box(width:15cm, height:5cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      ortho(x:-70deg, y:-00deg,z:-20deg,{
+        //let AXIS_LENGTH = 2.5
+        //line((0, 0, 0), (AXIS_LENGTH, 0, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "x-axis")
+        //line((0, 0, 0), (0, AXIS_LENGTH, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "y-axis")
+        //line((0, 0, 0), (0, 0, AXIS_LENGTH), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "z-axis")
+        //content("x-axis.end", [$x$], anchor: "west")
+        //content("y-axis.end", [$y$], anchor: "south")
+        //content("z-axis.end", [$z$], anchor: "north-east")
+
+        line((0,0,0),(2,0.5,0),mark:(end:">",fill:red),stroke:(paint:red))
+        line((0,0,0),(0,2,0),mark:(end:">",fill:blue),stroke:(paint:blue))
+        line((0,0,0),(0,0,3),mark:(end:">",fill:black))
+
+      })
+    })
+  ]
+])
+$
+  bb(F) = bb(I) times bb(B) dot l
+$
 
 //類似性＝アナロジー // 2026-06-29の名言
 //物理においては、同じ式は同じような扱い方ができる。 // id ce63c80b-db29-4d48-a21a-d900ac79b7ed
