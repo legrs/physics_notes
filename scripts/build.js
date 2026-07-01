@@ -78,13 +78,17 @@ function getReading(tokenizer, text) {
 // BM25はスペース区切りのトークン単位で動作するため、
 // 句読点などを除いた形態素（surface_form）も個別に追加する
 function buildSearchText(tokenizer, item) {
+  // category は複数割り当て可（配列）。旧データの文字列形式にも後方互換で対応する。
+  const categories = Array.isArray(item.category)
+    ? item.category
+    : (item.category ? [item.category] : []);
   const fields = [
     ...(item.questions || []),
     item.answer || '',
     item.description || '',
     ...(item.keywords || []),
     ...(item.synonyms || []),
-    item.category || '',
+    ...categories,
   ];
   const cleaned = fields.map(s => stripLatex(String(s))).filter(Boolean).join(' ');
 

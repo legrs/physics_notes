@@ -2227,10 +2227,19 @@
     }
 
     // データ配列の id・related をその場で正規化する
+    // category は複数割り当て可（配列）。旧データの文字列形式や " | " 区切り文字列にも
+    // 後方互換で対応し、常に空でない文字列の配列へ正規化する。
+    function normalizeCategory(cat) {
+      if (Array.isArray(cat)) return cat.map(c => String(c).trim()).filter(Boolean);
+      if (cat == null) return [];
+      return String(cat).split('|').map(c => c.trim()).filter(Boolean);
+    }
+
     function normalizeData(data) {
       data.forEach(item => {
         item.id = normalizeId(item.id);
         if (Array.isArray(item.related)) item.related = item.related.map(normalizeId);
+        item.category = normalizeCategory(item.category);
       });
       return data;
     }
@@ -2783,7 +2792,7 @@
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
             <span class="suggest-text">${item.label}</span>
-            ${item.category ? `<span class="suggest-cat">${item.category}</span>` : ''}
+            ${item.category ? `<span class="suggest-cat">${escHtml(item.category)}</span>` : ''}
           </div>`).join('');
         suggestBox.style.display = 'block';
         suggestBox.querySelectorAll('.suggest-item').forEach(el => {
@@ -2821,7 +2830,7 @@
               const label = idx >= 0
                 ? `${escHtml(q.slice(0, idx))}<mark>${escHtml(q.slice(idx, idx + v.length))}</mark>${escHtml(q.slice(idx + v.length))}`
                 : escHtml(q);
-              items.push({ q, label, category: item.category || '' });
+              items.push({ q, label, category: (item.category || []).join(' / ') });
             }
           });
         });
@@ -2847,9 +2856,11 @@
       let activeDifficulty = null;
       const DIFF_LABEL = { '1': '基礎', '2': '標準', '3': '発展' };
 
-      function buildFilterBar(data) {
-        const cats = [...new Set(data.map(d => d.category).filter(Boolean))].sort();
-        const diffs = [...new Set(data.map(d => String(d.difficulty || '')).filter(d => d && DIFF_LABEL[d]))];
+      // 検索結果（items）に実際に含まれるカテゴリ／難易度だけでフィルターバーを構成する。
+      // これにより、1 件も引っかからなかったカテゴリのボタンは表示されない。
+      function buildFilterBar(items) {
+        const cats = [...new Set(items.flatMap(d => d.category || []).filter(Boolean))].sort();
+        const diffs = [...new Set(items.map(d => String(d.difficulty || '')).filter(d => d && DIFF_LABEL[d]))];
         diffs.sort();
         if (!cats.length && !diffs.length) return;
 
@@ -2889,9 +2900,9 @@
 
       function applyFilters() {
         document.querySelectorAll('.result').forEach(el => {
-          const cat = el.dataset.category || '';
+          const cats = (el.dataset.category || '').split('').filter(Boolean);
           const diff = el.dataset.difficulty || '';
-          const catOk = !activeCategory || cat === activeCategory;
+          const catOk = !activeCategory || cats.includes(activeCategory);
           const diffOk = !activeDifficulty || diff === activeDifficulty;
           el.style.display = catOk && diffOk ? '' : 'none';
         });
@@ -2952,7 +2963,6 @@
         const data = normalizeData(await r.json());
         if (!cachedBM25) cachedBM25 = _buildBM25Index(data);
         allData = data;
-        buildFilterBar(data);
 
         const { words, expanded } = _expandQuery(query);
         let bm25Results = _getCandidates(cachedBM25, data, expanded)
@@ -2990,6 +3000,9 @@
               .filter(Boolean);
           }
         }
+
+        // フィルターバーは実際の検索結果に含まれるカテゴリ／難易度だけで構成する
+        buildFilterBar(results);
 
         aiBox.innerHTML = '';
         resultsBox.innerHTML = '';
@@ -3152,7 +3165,7 @@
         results.forEach(item => {
           const el = document.createElement('div');
           el.className = 'result';
-          el.dataset.category = item.category || '';
+          el.dataset.category = (item.category || []).join('');
           el.dataset.difficulty = String(item.difficulty || '');
           el.setAttribute('tabindex', '0');
           el.setAttribute('role', 'button');

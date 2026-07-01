@@ -18,6 +18,8 @@
 //
 // 変更点（Phase 0）:
 //   - 'category'  列を追加（例: "力学", "電磁気学", "熱力学"）
+//     ※ 複数割り当て可。1 つのセルに " | " 区切りで並べる（例: "静電気 | 電流"）。
+//        配列フィールド（ARRAY_FIELDS）として扱われ、JSON では文字列配列になる。
 //   - 'difficulty' 列を追加（例: "基礎", "標準", "発展"）
 //
 // 変更点（Phase 1）: ID の正規化
@@ -32,7 +34,10 @@
 
 const SHEET_NAME   = 'q_and_a_data';
 const SEP          = ' | ';
-const ARRAY_FIELDS = ['questions', 'keywords', 'synonyms', 'related'];
+// category も複数割り当て可能にする（例: "静電気 | 電流"）。
+// keywords / synonyms / related と同じく SEP 区切りの配列フィールドとして扱い、
+// インポート時はセルへ結合、エクスポート時は配列へ分割する。
+const ARRAY_FIELDS = ['questions', 'keywords', 'synonyms', 'related', 'category'];
 
 // ★ search_text はビルドスクリプトが自動生成するが、
 //    インポート時に保持・エクスポート時に引き継ぐため COLUMNS に含める

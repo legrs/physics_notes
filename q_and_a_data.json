@@ -13,7 +13,7 @@
         "synonyms": [
             "physics"
         ],
-        "category": "",
+        "category": [],
         "difficulty": "1",
         "priority": 2,
         "related": [
@@ -46,7 +46,7 @@
             "force",
             "mechanics"
         ],
-        "category": "",
+        "category": [],
         "difficulty": "2",
         "priority": 2,
         "related": [
@@ -88,7 +88,9 @@
             "potential energy",
             "electric potential"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 3,
         "related": [
@@ -119,7 +121,9 @@
             "integration",
             "baumkuchen integration"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -147,7 +151,9 @@
             "spherical trigonometry",
             "integration"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -177,7 +183,9 @@
             "equation of motion",
             "conservative force"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -204,7 +212,9 @@
             "potential energy",
             "work"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -233,7 +243,9 @@
             "potential",
             "electric potential"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 3,
         "related": [
@@ -262,7 +274,9 @@
             "integration",
             "work"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -293,7 +307,9 @@
             "electric field",
             "gradient"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 3,
         "related": [
@@ -323,7 +339,9 @@
             "electric field line",
             "orthogonal"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -349,7 +367,9 @@
             "positive charge",
             "hole"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 3,
         "related": [],
@@ -376,7 +396,9 @@
             "electric potential",
             "universal gravitation"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -403,7 +425,9 @@
             "scalar",
             "joule"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -430,7 +454,9 @@
             "repulsion",
             "Coulomb force"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 1,
         "related": [],
@@ -453,7 +479,9 @@
             "energy",
             "work"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 3,
         "related": [
@@ -481,7 +509,9 @@
             "conservation of mechanical energy",
             "conservative force"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -508,7 +538,9 @@
             "conservative force",
             "path independent"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -537,7 +569,9 @@
             "electric field",
             "surface charge"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -567,7 +601,9 @@
             "free electron",
             "equipotential"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -593,7 +629,9 @@
             "velocity",
             "conservation of energy"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -620,7 +658,9 @@
             "potential energy",
             "kinetic energy"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 1,
         "related": [
@@ -649,7 +689,9 @@
             "conductor",
             "perpendicular"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -679,7 +721,9 @@
             "electron",
             "electroscope"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -708,7 +752,9 @@
             "earth",
             "conductor"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -737,7 +783,9 @@
             "ground wire",
             "static electricity"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -764,7 +812,9 @@
             "shelter",
             "car"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 1,
         "related": [
@@ -796,7 +846,9 @@
             "electrostatic shielding",
             "Faraday cage"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -825,7 +877,9 @@
             "equation of motion",
             "Newton's second law"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 3,
         "related": [
@@ -856,7 +910,9 @@
         "synonyms": [
             "conservation of mechanical energy"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 3,
         "related": [
@@ -889,7 +945,9 @@
             "conservation of momentum",
             "coefficient of restitution"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 3,
         "related": [
@@ -918,7 +976,9 @@
         "synonyms": [
             "Coulomb's law"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 3,
         "related": [
@@ -951,7 +1011,9 @@
             "Faraday's law",
             "Lenz's law"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 3,
         "related": [
@@ -980,7 +1042,9 @@
         "synonyms": [
             "simple harmonic motion"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1011,7 +1075,9 @@
             "capacitor",
             "capacitance"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1038,7 +1104,9 @@
         "synonyms": [
             "first law of thermodynamics"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 3,
         "related": [
@@ -1068,7 +1136,9 @@
             "wavelength",
             "frequency"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1097,7 +1167,9 @@
         "synonyms": [
             "Doppler effect"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1124,7 +1196,9 @@
             "Young's double slit experiment",
             "interference"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1152,7 +1226,9 @@
         "synonyms": [
             "Lorentz force"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1180,7 +1256,9 @@
         "synonyms": [
             "kinetic theory of gases"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1210,7 +1288,9 @@
             "photoelectric effect",
             "work function"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1238,7 +1318,9 @@
         "synonyms": [
             "Bohr model"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1267,7 +1349,9 @@
             "circular motion",
             "centripetal force"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1298,7 +1382,9 @@
             "universal gravitation",
             "Kepler's laws"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1326,7 +1412,9 @@
         "synonyms": [
             "Kirchhoff's circuit laws"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1354,7 +1442,9 @@
             "Snell's law",
             "refraction"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1382,7 +1472,9 @@
             "mass defect",
             "binding energy"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1412,7 +1504,9 @@
             "charging",
             "electron"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1438,7 +1532,9 @@
             "capacitor",
             "discharge"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1466,7 +1562,9 @@
             "equilibrium",
             "voltage"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1494,7 +1592,9 @@
             "electric field",
             "voltage"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1521,7 +1621,9 @@
             "condenser",
             "etymology"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 1,
         "related": [
@@ -1550,7 +1652,9 @@
             "electric flux",
             "Gauss law"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1579,7 +1683,9 @@
             "capacitance",
             "electric capacity"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1606,7 +1712,9 @@
             "capacitance",
             "capacitor"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1635,7 +1743,9 @@
             "charging",
             "battery"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1663,7 +1773,9 @@
             "dielectric",
             "capacitance"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1693,7 +1805,9 @@
             "polarization",
             "capacitance"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1720,7 +1834,9 @@
             "lead acid battery",
             "battery"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1748,7 +1864,9 @@
             "parallel connection",
             "voltage"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1777,7 +1895,9 @@
             "equipotential",
             "electric field"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1807,7 +1927,9 @@
             "parallel",
             "capacitance"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1835,7 +1957,9 @@
             "capacitor",
             "series connection"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1864,7 +1988,9 @@
             "image formula",
             "optics"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1893,7 +2019,9 @@
             "conductor",
             "series"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1922,7 +2050,9 @@
             "series",
             "withstanding voltage"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1951,7 +2081,9 @@
             "energy",
             "battery"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -1980,7 +2112,9 @@
             "electrochemical cell",
             "redox"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 3,
         "related": [
@@ -2010,7 +2144,9 @@
             "oxidation",
             "reduction"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -2037,7 +2173,9 @@
             "redox",
             "electron transfer"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -2066,7 +2204,9 @@
             "work",
             "potential"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -2096,7 +2236,9 @@
             "electrostatic energy",
             "Joule heat"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -2127,7 +2269,9 @@
             "potential",
             "capacitor"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -2156,7 +2300,9 @@
             "capacitor",
             "integration"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -2185,7 +2331,9 @@
             "EMF",
             "electromotive force"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -2215,7 +2363,9 @@
             "charging",
             "Joule heat"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -2244,7 +2394,9 @@
             "energy",
             "electric field"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -2274,7 +2426,9 @@
             "field concept",
             "Coulomb"
         ],
-        "category": "静電気",
+        "category": [
+            "静電気"
+        ],
         "difficulty": "",
         "priority": 3,
         "related": [
@@ -2295,7 +2449,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2312,7 +2468,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2329,7 +2487,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2346,7 +2506,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2363,7 +2525,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2380,7 +2544,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2397,7 +2563,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2414,7 +2582,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2431,7 +2601,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2449,7 +2621,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2466,7 +2640,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2483,7 +2659,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2500,7 +2678,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2517,7 +2697,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2534,7 +2716,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2551,7 +2735,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2568,7 +2754,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2585,7 +2773,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2602,7 +2792,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2619,7 +2811,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2636,7 +2830,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2653,7 +2849,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2670,7 +2868,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2687,7 +2887,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2704,7 +2906,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2721,7 +2925,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -2740,7 +2946,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -2761,7 +2969,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2778,7 +2988,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -2799,7 +3011,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2816,7 +3030,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -2835,7 +3051,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -2855,7 +3073,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -2874,7 +3094,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2893,7 +3115,9 @@
             "複素数"
         ],
         "synonyms": [],
-        "category": "数学",
+        "category": [
+            "数学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2912,7 +3136,9 @@
             "複素数"
         ],
         "synonyms": [],
-        "category": "数学",
+        "category": [
+            "数学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2932,7 +3158,9 @@
             "ド・モアブル"
         ],
         "synonyms": [],
-        "category": "数学",
+        "category": [
+            "数学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2951,7 +3179,9 @@
             "複素数"
         ],
         "synonyms": [],
-        "category": "数学",
+        "category": [
+            "数学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2970,7 +3200,9 @@
             "複素数"
         ],
         "synonyms": [],
-        "category": "数学",
+        "category": [
+            "数学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -2989,7 +3221,9 @@
             "複素数"
         ],
         "synonyms": [],
-        "category": "数学",
+        "category": [
+            "数学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3008,7 +3242,9 @@
             "複素数"
         ],
         "synonyms": [],
-        "category": "数学",
+        "category": [
+            "数学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3027,7 +3263,9 @@
             "複素数"
         ],
         "synonyms": [],
-        "category": "数学",
+        "category": [
+            "数学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3046,7 +3284,9 @@
             "複素数"
         ],
         "synonyms": [],
-        "category": "数学",
+        "category": [
+            "数学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3063,7 +3303,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -3082,7 +3324,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3099,7 +3343,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3116,7 +3362,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3133,7 +3381,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3150,7 +3400,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "数学",
+        "category": [
+            "数学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3167,7 +3419,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3184,7 +3438,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3201,7 +3457,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3218,7 +3476,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3240,7 +3500,9 @@
             "積分"
         ],
         "synonyms": [],
-        "category": "数学",
+        "category": [
+            "数学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3260,7 +3522,9 @@
             "積分"
         ],
         "synonyms": [],
-        "category": "数学",
+        "category": [
+            "数学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3281,7 +3545,9 @@
             "積分"
         ],
         "synonyms": [],
-        "category": "数学",
+        "category": [
+            "数学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3298,7 +3564,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "熱力学",
+        "category": [
+            "熱力学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -3318,7 +3586,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "熱力学",
+        "category": [
+            "熱力学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -3339,7 +3609,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3356,7 +3628,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "英語",
+        "category": [
+            "英語"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3373,7 +3647,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "英語",
+        "category": [
+            "英語"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3390,7 +3666,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "国語",
+        "category": [
+            "国語"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3407,7 +3685,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "力学",
+        "category": [
+            "力学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3424,7 +3704,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "英語",
+        "category": [
+            "英語"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3441,7 +3723,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "化学",
+        "category": [
+            "化学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3458,7 +3742,9 @@
         "description": "Naが電子を失いやすい理由",
         "keywords": [],
         "synonyms": [],
-        "category": "化学",
+        "category": [
+            "化学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3475,7 +3761,9 @@
         "description": "電力量の公式がQ=IVtになることの証明。",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3492,7 +3780,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "熱力学",
+        "category": [
+            "熱力学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3509,7 +3799,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "地学",
+        "category": [
+            "地学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3526,7 +3818,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "地学",
+        "category": [
+            "地学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3543,7 +3837,9 @@
         "description": "抵抗を直列接続したときに抵抗の和が合成抵抗となる理由。",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3560,7 +3856,9 @@
         "description": "抵抗を並列接続したときの合成抵抗の式が成り立つ理由。",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3577,7 +3875,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3594,7 +3894,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3611,7 +3913,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3631,7 +3935,9 @@
             "電流計"
         ],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3648,7 +3954,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3665,7 +3973,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3682,7 +3992,9 @@
         "description": "電圧計と倍率器が直列接続されていて、nV_0の電圧がかかるとき、倍率器の抵抗は電圧計の内部抵抗の何倍にすればよい？",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3699,7 +4011,9 @@
         "description": "キルヒホッフの第一法則の証明",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3716,7 +4030,9 @@
         "description": "キルヒホッフの第二法則の証明",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3733,7 +4049,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3750,7 +4068,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3767,7 +4087,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3784,7 +4106,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3801,7 +4125,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3818,7 +4144,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3835,7 +4163,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3852,7 +4182,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3869,7 +4201,9 @@
         "description": "Rを変数とする消費電力の関数の最大値は？",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3886,7 +4220,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3903,7 +4239,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3920,7 +4258,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3937,7 +4277,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3954,7 +4296,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3971,7 +4315,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -3988,7 +4334,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4005,7 +4353,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4022,7 +4372,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4039,7 +4391,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4056,7 +4410,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4073,7 +4429,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4090,7 +4448,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4109,7 +4469,9 @@
             "半導体"
         ],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4126,7 +4488,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4143,7 +4507,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4160,7 +4526,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4177,7 +4545,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4194,7 +4564,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4211,7 +4583,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4228,7 +4602,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4245,7 +4621,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "電流",
+        "category": [
+            "電流"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4262,7 +4640,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4281,7 +4661,9 @@
             "コンパス"
         ],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4298,7 +4680,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4315,7 +4699,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -4336,7 +4722,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4353,7 +4741,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4370,7 +4760,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4387,7 +4779,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4404,7 +4798,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4421,7 +4817,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4438,7 +4836,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4455,7 +4855,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4472,7 +4874,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4489,7 +4893,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4506,7 +4912,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4523,7 +4931,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4540,7 +4950,10 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場",
+            "力学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -4562,7 +4975,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -4579,7 +4994,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": "磁場",
+        "category": [
+            "磁場"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
