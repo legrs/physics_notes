@@ -657,6 +657,8 @@
     }
 
     const EMBEDDINGS_URL = 'embeddings.json';
+    // embeddings.json をブラウザに永続キャッシュするための Cache API 名
+    const EMBEDDINGS_CACHE = 'physics-notes-embeddings-v1';
     const DATA_URL = 'q_and_a_data.json';
     const SEMANTIC_MODELS = {
       pro: { id: 'Xenova/multilingual-e5-small', dim: 384 },
@@ -974,7 +976,13 @@
             s.type = 'module';
             s.textContent = `
               import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+              // リモートモデルを許可しつつ、ブラウザ（Cache API）へ確実にキャッシュする。
               env.allowRemoteModels = true;
+              // 静的サイトには /models/ が存在しないため、ローカル探索を無効化して
+              // 無駄な 404 ラウンドトリップを避け、常にキャッシュ可能なリモートURLを使う。
+              env.allowLocalModels = false;
+              // Cache API が使える環境では必ずモデルをキャッシュする（デフォルト値を明示）。
+              env.useBrowserCache = true;
               window._XenovaPipeline = pipeline;
               window.TransformersLoaded = true;
               document.dispatchEvent(new Event('transformers-ready'));
@@ -990,9 +998,35 @@
         semanticModelKey = modeKey;
 
         if (!embeddingsData) {
-          showStatus('Embeddingデータを取得中…');
-          const res = await fetch(EMBEDDINGS_URL);
-          embeddingsData = normalizeEmbeddings(await res.json());
+          // まずブラウザキャッシュ（Cache API）を確認し、あれば再ダウンロードしない。
+          let cache = null;
+          try {
+            if (typeof caches !== 'undefined') cache = await caches.open(EMBEDDINGS_CACHE);
+          } catch (_) { cache = null; }
+
+          if (cache) {
+            const hit = await cache.match(EMBEDDINGS_URL);
+            if (hit) {
+              showStatus('Embeddingデータをキャッシュから読み込み中…');
+              embeddingsData = normalizeEmbeddings(await hit.json());
+            }
+          }
+
+          if (!embeddingsData) {
+            showStatus('Embeddingデータを取得中…');
+            const res = await fetch(EMBEDDINGS_URL);
+            if (!res.ok) throw new Error(`Embedding取得失敗: HTTP ${res.status}`);
+            // 本文を一度だけ読み、キャッシュ保存とパースの両方に使う。
+            const buf = new Uint8Array(await res.arrayBuffer());
+            if (cache) {
+              try {
+                await cache.put(EMBEDDINGS_URL, new Response(buf, {
+                  headers: { 'Content-Type': 'application/json' }
+                }));
+              } catch (_) { /* 容量超過等は無視 */ }
+            }
+            embeddingsData = normalizeEmbeddings(JSON.parse(new TextDecoder().decode(buf)));
+          }
         }
 
         hideStatus();
