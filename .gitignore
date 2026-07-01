@@ -21,3 +21,7 @@
 
 # node_modules
 node_modules/
+
+CLAUDE.md
+prompt.md
+check_tokenization.py
