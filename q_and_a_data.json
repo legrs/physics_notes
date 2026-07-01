@@ -4496,5 +4496,95 @@
         "updated_at": "2026-06-30",
         "search_text": "磁石とは？ 最小単位は電子のスピン。スピンの向きがよく揃って集まると、強磁性となる。バラバラなものが集まると常磁性となる。 磁場 磁石 最小 単位 電子 スピン スピン 向き よく 揃っ 集まる 磁性 なる バラバラ もの 集まる 磁性 なる 磁場 ジシャクトハ？ サイショウタンイハデンシノスピン。スピンノムキガヨクソロッテアツマルト、ツヨジセイトナル。バラバラナモノガアツマルトツネジセイトナル。 ジバ じしゃくとは？ さいしょうたんいはでんしのすぴん。すぴんのむきがよくそろってあつまると、つよじせいとなる。ばらばらなものがあつまるとつねじせいとなる。 じば",
         "_note": ""
+    },
+    {
+        "id": "3aaa6e26-afd2-45f3-9828-9a7a27379ffc",
+        "questions": [
+            "フレミングの左手の法則とは？"
+        ],
+        "answer": "力：親指\n\n磁場：人差し指\n\n電流：中指\n\n1. 日本語でやる場合は、**中指から**カウントを始める。\n\n覚え方：**電磁力**\n\n2. 英語でやる場合は、**親指から**カウントを始める。\n\n覚え方：**FBI**だ手を上げろ！\n\nなお、本来磁場はHだが、ここでは磁束密度のBを使う。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": "磁場",
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-07-01",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "dd3fea91-7231-4b25-90a7-59ce24b24296",
+        "questions": [
+            "電流が磁場から受ける力は？"
+        ],
+        "answer": "電流と磁場が直交している場合は、\n\n$$ F=\\mu IHl $$\n\nなお、$ \\mu $（ミュー）は比例定数、$ l $は導線の長さ。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": "磁場",
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-07-01",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "9533db00-65b6-4904-b7d0-78b85c7e6c75",
+        "questions": [
+            "ある物理量とある物理量をかけるとき、それが斜めになっていて、それがcosになる時とsinになる時について習ったが、それはどういうとき？"
+        ],
+        "answer": "**sinのとき**\n\n力のモーメント。\n\n$ \\vec{F} $が斜めになっている時、$ F\\left(r\\sin\\theta\\right) $と$ rF\\sin\\theta $のうち、作図しやすいように考える。\n\n**cosのとき**\n\n仕事について考える。\n\n荷物を斜めに$ \\vec{F} $の力を加えると、ものを動かすのに役立つのは$ F\\cos\\theta $である。\n\n仕事はエネルギーだからスカラー。しかし、力は向きと大きさがあるのでベクトル。\n\n$$ W=F\\cos\\theta\\cdot x $$\n$$ =F\\cdot x\\cos\\theta $$\n\nここで、$ W $を $ \\vec{F} $と$ \\vec{x} $で表す。\n\n$$ W=\\vec{F}\\cdot\\vec{x}=F\\cdot x\\cos\\theta $$\n\nこれが内積・スカラー積である。\n\n$$ \\left|\\vec{力のモーメント}\\right|=r\\cdot F\\sin\\theta $$\n$$ =r\\times F $$\n\nこれが外積・ベクトル積である。\n\n$$ \\vec{F}=\\mu\\vec{I}\\times\\vec{H}\\cdot l $$\n$$ =\\vec{I}\\times\\vec{B}\\cdot l $$\n\nこれは、\n\n```\n/ 1 \\     / 3 \\\n| 2 | と | 1 |\n\\ 3 /    \\ 2 /\n```\n\nの両辺に垂直なベクトルを求めるが、上の式のように表すことができる。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": "磁場",
+        "difficulty": "",
+        "priority": 2,
+        "related": [
+            "8c96db96-98b9-416c-9b7e-0d8ccccaf3f7",
+            "eefff478-ed4a-4958-a36b-7bf0d87c8d73",
+            "0c21fc91-6bf9-4fa9-882c-820f763b1d97",
+            "8f55e557-a683-47db-b1c7-58e0efcbf645"
+        ],
+        "updated_at": "2026-07-01",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "8f55e557-a683-47db-b1c7-58e0efcbf645",
+        "questions": [
+            "モーメントとは？"
+        ],
+        "answer": "回転させる能力。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": "磁場",
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-07-01",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "45b6d8a8-cfaa-4529-81e9-3331fd78400a",
+        "questions": [
+            "磁束密度とは？"
+        ],
+        "answer": "物質による効果を含めた物理量。\n\n$$ \\vec{B}=\\mu\\vec{H} $$\n\n$ \\vec{B} $は磁束密度。単位は$ T $（テスラ）。\n\n電気自動車のテスラも、ここからきている。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": "磁場",
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-07-01",
+        "search_text": "",
+        "_note": ""
     }
 ]
