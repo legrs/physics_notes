@@ -4946,7 +4946,7 @@
         "questions": [
             "ある物理量とある物理量をかけるとき、それが斜めになっていて、それがcosになる時とsinになる時について習ったが、それはどういうとき？"
         ],
-        "answer": "**sinのとき**\n\n力のモーメント。\n\n$ \\vec{F} $が斜めになっている時、$ F\\left(r\\sin\\theta\\right) $と$ rF\\sin\\theta $のうち、作図しやすいように考える。\n\n**cosのとき**\n\n仕事について考える。\n\n荷物を斜めに$ \\vec{F} $の力を加えると、ものを動かすのに役立つのは$ F\\cos\\theta $である。\n\n仕事はエネルギーだからスカラー。しかし、力は向きと大きさがあるのでベクトル。\n\n$$ W=F\\cos\\theta\\cdot x $$\n$$ =F\\cdot x\\cos\\theta $$\n\nここで、$ W $を $ \\vec{F} $と$ \\vec{x} $で表す。\n\n$$ W=\\vec{F}\\cdot\\vec{x}=F\\cdot x\\cos\\theta $$\n\nこれが内積・スカラー積である。\n\n$$ \\left|\\vec{力のモーメント}\\right|=r\\cdot F\\sin\\theta $$\n$$ =r\\times F $$\n\nこれが外積・ベクトル積である。\n\n$$ \\vec{F}=\\mu\\vec{I}\\times\\vec{H}\\cdot l $$\n$$ =\\vec{I}\\times\\vec{B}\\cdot l $$\n\nこれは、\n\n```\n/ 1 \\    / 3 \\\n| 2 | と | 1 |\n\\ 3 /    \\ 2 /\n```\n\nの両辺に垂直なベクトルを求めるが、上の式のように表すことができる。",
+        "answer": "**sinのとき**\n\n力のモーメント。\n\n$ \\vec{F} $が斜めになっている時、$ F\\left(r\\sin\\theta\\right) $と$ rF\\sin\\theta $のうち、作図しやすいように考える。\n\n**cosのとき**\n\n仕事について考える。\n\n荷物を斜めに$ \\vec{F} $の力を加えると、ものを動かすのに役立つのは$ F\\cos\\theta $である。\n\n仕事はエネルギーだからスカラー。しかし、力は向きと大きさがあるのでベクトル。\n\n$$ W=F\\cos\\theta\\cdot x $$\n$$ =F\\cdot x\\cos\\theta $$\n\nここで、$ W $を $ \\vec{F} $と$ \\vec{x} $で表す。\n\n$$ W=\\vec{F}\\cdot\\vec{x}=F\\cdot x\\cos\\theta $$\n\nこれが内積・スカラー積である。\n\n$$ \\left|\\vec{力のモーメント}\\right|=r\\cdot F\\sin\\theta $$\n$$ =r\\times F $$\n\nこれが外積・ベクトル積である。\n\n$$ \\vec{F}=\\mu\\vec{I}\\times\\vec{H}\\cdot l $$\n$$ =\\vec{I}\\times\\vec{B}\\cdot l $$\n\nこれは、\n\n```\n/ 1 \\    / 3 \\\n| 2 | と | 1  |\n\\ 3 /    \\ 2 /\n```\n\nの両辺に垂直なベクトルを求めるが、上の式のように表すことができる。",
         "description": "",
         "keywords": [],
         "synonyms": [],
