@@ -1,0 +1,107 @@
+# physq（Physics Notes 検索 CLI）のリリースビルド。
+#
+# 自動トリガーは無し（GitHub Release はまだ運用開始していないため）。
+# GitHub → Actions → このワークフロー → Run workflow のボタン操作でのみ実行する:
+#   1. 5 ターゲットの release バイナリをビルド（各 OS のネイティブ runner）
+#   2. アーカイブ（tar.gz / zip）を作成
+#   3. GitHub Release（draft）を作成し、タグ（physq-vX.Y.Z）とバイナリを添付
+#      （タグを事前に push 済みならそれを使う。無ければこの実行時点の main に打つ）
+#
+# タグを physq-v* にしているのは、同一リポジトリの他リリース（将来の
+# physics-notes 本体など）とタグ空間が衝突しないようにするため。
+name: physq-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "確認用バージョン（例: 0.1.0）。physq/Cargo.toml の値と一致しないと失敗する。空欄なら確認をスキップ"
+        required: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-latest # 常に最新の Apple Silicon ランナーを追従
+          - target: x86_64-apple-darwin
+            os: macos-26 # Intel Mac 対応の最終 macOS。以降の macos-latest が
+            # x86_64 クロスコンパイルに対応する保証が無いため固定
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-22.04-arm
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: physq
+      - name: Build (release)
+        working-directory: physq
+        run: cargo build --release --target ${{ matrix.target }}
+      - name: Collect
+        run: |
+          mkdir -p out/${{ matrix.target }}
+          exe=physq; [[ "${{ matrix.target }}" == *windows* ]] && exe=physq.exe
+          cp "physq/target/${{ matrix.target }}/release/$exe" "out/${{ matrix.target }}/"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: bin-${{ matrix.target }}
+          path: out/
+
+  assemble:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # gh release create に必要(既定の GITHUB_TOKEN は read-only)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: bin-*
+          merge-multiple: true
+          path: binaries
+      - name: Resolve version
+        id: ver
+        run: |
+          v="$(grep -m1 '^version' physq/Cargo.toml | sed -E 's/version = "(.*)"/\1/')"
+          if [ -n "${{ github.event.inputs.version }}" ] && [ "${{ github.event.inputs.version }}" != "$v" ]; then
+            echo "::error::physq/Cargo.toml の version ($v) と入力値 (${{ github.event.inputs.version }}) が一致しません。先に Cargo.toml を更新してください。"
+            exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+      - name: Archive binaries for GitHub Release
+        run: |
+          mkdir -p release
+          for t in binaries/*/; do
+            t="${t%/}"; name="physq-${{ steps.ver.outputs.version }}-$(basename "$t")"
+            if [ -f "$t/physq.exe" ]; then
+              (cd "$t" && zip -q "../../release/$name.zip" physq.exe)
+            else
+              chmod +x "$t/physq"
+              tar -czf "release/$name.tar.gz" -C "$t" physq
+            fi
+          done
+      - name: Create draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # タグ physq-v${version} が既に push 済みならそれを使い、無ければこの実行時点の
+          # コミットに新規作成する(gh release create の標準動作)。
+          gh release create "physq-v${{ steps.ver.outputs.version }}" --draft \
+            --title "physq v${{ steps.ver.outputs.version }}" \
+            release/*
