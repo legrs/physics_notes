@@ -2,7 +2,8 @@
 #
 # 自動トリガーは無し（GitHub Release はまだ運用開始していないため）。
 # GitHub → Actions → このワークフロー → Run workflow のボタン操作でのみ実行する:
-#   1. 5 ターゲットの release バイナリをビルド（各 OS のネイティブ runner）
+#   1. 4 ターゲットの release バイナリをビルド（各 OS のネイティブ runner。
+#      Intel Mac は ort crate が対応していないため対象外 — 下記コメント参照）
 #   2. アーカイブ（tar.gz / zip）を作成
 #   3. GitHub Release（draft）を作成し、タグ（physq-vX.Y.Z）とバイナリを添付
 #      （タグを事前に push 済みならそれを使う。無ければこの実行時点の main に打つ）
@@ -29,15 +30,25 @@ jobs:
         include:
           - target: aarch64-apple-darwin
             os: macos-latest # 常に最新の Apple Silicon ランナーを追従
-          - target: x86_64-apple-darwin
-            os: macos-26 # Intel Mac 対応の最終 macOS。以降の macos-latest が
-            # x86_64 クロスコンパイルに対応する保証が無いため固定
+            rustflags: ""
+          # x86_64-apple-darwin（Intel Mac）は対象外: ort crate（ONNX Runtime
+          # バインディング）が dist.txt に x86_64-apple-darwin 向けの配布を
+          # 一切持っておらず、"ort does not provide prebuilt binaries for the
+          # target `x86_64-apple-darwin`" で必ず失敗する。ONNX Runtime を
+          # ソースからビルドする以外に回避策が無いため見送り。
+          # 埋め込み IPADIC 辞書（生成される .o が数十MB規模）を GNU ld
+          # （Ubuntu 標準リンカ）でリンクするとメモリ不足気味になりやすいため、
+          # Linux ターゲットだけ lld に切り替える（macOS=ld64、Windows=lld-link
+          # は元々別のリンカで、失敗していないため対象外）。
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-22.04
+            rustflags: "-C link-arg=-fuse-ld=lld"
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-22.04-arm
+            rustflags: "-C link-arg=-fuse-ld=lld"
           - target: x86_64-pc-windows-msvc
             os: windows-latest
+            rustflags: ""
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -50,8 +61,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: physq
+      - name: Install lld (Linux only)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y lld
       - name: Build (release)
         working-directory: physq
+        env:
+          RUSTFLAGS: ${{ matrix.rustflags }}
         run: cargo build --release --target ${{ matrix.target }}
       - name: Collect
         run: |
