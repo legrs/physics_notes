@@ -28,23 +28,33 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macos-latest は現在 macOS 26 への移行期間中（2026-06-15〜）で、
+          # 移行中のイメージが Xcode 26.5 の clang_rt.osx 検索パス不具合を
+          # 踏んで `ld: library 'clang_rt.osx' not found` で落ちることを確認
+          # 済み。移行が落ち着くまでは安定版を明示的に固定する。
           - target: aarch64-apple-darwin
-            os: macos-latest # 常に最新の Apple Silicon ランナーを追従
+            os: macos-15
             rustflags: ""
           # x86_64-apple-darwin（Intel Mac）は対象外: ort crate（ONNX Runtime
           # バインディング）が dist.txt に x86_64-apple-darwin 向けの配布を
           # 一切持っておらず、"ort does not provide prebuilt binaries for the
           # target `x86_64-apple-darwin`" で必ず失敗する。ONNX Runtime を
           # ソースからビルドする以外に回避策が無いため見送り。
-          # 埋め込み IPADIC 辞書（生成される .o が数十MB規模）を GNU ld
-          # （Ubuntu 標準リンカ）でリンクするとメモリ不足気味になりやすいため、
-          # Linux ターゲットだけ lld に切り替える（macOS=ld64、Windows=lld-link
-          # は元々別のリンカで、失敗していないため対象外）。
+          #
+          # ort がダウンロードするプリビルド ONNX Runtime は glibc >= 2.38
+          # (__isoc23_strtol 等の ISO C23 版シンボルを要求) でビルドされており、
+          # ubuntu-22.04 の glibc 2.35 ではリンクできない
+          # ("ld.lld: error: undefined symbol: __isoc23_strtol" で確認済み)。
+          # ubuntu-24.04 系 (glibc 2.39) に上げて解決する。結果として physq の
+          # Linux バイナリは glibc >= 2.38 系のディストリ（Ubuntu 24.04+/
+          # Debian 13+/Fedora 39+ 等）が実行時に必要（README に明記）。
+          # lld への切り替え自体は必須ではないが、埋め込み IPADIC 辞書由来の
+          # 巨大なオブジェクトを GNU ld より高速にリンクできるため維持する。
           - target: x86_64-unknown-linux-gnu
-            os: ubuntu-22.04
+            os: ubuntu-24.04
             rustflags: "-C link-arg=-fuse-ld=lld"
           - target: aarch64-unknown-linux-gnu
-            os: ubuntu-22.04-arm
+            os: ubuntu-24.04-arm
             rustflags: "-C link-arg=-fuse-ld=lld"
           - target: x86_64-pc-windows-msvc
             os: windows-latest

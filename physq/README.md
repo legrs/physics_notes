@@ -9,6 +9,18 @@ The web's data artifacts are the source of truth: `physq` **fetches**
 recomputes corpus embeddings or re-tokenizes the corpus. Only the *query*
 embedding is computed at runtime (fastembed / ONNX, no Python).
 
+## Platform support
+
+Prebuilt releases: macOS (Apple Silicon), Windows (x86_64), Linux (x86_64 /
+aarch64). No Intel Mac build — the `ort` crate ships no prebuilt ONNX Runtime
+binary for `x86_64-apple-darwin`; building ONNX Runtime from source would be
+required and isn't done here.
+
+**Linux requires glibc ≥ 2.38** (Ubuntu 24.04+, Debian 13+, Fedora 39+, …).
+The prebuilt ONNX Runtime `ort` downloads calls ISO C23 libc symbols
+(`__isoc23_strtol` and friends) only present from glibc 2.38 onward; older
+distros (Ubuntu 22.04, Debian 12, RHEL 9, …) can't link or run the binary.
+
 ## Build & run
 
 ```sh
