@@ -74,6 +74,23 @@ jobs:
       - name: Install lld (Linux only)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y lld
+      # The runner's default Xcode (26.5, selected via /Applications/Xcode.app)
+      # has a broken clang_rt.osx search path: linking fails with
+      # "ld: library 'clang_rt.osx' not found" even on macos-15, so this is a
+      # runner-image toolchain bug, not a runner-label issue. Fall back to the
+      # newest non-Xcode-26 install (they ship several side by side).
+      - name: List and select a working Xcode (macOS only)
+        if: runner.os == 'macOS'
+        run: |
+          ls -d /Applications/Xcode*.app
+          good="$(ls -d /Applications/Xcode_*.app 2>/dev/null | grep -v '/Xcode_26' | sort -V | tail -1)"
+          if [ -z "$good" ]; then
+            echo "::error::no non-Xcode-26 install found; leaving default selected"
+          else
+            sudo xcode-select -s "$good"
+          fi
+          xcode-select -p
+          clang --version
       - name: Build (release)
         working-directory: physq
         env:
