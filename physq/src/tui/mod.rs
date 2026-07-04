@@ -1201,7 +1201,7 @@ fn detail_lines(app: &App) -> (Vec<Line<'static>>, Vec<Option<u32>>) {
             let focused = app.pane_focus == PaneFocus::Related && app.related_selected == Some(i);
             let marker = if focused { "▸ " } else { "  " };
             let style = if focused {
-                Style::default().fg(Color::Black).bg(Color::Cyan)
+                Style::default().fg(Color::White).bg(Color::Cyan)
             } else if target.is_some() {
                 Style::default()
                     .fg(Color::Cyan)
@@ -1325,7 +1325,7 @@ fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
             ),
         };
         let style = if focused {
-            Style::default().fg(Color::Black).bg(Color::Cyan)
+            Style::default().fg(Color::White).bg(Color::Cyan)
         } else {
             Style::default()
         };
