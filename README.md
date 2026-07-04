@@ -7,7 +7,7 @@
 <https://legrs.github.io/physics_notes/>
 
 Physics Notes CLI（ターミナルから検索できるツール `physq`）：\
-[physq/README.md](physq/README.md) | [最新リリース / Latest release](https://github.com/legrs/physics_notes/releases/latest)
+[physq/README.md](physq/README.md) | [最新リリース / Latest release](https://github.com/legrs/physics_notes/releases/)
 
 ## データベースの書き方
 
