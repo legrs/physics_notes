@@ -992,6 +992,7 @@ fn draw_results(frame: &mut Frame, app: &mut App, area: Rect) {
             let q_style = if selected {
                 Style::default()
                     .add_modifier(Modifier::BOLD)
+                    .fg(Color::White)
                     .bg(Color::Indexed(238))
             } else {
                 Style::default()
@@ -1006,8 +1007,13 @@ fn draw_results(frame: &mut Frame, app: &mut App, area: Rect) {
             }
             lines.push(q_line);
 
+            // The unselected score line is intentionally dim (DarkGray); once
+            // selected it sits on the Indexed(238) highlight, where DarkGray
+            // text would blend into the background — flip it to White (the
+            // opposite end of the contrast range) so it stays readable
+            // without changing the highlight color itself.
             let score_style = if selected {
-                Style::default().fg(Color::DarkGray).bg(Color::Indexed(238))
+                Style::default().fg(Color::White).bg(Color::Indexed(238))
             } else {
                 Style::default().fg(Color::DarkGray)
             };
