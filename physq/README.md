@@ -9,6 +9,55 @@ The web's data artifacts are the source of truth: `physq` **fetches**
 recomputes corpus embeddings or re-tokenizes the corpus. Only the *query*
 embedding is computed at runtime (fastembed / ONNX, no Python).
 
+## Requirements & installation
+
+Grab the archive for your platform from the
+[Releases page](https://github.com/legrs/physics_notes/releases) and extract
+it — `physq` is a single, self-contained binary (no runtime dependencies to
+install separately; the ~470 MB embedding model downloads on first use, not
+at install time).
+
+| Platform | Requirement | Archive |
+| --- | --- | --- |
+| macOS | Apple Silicon (M1+); no Intel build (see below) | `physq-<version>-aarch64-apple-darwin.tar.gz` |
+| Windows | x86_64 | `physq-<version>-x86_64-pc-windows-msvc.zip` |
+| Linux | x86_64 or aarch64; **glibc ≥ 2.38** (Ubuntu 24.04+, Debian 13+, Fedora 39+, …) | `physq-<version>-{x86_64,aarch64}-unknown-linux-gnu.tar.gz` |
+
+### macOS
+
+```sh
+curl -LO https://github.com/legrs/physics_notes/releases/download/physq-v<version>/physq-<version>-aarch64-apple-darwin.tar.gz
+tar xzf physq-<version>-aarch64-apple-darwin.tar.gz
+# unsigned binary: macOS Gatekeeper will refuse to run it until you clear the
+# quarantine flag it sets on anything downloaded from a browser/curl
+xattr -d com.apple.quarantine physq
+sudo mv physq /usr/local/bin/   # or anywhere on your PATH
+physq --version
+```
+
+### Linux
+
+```sh
+curl -LO https://github.com/legrs/physics_notes/releases/download/physq-v<version>/physq-<version>-x86_64-unknown-linux-gnu.tar.gz  # or the aarch64 archive
+tar xzf physq-<version>-x86_64-unknown-linux-gnu.tar.gz
+chmod +x physq
+sudo mv physq /usr/local/bin/   # or anywhere on your PATH
+physq --version
+```
+
+### Windows
+
+1. Download `physq-<version>-x86_64-pc-windows-msvc.zip` and extract it.
+2. Running `physq.exe` may trigger SmartScreen ("Windows protected your PC")
+   since the binary is unsigned — click **More info → Run anyway**.
+3. Move `physq.exe` somewhere on your `PATH`, or run it directly from the
+   extracted folder in a terminal.
+
+### Building from source instead
+
+See [Build & run](#build--run) below — needs a Rust toolchain (`cargo build
+--release`), no separate install step.
+
 ## Platform support
 
 Prebuilt releases: macOS (Apple Silicon), Windows (x86_64), Linux (x86_64 /
