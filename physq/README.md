@@ -11,23 +11,28 @@ embedding is computed at runtime (fastembed / ONNX, no Python).
 
 ## Requirements & installation
 
-Grab the archive for your platform from the
-[Releases page](https://github.com/legrs/physics_notes/releases) and extract
-it — `physq` is a single, self-contained binary (no runtime dependencies to
-install separately; the ~470 MB embedding model downloads on first use, not
-at install time).
+**Latest release: [v0.1.0](https://github.com/legrs/physics_notes/releases/tag/physq-v0.1.0).**
+Grab the archive for your platform from there and extract it — `physq` is a
+single, self-contained binary (no runtime dependencies to install
+separately; the ~470 MB embedding model downloads on first use, not at
+install time).
+
+> The Releases page also lists `physq-v0.1.0-rc1`, an earlier CI-validation
+> build with identical source/functionality to v0.1.0 (only difference: the
+> macOS binary was compiled with a since-removed interim toolchain
+> workaround). Use v0.1.0, not the rc1 build.
 
 | Platform | Requirement | Archive |
 | --- | --- | --- |
-| macOS | Apple Silicon (M1+); no Intel build (see below) | `physq-<version>-aarch64-apple-darwin.tar.gz` |
-| Windows | x86_64 | `physq-<version>-x86_64-pc-windows-msvc.zip` |
-| Linux | x86_64 or aarch64; **glibc ≥ 2.38** (Ubuntu 24.04+, Debian 13+, Fedora 39+, …) | `physq-<version>-{x86_64,aarch64}-unknown-linux-gnu.tar.gz` |
+| macOS | Apple Silicon (M1+); no Intel build (see below) | `physq-0.1.0-aarch64-apple-darwin.tar.gz` |
+| Windows | x86_64 | `physq-0.1.0-x86_64-pc-windows-msvc.zip` |
+| Linux | x86_64 or aarch64; **glibc ≥ 2.38** (Ubuntu 24.04+, Debian 13+, Fedora 39+, …) | `physq-0.1.0-{x86_64,aarch64}-unknown-linux-gnu.tar.gz` |
 
 ### macOS
 
 ```sh
-curl -LO https://github.com/legrs/physics_notes/releases/download/physq-v<version>/physq-<version>-aarch64-apple-darwin.tar.gz
-tar xzf physq-<version>-aarch64-apple-darwin.tar.gz
+curl -LO https://github.com/legrs/physics_notes/releases/download/physq-v0.1.0/physq-0.1.0-aarch64-apple-darwin.tar.gz
+tar xzf physq-0.1.0-aarch64-apple-darwin.tar.gz
 # unsigned binary: macOS Gatekeeper will refuse to run it until you clear the
 # quarantine flag it sets on anything downloaded from a browser/curl
 xattr -d com.apple.quarantine physq
@@ -38,8 +43,8 @@ physq --version
 ### Linux
 
 ```sh
-curl -LO https://github.com/legrs/physics_notes/releases/download/physq-v<version>/physq-<version>-x86_64-unknown-linux-gnu.tar.gz  # or the aarch64 archive
-tar xzf physq-<version>-x86_64-unknown-linux-gnu.tar.gz
+curl -LO https://github.com/legrs/physics_notes/releases/download/physq-v0.1.0/physq-0.1.0-x86_64-unknown-linux-gnu.tar.gz  # or the aarch64 archive
+tar xzf physq-0.1.0-x86_64-unknown-linux-gnu.tar.gz
 chmod +x physq
 sudo mv physq /usr/local/bin/   # or anywhere on your PATH
 physq --version
@@ -47,7 +52,7 @@ physq --version
 
 ### Windows
 
-1. Download `physq-<version>-x86_64-pc-windows-msvc.zip` and extract it.
+1. Download `physq-0.1.0-x86_64-pc-windows-msvc.zip` and extract it.
 2. Running `physq.exe` may trigger SmartScreen ("Windows protected your PC")
    since the binary is unsigned — click **More info → Run anyway**.
 3. Move `physq.exe` somewhere on your `PATH`, or run it directly from the
