@@ -70,6 +70,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+      # Gotcha: rust-cache's key doesn't account for the macOS Xcode/SDK in
+      # use, only OS+arch+Cargo.lock. A build that only changes CI-side
+      # toolchain selection (not Cargo.lock) can silently reuse a cached
+      # link-step fingerprint pointing at a since-removed Xcode path,
+      # failing with "ld: library 'clang_rt.osx' not found" for an SDK that
+      # isn't even the one this job selected. Bump `key` if that happens.
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: physq
