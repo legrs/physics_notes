@@ -158,7 +158,7 @@ Typed into the same input box, run on `Enter`:
 <OS cache dir>/physics-notes/     # macOS: ~/Library/Caches/physics-notes
 ├── model/                        # fastembed-managed; downloaded once
 ├── data/
-│   ├── version.json              # upstream manifest (when it exists)
+│   ├── version.json              # upstream manifest (hash/size per file + tokenizer/embedding_model tags)
 │   ├── meta.json                 # local ETag / manifest-hash bookkeeping
 │   ├── q_and_a_data.json
 │   └── embeddings.json
@@ -174,11 +174,13 @@ Files come from
 `https://raw.githubusercontent.com/legrs/physics_notes/refs/heads/master/`
 (override with `--base-url` or `PHYSQ_BASE_URL`).
 
-**TODO:** `version.json` is being added to the upstream pipeline. Until it
-lands, physq falls back to conditional (ETag) fetches of the data files and
-prints a one-line warning. Once the pipeline emits `version.json` (hash per
-file + `tokenizer` + `embedding_model`), startup fetches only changed files
-and the warning disappears — no physq change needed.
+Startup fetches the small `version.json` manifest first (hash + size per
+file, plus `tokenizer`/`embedding_model` tags) and only re-downloads
+`q_and_a_data.json`/`embeddings.json` when their hash actually changed — the
+pipeline (`scripts/build.js`) regenerates `version.json` on every run, so
+it's always there. If the data host is ever unreachable for `version.json`
+specifically but a local cache exists, physq falls back to conditional
+(ETag) fetches of the data files directly and warns once.
 
 ## Semantic search
 
