@@ -1,9 +1,10 @@
-//! clap CLI: `physq` (TUI), `physq search "<q>"`, `physq cache clean|path`.
+//! clap CLI: `physq` (TUI), `physq search "<q>"`, `physq cache clean|path`,
+//! `physq update`.
 
 use std::io::IsTerminal;
 use std::path::PathBuf;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 
 use crate::config::{Config, ModelSize};
@@ -13,6 +14,7 @@ use crate::query::prepare_query;
 use crate::semantic::SemanticError;
 use crate::spinner::StderrSpinner;
 use crate::tui;
+use crate::update;
 
 #[derive(Parser)]
 #[command(
@@ -80,6 +82,19 @@ enum Cmd {
         #[command(subcommand)]
         cmd: CacheCmd,
     },
+    /// Self-update by replacing the running binary with the latest GitHub release
+    Update {
+        /// Include release-candidate builds when resolving the latest version
+        #[arg(long)]
+        beta: bool,
+        /// Only check whether an update is available; don't download or install it
+        #[arg(long)]
+        check: bool,
+        /// Install the resolved version even if it's older than the running one
+        /// (e.g. going from a --beta build back to the latest stable release)
+        #[arg(long)]
+        force: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -113,7 +128,71 @@ pub fn run() -> Result<()> {
             bm25_only,
         }) => run_search(cfg, &query, limit, plain, bm25_only),
         Some(Cmd::Cache { cmd }) => run_cache(cfg, cmd),
+        Some(Cmd::Update { beta, check, force }) => run_update(cli.offline, beta, check, force),
     }
+}
+
+/// Resolve the latest release for the selected channel and, unless
+/// `check_only`, replace the running binary with it. `force` allows
+/// installing a resolution that's older than the currently running version
+/// (SemVer-wise) — the case the owner flagged: `--beta` can leave you ahead
+/// of the newest *stable* tag (e.g. running `0.2.0-rc1` when `0.1.1` is the
+/// latest release), and a plain `update` must not silently downgrade you.
+fn run_update(offline: bool, beta: bool, check_only: bool, force: bool) -> Result<()> {
+    if offline {
+        bail!("`physq update` needs network access; drop --offline");
+    }
+    let channel = if beta { "beta" } else { "stable" };
+
+    let spinner = StderrSpinner::start("Checking for updates…");
+    let plan = update::resolve(beta);
+    spinner.finish();
+    let plan = plan?;
+
+    if plan.target == plan.current {
+        println!(
+            "physq {} is already the latest {channel} release.",
+            plan.current
+        );
+        return Ok(());
+    }
+    if plan.target < plan.current && !force {
+        println!(
+            "Running physq {}, which is newer than the latest {channel} release ({}, {}).",
+            plan.current, plan.target, plan.tag
+        );
+        println!("Re-run with --force if you want to install it anyway.");
+        return Ok(());
+    }
+
+    let verb = if plan.target > plan.current {
+        "available"
+    } else {
+        "available (older than the running version — installing due to --force)"
+    };
+    if check_only {
+        println!(
+            "physq {} is {verb} (currently running {}). Run `physq update{}` to install it.",
+            plan.target,
+            plan.current,
+            if beta { " --beta" } else { "" }
+        );
+        return Ok(());
+    }
+
+    println!(
+        "Updating physq {} → {} ({})…",
+        plan.current, plan.target, plan.tag
+    );
+    let spinner = StderrSpinner::start("Downloading…");
+    let result = update::apply(&plan, &|s| spinner.set_label(s));
+    spinner.finish();
+    result?;
+    println!(
+        "Updated to physq {}. Restart to use the new version.",
+        plan.target
+    );
+    Ok(())
 }
 
 fn run_cache(cfg: Config, cmd: CacheCmd) -> Result<()> {

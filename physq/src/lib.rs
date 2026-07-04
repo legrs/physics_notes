@@ -17,3 +17,4 @@ mod real_data_tests;
 pub mod semantic;
 pub mod spinner;
 pub mod tui;
+pub mod update;

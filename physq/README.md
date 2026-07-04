@@ -11,28 +11,31 @@ embedding is computed at runtime (fastembed / ONNX, no Python).
 
 ## Requirements & installation
 
-**Latest release: [v0.1.0](https://github.com/legrs/physics_notes/releases/tag/physq-v0.1.0).**
-Grab the archive for your platform from there and extract it — `physq` is a
-single, self-contained binary (no runtime dependencies to install
-separately; the ~470 MB embedding model downloads on first use, not at
-install time).
+**[Latest release](https://github.com/legrs/physics_notes/releases/latest)** — grab the
+binary for your platform below; `physq` is a single, self-contained executable (no
+runtime dependencies to install separately; the ~470 MB embedding model downloads on
+first use, not at install time). The commands below always fetch whatever the current
+latest release is, so they never need updating for a new version — and once installed,
+`physq update` (see [Updating](#updating)) keeps it that way without re-running them.
 
-> The Releases page also lists `physq-v0.1.0-rc1`, an earlier CI-validation
-> build with identical source/functionality to v0.1.0 (only difference: the
-> macOS binary was compiled with a since-removed interim toolchain
-> workaround). Use v0.1.0, not the rc1 build.
+> The Releases page may also list `-rcN` (release-candidate) builds for early testing
+> of upcoming features. They're marked as pre-releases and never become "latest" until
+> promoted to a real release — stick to the latest release above unless you
+> specifically want to try one (`physq update --beta` opts into them).
 
-| Platform | Requirement | Archive |
+| Platform | Requirement | Binary |
 | --- | --- | --- |
-| macOS | Apple Silicon (M1+); no Intel build (see below) | `physq-0.1.0-aarch64-apple-darwin.tar.gz` |
-| Windows | x86_64 | `physq-0.1.0-x86_64-pc-windows-msvc.zip` |
-| Linux | x86_64 or aarch64; **glibc ≥ 2.38** (Ubuntu 24.04+, Debian 13+, Fedora 39+, …) | `physq-0.1.0-{x86_64,aarch64}-unknown-linux-gnu.tar.gz` |
+| macOS | Apple Silicon (M1+); no Intel build (see below) | `physq-bin-aarch64-apple-darwin` |
+| Windows | x86_64 | `physq-bin-x86_64-pc-windows-msvc.exe` |
+| Linux | x86_64 or aarch64; **glibc ≥ 2.38** (Ubuntu 24.04+, Debian 13+, Fedora 39+, …) | `physq-bin-{x86_64,aarch64}-unknown-linux-gnu` |
+
+These are unarchived binaries — nothing to extract.
 
 ### macOS
 
 ```sh
-curl -LO https://github.com/legrs/physics_notes/releases/download/physq-v0.1.0/physq-0.1.0-aarch64-apple-darwin.tar.gz
-tar xzf physq-0.1.0-aarch64-apple-darwin.tar.gz
+curl -Lo physq https://github.com/legrs/physics_notes/releases/latest/download/physq-bin-aarch64-apple-darwin
+chmod +x physq
 # unsigned binary: macOS Gatekeeper will refuse to run it until you clear the
 # quarantine flag it sets on anything downloaded from a browser/curl
 xattr -d com.apple.quarantine physq
@@ -43,8 +46,8 @@ physq --version
 ### Linux
 
 ```sh
-curl -LO https://github.com/legrs/physics_notes/releases/download/physq-v0.1.0/physq-0.1.0-x86_64-unknown-linux-gnu.tar.gz  # or the aarch64 archive
-tar xzf physq-0.1.0-x86_64-unknown-linux-gnu.tar.gz
+# swap x86_64 for aarch64 if you're on an arm64 machine
+curl -Lo physq https://github.com/legrs/physics_notes/releases/latest/download/physq-bin-x86_64-unknown-linux-gnu
 chmod +x physq
 sudo mv physq /usr/local/bin/   # or anywhere on your PATH
 physq --version
@@ -52,16 +55,40 @@ physq --version
 
 ### Windows
 
-1. Download `physq-0.1.0-x86_64-pc-windows-msvc.zip` and extract it.
-2. Running `physq.exe` may trigger SmartScreen ("Windows protected your PC")
-   since the binary is unsigned — click **More info → Run anyway**.
-3. Move `physq.exe` somewhere on your `PATH`, or run it directly from the
-   extracted folder in a terminal.
+1. Download
+   [physq-bin-x86_64-pc-windows-msvc.exe](https://github.com/legrs/physics_notes/releases/latest/download/physq-bin-x86_64-pc-windows-msvc.exe)
+   and rename it to `physq.exe`.
+2. Running it may trigger SmartScreen ("Windows protected your PC") since the binary
+   is unsigned — click **More info → Run anyway**.
+3. Move `physq.exe` somewhere on your `PATH`, or run it directly from the folder you
+   downloaded it to in a terminal.
 
 ### Building from source instead
 
 See [Build & run](#build--run) below — needs a Rust toolchain (`cargo build
 --release`), no separate install step.
+
+### Updating
+
+```sh
+physq update              # latest stable release
+physq update --check      # just report what's available, don't install
+physq update --beta       # include release-candidate (rc) builds
+```
+
+Downloads the matching binary straight from GitHub Releases, verifies its
+SHA-256 against the release's `checksums.txt`, and replaces the running
+executable in place (no re-running the install steps above, no re-clearing
+quarantine/SmartScreen — those are only ever attached by a browser/curl
+download, and `physq update` fetches the file itself). Requires network
+access (fails clearly under `--offline`).
+
+Channels compare by SemVer, not recency, so switching **from** `--beta`
+**to** the stable channel never silently downgrades you: a plain
+`physq update` refuses (with a clear message) if the currently running
+version is newer than every published stable release — e.g. running
+`0.2.0-rc1` when `0.1.1` is still the latest stable tag. Pass `--force` to
+install the resolved version anyway.
 
 ## Platform support
 
@@ -87,6 +114,7 @@ cargo run -- search "電磁誘導" --plain | head # TSV: rank⇥score⇥id⇥que
 cargo run -- cache path
 cargo run -- cache clean       # drop data + index (keeps the model)
 cargo run -- cache clean --all # also drop the downloaded model
+cargo run -- update --check    # check for a newer release (see Updating below)
 ```
 
 The first run downloads the corpus (~7 MB) and — unless `--bm25-only` — the
@@ -192,7 +220,7 @@ UI must not touch anything outside those three files.
 
 ```text
 query.rs   bm25/   semantic/   rank/   data/   model.rs     ← pure logic
-                └────── engine.rs (facade) ──────┘
+                └────── engine.rs (facade) ──────┘          update.rs (self-update, CLI-only)
         cli.rs (one-shot printing)   tui/ + spinner.rs (UI)  ← swappable
 ```
 

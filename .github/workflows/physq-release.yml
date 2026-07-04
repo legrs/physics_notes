@@ -120,22 +120,37 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
       - name: Archive binaries for GitHub Release
         run: |
+          # human-facing archives (physq-<version>-<triple>.{tar.gz,zip}) plus
+          # unarchived per-target binaries (physq-bin-<triple>[.exe]) that
+          # `physq update` fetches directly — no tar/zip decoding needed
+          # client-side. checksums.txt covers only the latter.
           mkdir -p release
           for t in binaries/*/; do
-            t="${t%/}"; name="physq-${{ steps.ver.outputs.version }}-$(basename "$t")"
+            t="${t%/}"; triple="$(basename "$t")"
+            name="physq-${{ steps.ver.outputs.version }}-$triple"
             if [ -f "$t/physq.exe" ]; then
               (cd "$t" && zip -q "../../release/$name.zip" physq.exe)
+              cp "$t/physq.exe" "release/physq-bin-$triple.exe"
             else
               chmod +x "$t/physq"
               tar -czf "release/$name.tar.gz" -C "$t" physq
+              cp "$t/physq" "release/physq-bin-$triple"
+              chmod +x "release/physq-bin-$triple"
             fi
           done
+          (cd release && sha256sum physq-bin-* > checksums.txt)
       - name: Create draft GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           # タグ physq-v${version} が既に push 済みならそれを使い、無ければこの実行時点の
           # コミットに新規作成する(gh release create の標準動作)。
+          # version に "-" を含む場合（例: 0.1.2-rc1）は prerelease としてマークする。
+          # physq update 自体は tag の semver を直接パースして stable/beta を判定するので
+          # この --prerelease フラグには依存しないが、GitHub UI 上の表示を正しくするため。
+          prerelease_flag=()
+          [[ "${{ steps.ver.outputs.version }}" == *-* ]] && prerelease_flag=(--prerelease)
           gh release create "physq-v${{ steps.ver.outputs.version }}" --draft \
             --title "physq v${{ steps.ver.outputs.version }}" \
+            "${prerelease_flag[@]}" \
             release/*

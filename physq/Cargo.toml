@@ -1,6 +1,6 @@
 [package]
 name = "physq"
-version = "0.1.1"
+version = "0.1.1-rc2"
 edition = "2021"
 description = "Local hybrid search (BM25 + e5 semantic, RRF-fused) for the Physics Notes Q&A corpus"
 license = "Apache-2.0"
@@ -16,10 +16,13 @@ fastembed = { version = "5.17", default-features = false, features = [
 ] }
 lindera = { version = "4.0", features = ["embed-ipadic"] }
 ratatui = { version = "0.30", features = ["unstable-rendered-line-info"] }
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "blocking"] }
+self-replace = "1"
+semver = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.11"
+tempfile = "3"
 thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 unicode-width = "0.2"
