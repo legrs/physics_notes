@@ -2,6 +2,8 @@ name: Build JSON
 
 on:
   push:
+    branches:
+      - master
     paths:
       - 'q_and_a_data.json'
       - 'scripts/build.js'
