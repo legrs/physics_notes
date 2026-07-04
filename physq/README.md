@@ -100,11 +100,29 @@ and serves BM25-only results instead of fetching it.
 | Key | Action |
 | --- | --- |
 | type | instant BM25 ranking per keystroke |
-| `Enter` (or 0.5 s pause) | semantic ranking + RRF fusion |
-| `↑` `↓` / `Ctrl-P` `Ctrl-N` | select result |
+| `Enter` (or 0.5 s pause) | semantic ranking + RRF fusion — or run a `/command` |
+| `↑` `↓` / `Ctrl-P` `Ctrl-N` | select result (auto-scrolls into view) |
 | `PgUp` `PgDn` | scroll the detail pane |
-| `Esc` | clear query, then quit |
+| `Tab` | browse the selected item's Related list; `↑` `↓` pick, `Enter` jumps |
+| `Esc` | close a `/help`/`/config` screen, then exit Related-browsing, then clear query, then quit |
 | `Ctrl-C` / `Ctrl-Q` | quit |
+
+Mouse: wheel over Results scrolls the list (selection is untouched — arrow
+keys still auto-scroll back to it); wheel over Detail scrolls the text;
+clicking a result selects it; clicking a Related entry in Detail jumps to it.
+"Jumping" to a Related item re-searches its question, so it reuses the normal
+ranking pipeline instead of a separate pinned-detail mode.
+
+### Slash commands
+
+Typed into the same input box, run on `Enter`:
+
+| Command | Effect |
+| --- | --- |
+| `/semantic small` / `/semantic large` | switch the embedding model at runtime (reloads, may download on first use) |
+| `/config` | interactive settings screen — `↑` `↓` picks a field, `←` `→`/`Enter` changes it (model size, offline mode), plus read-only info (base URL, cache dir, tokenizer) |
+| `/help` | shortcut reference (keyboard, mouse, commands) |
+| `/exit` (or `/quit`) | quit |
 
 ## Cache layout
 
