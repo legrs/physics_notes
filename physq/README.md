@@ -108,20 +108,26 @@ distros (Ubuntu 22.04, Debian 12, RHEL 9, …) can't link or run the binary.
 cargo build --release          # single binary at target/release/physq
 
 cargo run                      # interactive TUI
+cargo run -- --bm25-only       # interactive TUI, BM25-only (no model download)
 cargo run -- search "電磁誘導"  # one-shot, hybrid ranking
 cargo run -- search "電磁誘導" --bm25-only   # no model download, lexical only
+cargo run -- search "電磁誘導" --model none  # same thing, spelled via --model
 cargo run -- search "電磁誘導" --plain | head # TSV: rank⇥score⇥id⇥question
 cargo run -- cache path
-cargo run -- cache clean       # drop data + index (keeps the model)
-cargo run -- cache clean --all # also drop the downloaded model
+cargo run -- cache clean             # drop data + index (keeps the model)
+cargo run -- cache clean --all       # also drop the downloaded model
+cargo run -- cache clean --model-only # drop only the model (keeps data + index)
 cargo run -- update --check    # check for a newer release (see Updating below)
 ```
 
-The first run downloads the corpus (~7 MB) and — unless `--bm25-only` — the
-e5 embedding model (one time, ~470 MB; cached forever). Everything works
-offline afterwards. `--offline` never touches the network: it uses cached
-data without an update check, and if the model was never downloaded it warns
-and serves BM25-only results instead of fetching it.
+The first run downloads the corpus (~7 MB) and — unless `--bm25-only` /
+`--model none` — the e5 embedding model (one time, ~470 MB; cached forever).
+Everything works offline afterwards. `--bm25-only` and `--model none` are
+global flags: they apply to both the interactive TUI and `search` alike, and
+skip the semantic stage (and its model download) entirely. `--offline` never
+touches the network: it uses cached data without an update check, and if the
+model was never downloaded it warns and serves BM25-only results instead of
+fetching it.
 
 ### TUI keys
 
@@ -148,7 +154,8 @@ Typed into the same input box, run on `Enter`:
 | Command | Effect |
 | --- | --- |
 | `/semantic small` / `/semantic large` | switch the embedding model at runtime (reloads, may download on first use) |
-| `/config` | interactive settings screen — `↑` `↓` picks a field, `←` `→`/`Enter` changes it (model size, offline mode), plus read-only info (base URL, cache dir, tokenizer) |
+| `/semantic none` | turn semantic off at runtime — BM25-only until switched back |
+| `/config` | interactive settings screen — `↑` `↓` picks a field, `←` `→`/`Enter` changes it (model size cycles small → large → none, offline mode), plus read-only info (base URL, cache dir, tokenizer) |
 | `/help` | shortcut reference (keyboard, mouse, commands) |
 | `/exit` (or `/quit`) | quit |
 
@@ -188,7 +195,10 @@ Enabled by default. `physq search` and the TUI load
 `multilingual-e5-small` (384-dim, matching `embeddings.json["small"]`) via
 fastembed; the model is cached under `model/`. Use `--model large` to switch
 to `multilingual-e5-large` + `embeddings.json["large"]` (1024-dim, slower,
-bigger download). Use `--bm25-only` to skip the semantic stage entirely.
+bigger download). Use `--bm25-only` (or `--model none`) to skip the semantic
+stage entirely — no model download, lexical ranking only, in both the TUI
+and `search`. Free the downloaded model without touching cached data with
+`cache clean --model-only`.
 
 If the model can't be loaded (e.g. offline before the first download), physq
 warns and serves BM25-only results. If a *shared-artifact invariant* is

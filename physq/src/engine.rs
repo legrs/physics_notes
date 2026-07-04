@@ -106,13 +106,18 @@ impl SemanticEngine {
     /// Shared-artifact invariant breaks surface as `Invariant` — frontends
     /// must fail loudly on those, not degrade silently (CLAUDE.md §7).
     pub fn load(cfg: &Config, corpus: Arc<Corpus>) -> Result<Self, SemanticError> {
-        if cfg.offline && !crate::semantic::model_cached(cfg.model, &cfg.model_dir()) {
+        let Some(model) = cfg.model else {
+            return Err(SemanticError::Unavailable(
+                "semantic search disabled (--model none / --bm25-only)".to_string(),
+            ));
+        };
+        if cfg.offline && !crate::semantic::model_cached(model, &cfg.model_dir()) {
             return Err(SemanticError::Unavailable(
                 "offline mode and the embedding model is not downloaded yet".to_string(),
             ));
         }
-        let embedder = Embedder::new(cfg.model, &cfg.model_dir())?;
-        let embeddings = CorpusEmbeddings::load(&cfg.embeddings_path(), cfg.model)?;
+        let embedder = Embedder::new(model, &cfg.model_dir())?;
+        let embeddings = CorpusEmbeddings::load(&cfg.embeddings_path(), model)?;
         Ok(Self {
             embedder,
             embeddings,

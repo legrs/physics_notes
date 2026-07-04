@@ -8,9 +8,11 @@
 //! Beyond the core search loop, the UI supports: mouse wheel scrolling and
 //! click-to-select on both panes, jumping to a `related[]` item (by
 //! re-searching its question — see `jump_to_related`), slash commands typed
-//! into the input box (`/semantic small|large`, `/config`, `/help`, `/exit`),
-//! and a `Tab`-focused keyboard path through Related so nothing here requires
-//! a mouse.
+//! into the input box (`/semantic small|large|none`, `/config`, `/help`,
+//! `/exit`), and a `Tab`-focused keyboard path through Related so nothing
+//! here requires a mouse. `/semantic none` (or launching with `--model none`
+//! / `--bm25-only`) disables the semantic stage entirely: no model download,
+//! BM25-only results.
 
 mod command;
 
@@ -77,6 +79,10 @@ enum SemState {
     Off,
     Init,
     Ready,
+    /// User (or a launch flag) turned semantic off; no worker running by
+    /// choice, not by failure. Distinct from `Off`, which is just the
+    /// transient pre-data-load state.
+    Disabled,
     Failed {
         invariant: bool,
     },
@@ -305,11 +311,16 @@ impl App {
                 Ok(bundle) => {
                     self.warnings.extend(bundle.warnings.iter().cloned());
                     self.data = Some(bundle);
-                    self.sem_state = SemState::Init;
-                    self.phase = Some(("Loading semantic model…".to_string(), Instant::now()));
-                    let (tx, rx) = std_mpsc::channel();
-                    self.sem_tx = Some(tx);
-                    self.pending_sem_rx = Some(rx);
+                    if self.cfg.model.is_some() {
+                        self.sem_state = SemState::Init;
+                        self.phase = Some(("Loading semantic model…".to_string(), Instant::now()));
+                        let (tx, rx) = std_mpsc::channel();
+                        self.sem_tx = Some(tx);
+                        self.pending_sem_rx = Some(rx);
+                    } else {
+                        self.sem_state = SemState::Disabled;
+                        self.phase = None;
+                    }
                     self.refresh_bm25();
                 }
                 Err(e) => {
@@ -490,9 +501,11 @@ impl App {
     fn activate_config_field(&mut self) {
         match ConfigField::ALL[self.config_cursor] {
             ConfigField::Model => {
+                // Cycle small → large → none (BM25-only) → small.
                 let next = match self.cfg.model {
-                    ModelSize::Small => ModelSize::Large,
-                    ModelSize::Large => ModelSize::Small,
+                    Some(ModelSize::Small) => Some(ModelSize::Large),
+                    Some(ModelSize::Large) => None,
+                    None => Some(ModelSize::Small),
                 };
                 self.reload_semantic(next);
             }
@@ -646,23 +659,38 @@ impl App {
         self.submit();
     }
 
-    /// Switch the active semantic model at runtime. Drops the old request
-    /// sender (its worker thread's `recv()` then errors out and the thread
-    /// exits) and hands `run_loop` a fresh channel to spawn a new worker for,
-    /// tagged with a bumped generation so stale messages from the old worker
-    /// are ignored (`handle_msg`'s `gen` checks).
-    fn reload_semantic(&mut self, size: ModelSize) {
-        self.cfg.model = size;
+    /// Switch the active semantic model at runtime, or turn it off entirely
+    /// (`None`). Drops the old request sender (its worker thread's `recv()`
+    /// then errors out and the thread exits) and, when switching to a model,
+    /// hands `run_loop` a fresh channel to spawn a new worker for — tagged
+    /// with a bumped generation so stale messages from the old worker are
+    /// ignored (`handle_msg`'s `gen` checks).
+    fn reload_semantic(&mut self, model: Option<ModelSize>) {
+        self.cfg.model = model;
         self.sem_generation += 1;
-        let (tx, rx) = std_mpsc::channel();
-        self.sem_tx = Some(tx);
-        self.pending_sem_rx = Some(rx);
-        self.sem_state = SemState::Init;
         self.sem_error = None;
-        self.phase = Some((
-            format!("Switching to {} model…", size.embeddings_key()),
-            Instant::now(),
-        ));
+        match model {
+            Some(size) => {
+                let (tx, rx) = std_mpsc::channel();
+                self.sem_tx = Some(tx);
+                self.pending_sem_rx = Some(rx);
+                self.sem_state = SemState::Init;
+                self.phase = Some((
+                    format!("Switching to {} model…", size.embeddings_key()),
+                    Instant::now(),
+                ));
+            }
+            None => {
+                self.sem_tx = None;
+                self.pending_sem_rx = None;
+                self.sem_state = SemState::Disabled;
+                self.phase = None;
+                // Drop back to the BM25-only view immediately instead of
+                // leaving a stale hybrid result set on screen.
+                self.results = self.bm25_results.clone();
+                self.results_mode = ResultsMode::Bm25;
+            }
+        }
     }
 
     fn handle_mouse(&mut self, m: MouseEvent) {
@@ -719,6 +747,14 @@ impl App {
             }
             _ => {}
         }
+    }
+}
+
+/// Display label for the config-screen/status-line "model" field.
+fn model_label(model: Option<ModelSize>) -> &'static str {
+    match model {
+        Some(m) => m.embeddings_key(),
+        None => "none",
     }
 }
 
@@ -1042,7 +1078,7 @@ fn detail_lines(app: &App) -> (Vec<Line<'static>>, Vec<Option<u32>>) {
             .add_modifier(Modifier::BOLD);
         b.push(Line::styled("Commands", heading));
         b.push(Line::raw(
-            "/semantic small | large   switch the embedding model",
+            "/semantic small | large | none   switch the embedding model (none = BM25-only)",
         ));
         b.push(Line::raw("/config                   settings"));
         b.push(Line::raw("/help                      shortcut reference"));
@@ -1069,9 +1105,12 @@ fn detail_lines(app: &App) -> (Vec<Line<'static>>, Vec<Option<u32>>) {
         return b.finish();
     };
     let Some(doc) = app.selected_doc() else {
-        b.push(Line::raw(
-            "Type to search (BM25), press Enter for semantic + RRF.",
-        ));
+        let hint = if app.cfg.model.is_some() {
+            "Type to search (BM25), press Enter for semantic + RRF."
+        } else {
+            "Type to search (BM25-only; semantic is disabled)."
+        };
+        b.push(Line::raw(hint));
         if let Some(err) = &app.command_error {
             b.push(Line::raw(""));
             b.push(Line::styled(
@@ -1231,7 +1270,7 @@ fn draw_help(frame: &mut Frame, area: Rect) {
         Line::raw("  click a Related item   jump to it"),
         Line::raw(""),
         Line::styled("Commands", heading),
-        Line::raw("  /semantic small | large   switch the embedding model"),
+        Line::raw("  /semantic small | large | none   switch the embedding model"),
         Line::raw("  /config                   settings screen"),
         Line::raw("  /help                     this screen"),
         Line::raw("  /exit (or /quit)          quit"),
@@ -1266,8 +1305,8 @@ fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
             ConfigField::Model => (
                 "Semantic model",
                 format!(
-                    "{}  (small=384d fast · large=1024d slower/better)",
-                    app.cfg.model.embeddings_key()
+                    "{}  (small=384d fast · large=1024d slower/better · none=BM25-only)",
+                    model_label(app.cfg.model)
                 ),
             ),
             ConfigField::Offline => (
@@ -1298,6 +1337,7 @@ fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
         SemState::Off => "not started".to_string(),
         SemState::Init => "loading…".to_string(),
         SemState::Ready => "ready".to_string(),
+        SemState::Disabled => "disabled (BM25-only)".to_string(),
         SemState::Failed { invariant } => {
             let err = app.sem_error.clone().unwrap_or_default();
             if *invariant {
@@ -1370,8 +1410,12 @@ fn status_line(app: &App) -> Line<'static> {
             "semantic: loading".to_string(),
             Style::default().fg(Color::Yellow),
         ),
+        SemState::Disabled => (
+            "semantic: off (BM25-only)".to_string(),
+            Style::default().fg(Color::DarkGray),
+        ),
         SemState::Ready => (
-            format!("semantic: ready ({})", app.cfg.model.embeddings_key()),
+            format!("semantic: ready ({})", model_label(app.cfg.model)),
             Style::default().fg(Color::Green),
         ),
         SemState::Failed { invariant } => {

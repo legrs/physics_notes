@@ -29,9 +29,16 @@ struct Cli {
     #[arg(long, global = true, value_name = "URL")]
     base_url: Option<String>,
 
-    /// Embedding model / matrix ("small" = e5-small 384d, "large" = e5-large 1024d)
+    /// Embedding model / matrix ("small" = e5-small 384d, "large" = e5-large
+    /// 1024d, "none" = disable the semantic stage entirely — BM25-only, no
+    /// model download). Applies to both the interactive TUI and `search`.
     #[arg(long, global = true, value_enum, default_value_t = ModelArg::Small)]
     model: ModelArg,
+
+    /// Skip the semantic stage everywhere (interactive TUI and `search`): no
+    /// model download, lexical (BM25) ranking only. Shorthand for `--model none`.
+    #[arg(long, global = true)]
+    bm25_only: bool,
 
     /// Never touch the network; use the local cache only
     #[arg(long, global = true)]
@@ -50,13 +57,17 @@ struct Cli {
 enum ModelArg {
     Small,
     Large,
+    /// Disable the semantic stage entirely (BM25-only).
+    #[value(name = "none")]
+    Off,
 }
 
-impl From<ModelArg> for ModelSize {
+impl From<ModelArg> for Option<ModelSize> {
     fn from(m: ModelArg) -> Self {
         match m {
-            ModelArg::Small => ModelSize::Small,
-            ModelArg::Large => ModelSize::Large,
+            ModelArg::Small => Some(ModelSize::Small),
+            ModelArg::Large => Some(ModelSize::Large),
+            ModelArg::Off => None,
         }
     }
 }
@@ -73,9 +84,6 @@ enum Cmd {
         /// Force plain tab-separated output (automatic when stdout is piped)
         #[arg(long)]
         plain: bool,
-        /// Skip the semantic stage (no model download; lexical ranking only)
-        #[arg(long)]
-        bm25_only: bool,
     },
     /// Cache utilities
     Cache {
@@ -102,20 +110,30 @@ enum CacheCmd {
     /// Print the cache directory path
     Path,
     /// Remove cached data and the BM25 index (keeps the downloaded model
-    /// unless --all is given)
+    /// unless --all is given; use --model-only to remove just the model)
     Clean {
         /// Also remove the downloaded embedding model
-        #[arg(long)]
+        #[arg(long, conflicts_with = "model_only")]
         all: bool,
+        /// Remove only the downloaded embedding model (keeps data & BM25 index)
+        #[arg(long)]
+        model_only: bool,
     },
 }
 
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
+    // `--bm25-only` is shorthand for `--model none`; it wins over an explicit
+    // `--model` value since it's the more specific ask.
+    let model: Option<ModelSize> = if cli.bm25_only {
+        None
+    } else {
+        cli.model.into()
+    };
     let cfg = Config::resolve(
         cli.base_url.clone(),
         cli.cache_dir.clone(),
-        cli.model.into(),
+        model,
         cli.offline,
     )?;
 
@@ -125,8 +143,7 @@ pub fn run() -> Result<()> {
             query,
             limit,
             plain,
-            bm25_only,
-        }) => run_search(cfg, &query, limit, plain, bm25_only),
+        }) => run_search(cfg, &query, limit, plain),
         Some(Cmd::Cache { cmd }) => run_cache(cfg, cmd),
         Some(Cmd::Update { beta, check, force }) => run_update(cli.offline, beta, check, force),
     }
@@ -201,21 +218,28 @@ fn run_cache(cfg: Config, cmd: CacheCmd) -> Result<()> {
             println!("{}", cfg.cache_root.display());
             Ok(())
         }
-        CacheCmd::Clean { all } => {
-            let mut targets = vec![cfg.data_dir(), cfg.index_dir()];
-            if all {
-                targets.push(cfg.model_dir());
-            }
-            for dir in targets {
+        CacheCmd::Clean { all, model_only } => {
+            let targets = if model_only {
+                vec![cfg.model_dir()]
+            } else {
+                let mut targets = vec![cfg.data_dir(), cfg.index_dir()];
+                if all {
+                    targets.push(cfg.model_dir());
+                }
+                targets
+            };
+            for dir in &targets {
                 if dir.exists() {
-                    std::fs::remove_dir_all(&dir)
+                    std::fs::remove_dir_all(dir)
                         .with_context(|| format!("removing {}", dir.display()))?;
                     println!("removed {}", dir.display());
                 } else {
                     println!("already clean: {}", dir.display());
                 }
             }
-            if !all {
+            if model_only {
+                println!("(data & BM25 index kept; use `physq cache clean` to remove them)");
+            } else if !all {
                 println!("(model kept; use `physq cache clean --all` to remove it)");
             }
             Ok(())
@@ -227,7 +251,7 @@ fn run_cache(cfg: Config, cmd: CacheCmd) -> Result<()> {
 /// `engine`; this function is only spinner, error policy, and output.
 /// Composes with pipes: plain TSV (`rank\tscore\tid\tquestion`) when stdout
 /// is not a terminal.
-fn run_search(cfg: Config, query: &str, limit: usize, plain: bool, bm25_only: bool) -> Result<()> {
+fn run_search(cfg: Config, query: &str, limit: usize, plain: bool) -> Result<()> {
     let spinner = StderrSpinner::start("Fetching data…");
     let engine = {
         let progress = |s: &str| spinner.set_label(s);
@@ -241,7 +265,7 @@ fn run_search(cfg: Config, query: &str, limit: usize, plain: bool, bm25_only: bo
     let mut results = bm25_results.clone();
     let mut sem_warning: Option<String> = None;
 
-    if !bm25_only && !q.is_empty() {
+    if cfg.model.is_some() && !q.is_empty() {
         spinner.set_label("Preparing semantic model… (downloads once on first run)");
         let sem = SemanticEngine::load(&cfg, engine.corpus.clone()).and_then(|mut s| {
             spinner.set_label(""); // short waits get the whimsical verbs (§11)

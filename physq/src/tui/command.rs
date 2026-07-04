@@ -1,4 +1,4 @@
-//! Slash-command parsing for the TUI input box (`/exit`, `/semantic small|large`,
+//! Slash-command parsing for the TUI input box (`/exit`, `/semantic small|large|none`,
 //! `/config`, `/help`). Pure and UI-agnostic so it's unit-testable without an
 //! `App`/`Engine` fixture; `tui::App` owns all the side effects.
 
@@ -9,7 +9,8 @@ pub enum ParsedCommand {
     Exit,
     Help,
     Config,
-    Semantic(ModelSize),
+    /// `None` disables the semantic stage (BM25-only).
+    Semantic(Option<ModelSize>),
     Unknown(String),
 }
 
@@ -33,8 +34,9 @@ pub fn parse_command(input: &str) -> Option<ParsedCommand> {
         ("/exit" | "/quit", None, false) => ParsedCommand::Exit,
         ("/help", None, false) => ParsedCommand::Help,
         ("/config", None, false) => ParsedCommand::Config,
-        ("/semantic", Some("small"), false) => ParsedCommand::Semantic(ModelSize::Small),
-        ("/semantic", Some("large"), false) => ParsedCommand::Semantic(ModelSize::Large),
+        ("/semantic", Some("small"), false) => ParsedCommand::Semantic(Some(ModelSize::Small)),
+        ("/semantic", Some("large"), false) => ParsedCommand::Semantic(Some(ModelSize::Large)),
+        ("/semantic", Some("none"), false) => ParsedCommand::Semantic(None),
         _ => ParsedCommand::Unknown(trimmed.to_string()),
     })
 }
@@ -67,11 +69,15 @@ mod tests {
     fn recognizes_semantic_switch() {
         assert_eq!(
             parse_command("/semantic small"),
-            Some(ParsedCommand::Semantic(ModelSize::Small))
+            Some(ParsedCommand::Semantic(Some(ModelSize::Small)))
         );
         assert_eq!(
             parse_command("/semantic large"),
-            Some(ParsedCommand::Semantic(ModelSize::Large))
+            Some(ParsedCommand::Semantic(Some(ModelSize::Large)))
+        );
+        assert_eq!(
+            parse_command("/semantic none"),
+            Some(ParsedCommand::Semantic(None))
         );
     }
 

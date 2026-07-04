@@ -52,7 +52,10 @@ impl ModelSize {
 pub struct Config {
     pub base_url: String,
     pub cache_root: PathBuf,
-    pub model: ModelSize,
+    /// `None` disables the semantic stage entirely (BM25-only): no model
+    /// download, no `embeddings.json` load. Set via `--model none` or
+    /// `--bm25-only`.
+    pub model: Option<ModelSize>,
     pub offline: bool,
 }
 
@@ -61,7 +64,7 @@ impl Config {
     pub fn resolve(
         base_url: Option<String>,
         cache_dir: Option<PathBuf>,
-        model: ModelSize,
+        model: Option<ModelSize>,
         offline: bool,
     ) -> Result<Self> {
         let base_url = base_url
