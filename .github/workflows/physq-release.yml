@@ -28,12 +28,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-latest は現在 macOS 26 への移行期間中（2026-06-15〜）で、
-          # 移行中のイメージが Xcode 26.5 の clang_rt.osx 検索パス不具合を
-          # 踏んで `ld: library 'clang_rt.osx' not found` で落ちることを確認
-          # 済み。移行が落ち着くまでは安定版を明示的に固定する。
+          # macos-latest / macos-15 は現在 macOS 26 への移行期間中
+          # （2026-06-15〜、あと約10日で完了予定）の混在イメージを引くことがあり、
+          # そちらでは Xcode 26.5 の usr/lib/clang/ 以下が不完全で
+          # `ld: library 'clang_rt.osx' not found` になることを確認した。
+          # 専用の macos-26 イメージ（移行対象ではない）では Xcode 26.5 が
+          # 正常に一式揃っており、回避策なしでビルドできることを実機確認済み。
           - target: aarch64-apple-darwin
-            os: macos-15
+            os: macos-26
             rustflags: ""
           # x86_64-apple-darwin（Intel Mac）は対象外: ort crate（ONNX Runtime
           # バインディング）が dist.txt に x86_64-apple-darwin 向けの配布を
@@ -74,28 +76,6 @@ jobs:
       - name: Install lld (Linux only)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y lld
-      # The runner's default Xcode (26.5, selected via /Applications/Xcode.app)
-      # has a broken clang_rt.osx search path: linking fails with
-      # "ld: library 'clang_rt.osx' not found" even on macos-15, so this is a
-      # runner-image toolchain bug, not a runner-label issue. Fall back to the
-      # newest non-Xcode-26 install (they ship several side by side).
-      # `xcode-select -s` alone isn't enough — it changes the system default,
-      # but rustc/clang give priority to $DEVELOPER_DIR when resolving the SDK
-      # for the final link step, so export it via $GITHUB_ENV for every
-      # subsequent step in this job (not just this one's own shell).
-      - name: List and select a working Xcode (macOS only)
-        if: runner.os == 'macOS'
-        run: |
-          ls -d /Applications/Xcode*.app
-          good="$(ls -d /Applications/Xcode_*.app 2>/dev/null | grep -v '/Xcode_26' | sort -V | tail -1)"
-          if [ -z "$good" ]; then
-            echo "::error::no non-Xcode-26 install found; leaving default selected"
-          else
-            sudo xcode-select -s "$good"
-            echo "DEVELOPER_DIR=$good/Contents/Developer" >> "$GITHUB_ENV"
-          fi
-          xcode-select -p
-          clang --version
       - name: Build (release)
         working-directory: physq
         env:
