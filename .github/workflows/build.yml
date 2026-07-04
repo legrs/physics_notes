@@ -50,7 +50,7 @@ jobs:
         run: |
           git config user.name  'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add q_and_a_data.json embeddings.json dirlens.txt || true
+          git add q_and_a_data.json embeddings.json version.json dirlens.txt || true
           git diff --staged --quiet \
             && echo "変更なし。コミットをスキップします。" \
             || git commit -m 'chore: auto-generate search_text and embeddings [skip ci]'

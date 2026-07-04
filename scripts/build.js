@@ -26,10 +26,12 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const kuromoji = require('kuromoji');
 
 const JSON_PATH = path.join(__dirname, '..', 'q_and_a_data.json');
 const EMBEDDINGS_PATH = path.join(__dirname, '..', 'embeddings.json');
+const VERSION_PATH = path.join(__dirname, '..', 'version.json');
 
 const DO_EMBED = process.argv.includes('--embed') || process.argv.includes('--embed-only');
 const SKIP_TEXT = process.argv.includes('--embed-only');
@@ -39,6 +41,13 @@ const MODELS = {
   small: { id: 'Xenova/multilingual-e5-small' },
   large: { id: 'Xenova/multilingual-e5-large' },
 };
+
+// ── version.json スキーマ定数 ─────────────────────────────
+// physq (CLI) の CLAUDE.md §3/§5/§8 で決め打ちされている値と揃える。
+// tokenizer が変わったら physq 側の BM25 インデックスキャッシュが再構築される。
+const VERSION_SCHEMA = 3;
+const TOKENIZER_TAG = 'lindera-ipadic';
+const EMBEDDING_MODEL_TAG = 'multilingual-e5-small';
 
 // ── ID 正規化 ───────────────────────────────────────────────
 // search.html / q&a_text_importer.gs と同じ規則。
@@ -161,6 +170,32 @@ async function buildEmbeddings(data) {
   console.log(`\n💾 embeddings.json を保存しました`);
 }
 
+// ── version.json 生成 ─────────────────────────────────────
+// 配信するデータファイルをハッシュ化して物理・CLI 両方が参照する共通の
+// マニフェストを作る（CLAUDE.md §5）。ハッシュアルゴリズムは物理・CLI 間で
+// 一致している必要は無く（CLI 側は不透明な文字列として比較するだけ）、
+// SHA-256 を採用する。
+function fileManifest(filePath) {
+  const buf = fs.readFileSync(filePath);
+  const hash = crypto.createHash('sha256').update(buf).digest('hex');
+  return { hash, size: buf.length };
+}
+
+function generateVersionManifest() {
+  const manifest = {
+    generated_at: new Date().toISOString(),
+    schema_version: VERSION_SCHEMA,
+    tokenizer: TOKENIZER_TAG,
+    embedding_model: EMBEDDING_MODEL_TAG,
+    files: {
+      'q_and_a_data.json': fileManifest(JSON_PATH),
+      'embeddings.json': fileManifest(EMBEDDINGS_PATH),
+    },
+  };
+  fs.writeFileSync(VERSION_PATH, JSON.stringify(manifest, null, 2) + '\n', 'utf-8');
+  console.log('✅ version.json 生成完了');
+}
+
 // ── メイン ────────────────────────────────────────────────
 async function main() {
   const raw = fs.readFileSync(JSON_PATH, 'utf-8');
@@ -187,6 +222,9 @@ async function main() {
   if (DO_EMBED) {
     await buildEmbeddings(data);
   }
+
+  // 3. version.json 生成（常に最新の on-disk 状態をハッシュ化する）
+  generateVersionManifest();
 }
 
 main().catch(err => { console.error('❌', err); process.exit(1); });
