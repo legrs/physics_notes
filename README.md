@@ -6,6 +6,9 @@
 先生とのQ&Aデータベース検索エンジン　Q&A database search engine for faculty：\
 <https://legrs.github.io/physics_notes/>
 
+Physics Notes CLI（ターミナルから検索できるツール `physq`）：\
+[physq/README.md](physq/README.md) | [最新リリース / Latest release](https://github.com/legrs/physics_notes/releases/latest)
+
 ## データベースの書き方
 
 ```json
