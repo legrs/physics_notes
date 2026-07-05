@@ -44,6 +44,23 @@ const SEMANTIC_DEBOUNCE: Duration = Duration::from_millis(500);
 const DETAIL_SCROLL_STEP: u16 = 5;
 const MOUSE_SCROLL_STEP: u16 = 3;
 
+/// Per-model descriptions, shown under `/config`'s Semantic status and on the
+/// `/semantic` command-suggestion screen. Order matches the `/config` cycle.
+const MODEL_DESCRIPTIONS: &[(&str, &str)] = &[
+    ("small", "e5-small · 384d — fast, lower memory"),
+    ("large", "e5-large · 1024d — slower, more accurate"),
+    (
+        "max",
+        "ensemble of small + large, RRF-fused — most accurate, loads both",
+    ),
+    ("none", "semantic off — BM25-only, no model download"),
+];
+
+/// Status-bar marquee cadence: milliseconds per one-character scroll step.
+const MARQUEE_STEP_MS: u128 = 200;
+/// Gap rendered between marquee loop repetitions.
+const MARQUEE_GAP: &str = "      ";
+
 enum AppMsg {
     Progress(String),
     Data(Box<Result<Engine, String>>),
@@ -165,6 +182,8 @@ struct App {
     related_selected: Option<usize>,
     overlay: Overlay,
     config_cursor: usize,
+    /// Vertical scroll offset (rows) for the `/config` overlay body.
+    config_scroll: u16,
     command_error: Option<String>,
     /// Bumped on every input change; stale semantic responses are dropped.
     seq: u64,
@@ -178,6 +197,9 @@ struct App {
     warnings: Vec<String>,
     q_lower: String,
     should_quit: bool,
+    /// Fixed epoch used to drive time-based UI animation (the status-bar
+    /// marquee). Set once at construction.
+    app_start: Instant,
 }
 
 impl App {
@@ -208,6 +230,7 @@ impl App {
             related_selected: None,
             overlay: Overlay::None,
             config_cursor: 0,
+            config_scroll: 0,
             command_error: None,
             seq: 0,
             last_requested_seq: 0,
@@ -218,6 +241,7 @@ impl App {
             warnings: Vec::new(),
             q_lower: String::new(),
             should_quit: false,
+            app_start: Instant::now(),
         }
     }
 
@@ -488,6 +512,14 @@ impl App {
                     self.config_cursor = (self.config_cursor + 1) % ConfigField::ALL.len();
                     return;
                 }
+                KeyCode::PageUp => {
+                    self.config_scroll = self.config_scroll.saturating_sub(DETAIL_SCROLL_STEP);
+                    return;
+                }
+                KeyCode::PageDown => {
+                    self.config_scroll = self.config_scroll.saturating_add(DETAIL_SCROLL_STEP);
+                    return;
+                }
                 KeyCode::Left | KeyCode::Right | KeyCode::Enter | KeyCode::Char(' ') => {
                     self.activate_config_field();
                     return;
@@ -550,6 +582,7 @@ impl App {
             ParsedCommand::Config => {
                 self.overlay = Overlay::Config;
                 self.config_cursor = 0;
+                self.config_scroll = 0;
             }
             ParsedCommand::Semantic(size) => self.reload_semantic(size),
             ParsedCommand::Unknown(s) => {
@@ -697,8 +730,21 @@ impl App {
     }
 
     fn handle_mouse(&mut self, m: MouseEvent) {
+        if self.overlay == Overlay::Config {
+            // Config scrolls with the wheel; clicks are ignored (keyboard-driven).
+            match m.kind {
+                MouseEventKind::ScrollUp => {
+                    self.config_scroll = self.config_scroll.saturating_sub(MOUSE_SCROLL_STEP);
+                }
+                MouseEventKind::ScrollDown => {
+                    self.config_scroll = self.config_scroll.saturating_add(MOUSE_SCROLL_STEP);
+                }
+                _ => {}
+            }
+            return;
+        }
         if self.overlay != Overlay::None {
-            return; // Help/Config are keyboard-only by design.
+            return; // Help is keyboard-only by design.
         }
         let in_list = rect_contains(self.list_area, m.column, m.row);
         let in_detail = rect_contains(self.detail_area, m.column, m.row);
@@ -938,7 +984,7 @@ fn draw(frame: &mut Frame, app: &mut App) {
 
     if app.overlay != Overlay::None {
         draw_overlay(frame, app, body);
-        frame.render_widget(status_line(app), status_area);
+        render_status(frame, app, status_area);
         return;
     }
 
@@ -952,7 +998,7 @@ fn draw(frame: &mut Frame, app: &mut App) {
     draw_detail(frame, app, detail_area);
 
     // ── status ─────────────────────────────────────────────────────────
-    frame.render_widget(status_line(app), status_area);
+    render_status(frame, app, status_area);
 }
 
 /// Results is a hand-rolled listbox on top of one `Paragraph` (not
@@ -1077,11 +1123,41 @@ fn detail_lines(app: &App) -> (Vec<Line<'static>>, Vec<Option<u32>>) {
         let heading = Style::default()
             .fg(Color::Cyan)
             .add_modifier(Modifier::BOLD);
+
+        // Typing `/semantic` opens a screen explaining each model, mirroring
+        // how `/` alone lists the commands.
+        if app.input.trim_start().starts_with("/semantic") {
+            b.push(Line::styled("Semantic model  (/semantic <name>)", heading));
+            b.push(Line::raw(""));
+            for (name, desc) in MODEL_DESCRIPTIONS {
+                b.push(Line::from(vec![
+                    Span::styled(
+                        format!("{name:<8}"),
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw((*desc).to_string()),
+                ]));
+            }
+            b.push(Line::raw(""));
+            b.push(Line::styled(
+                "Enter to apply — e.g.  /semantic max",
+                Style::default().fg(Color::DarkGray),
+            ));
+            if let Some(err) = &app.command_error {
+                b.push(Line::raw(""));
+                b.push(Line::styled(
+                    format!("⚠ {err}"),
+                    Style::default().fg(Color::Yellow),
+                ));
+            }
+            return b.finish();
+        }
+
         b.push(Line::styled("Commands", heading));
-        b.push(Line::raw(
-            "/semantic small | large | none   switch the embedding model (none = BM25-only)",
-        ));
-        b.push(Line::raw("/config                   settings"));
+        b.push(Line::raw("/semantic                  switch the embedding"));
+        b.push(Line::raw("/config                    settings"));
         b.push(Line::raw("/help                      shortcut reference"));
         b.push(Line::raw("/exit (or /quit)           quit"));
         if let Some(err) = &app.command_error {
@@ -1241,7 +1317,7 @@ fn draw_detail(frame: &mut Frame, app: &mut App, area: Rect) {
     frame.render_widget(paragraph, area);
 }
 
-fn draw_overlay(frame: &mut Frame, app: &App, area: Rect) {
+fn draw_overlay(frame: &mut Frame, app: &mut App, area: Rect) {
     match app.overlay {
         Overlay::Help => draw_help(frame, area),
         Overlay::Config => draw_config(frame, app, area),
@@ -1271,7 +1347,7 @@ fn draw_help(frame: &mut Frame, area: Rect) {
         Line::raw("  click a Related item   jump to it"),
         Line::raw(""),
         Line::styled("Commands", heading),
-        Line::raw("  /semantic small | large | none   switch the embedding model"),
+        Line::raw("  /semantic                 switch the embedding (type it for details)"),
         Line::raw("  /config                   settings screen"),
         Line::raw("  /help                     this screen"),
         Line::raw("  /exit (or /quit)          quit"),
@@ -1286,14 +1362,14 @@ fn draw_help(frame: &mut Frame, area: Rect) {
     );
 }
 
-fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
+fn draw_config(frame: &mut Frame, app: &mut App, area: Rect) {
     let heading = Style::default()
         .fg(Color::Cyan)
         .add_modifier(Modifier::BOLD);
     let dim = Style::default().fg(Color::DarkGray);
     let mut lines = vec![
         Line::styled(
-            "Settings  (↑↓ select · ←→/Enter change · Esc close)",
+            "Settings  (↑↓ select · ←→/Enter change · PgUp/PgDn scroll · Esc close)",
             heading,
         ),
         Line::raw(""),
@@ -1303,13 +1379,9 @@ fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
         let focused = ConfigField::ALL[app.config_cursor] == field;
         let marker = if focused { "▸ " } else { "  " };
         let (label, value) = match field {
-            ConfigField::Model => (
-                "Semantic model",
-                format!(
-                    "{}  (small=384d fast · large=1024d slower/better · max=both fused · none=BM25-only)",
-                    app.cfg.model.label()
-                ),
-            ),
+            // The per-model descriptions live under "Semantic status" below,
+            // so the value here is just the current selection.
+            ConfigField::Model => ("Semantic model", app.cfg.model.label().to_string()),
             ConfigField::Offline => (
                 "Offline mode",
                 if app.cfg.offline {
@@ -1349,6 +1421,17 @@ fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
         }
     };
     lines.push(Line::raw(format!("  {sem_status}")));
+    lines.push(Line::raw(""));
+    lines.push(Line::styled(
+        "  Models (/semantic <name> or ←→ to cycle)",
+        dim,
+    ));
+    for (name, desc) in MODEL_DESCRIPTIONS {
+        lines.push(Line::from(vec![
+            Span::styled(format!("  {name:<7}"), Style::default().fg(Color::Cyan)),
+            Span::styled((*desc).to_string(), dim),
+        ]));
+    }
 
     lines.push(Line::raw(""));
     lines.push(Line::styled(
@@ -1378,19 +1461,34 @@ fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
         }
     }
 
+    let block = Block::bordered().title(" Config ");
+    let inner = block.inner(area);
+    let total_rows: u16 = lines
+        .iter()
+        .map(|l| wrapped_row_count(l, inner.width.max(1)))
+        .sum();
+    app.config_scroll = app
+        .config_scroll
+        .min(total_rows.saturating_sub(inner.height));
+
     frame.render_widget(
         Paragraph::new(lines)
-            .block(Block::bordered().title(" Config "))
-            .wrap(Wrap { trim: false }),
+            .block(block)
+            .wrap(Wrap { trim: false })
+            .scroll((app.config_scroll, 0)),
         area,
     );
 }
 
-fn status_line(app: &App) -> Line<'static> {
+/// The fixed left of the status bar: the spinner/ready dot plus the semantic
+/// state (`semantic: ready (small)` etc.). Everything to the *right* of this
+/// scrolls as a marquee (see `render_status`), because it can outgrow a narrow
+/// terminal and would otherwise be clipped.
+fn status_left_spans(app: &App) -> Vec<Span<'static>> {
     let mut spans: Vec<Span> = Vec::new();
 
-    // Left: spinner while anything is in flight (§11): phase text for slow
-    // steps, whimsical verbs for short waits.
+    // Spinner while anything is in flight (§11): phase text for slow steps,
+    // whimsical verbs for short waits.
     if let Some((label, started)) = &app.phase {
         spans.push(Span::styled(
             spinner::line(started.elapsed(), Some(label.as_str()), 0),
@@ -1420,11 +1518,12 @@ fn status_line(app: &App) -> Line<'static> {
             Style::default().fg(Color::Green),
         ),
         SemState::Failed { invariant } => {
-            let err = app.sem_error.clone().unwrap_or_default();
+            // Keep the fixed part short: a URL/long detail would defeat the
+            // marquee. The full error stays in Detail and /config.
             let text = if *invariant {
-                format!("SEMANTIC INVARIANT BROKEN: {err}")
+                "SEMANTIC INVARIANT BROKEN".to_string()
             } else {
-                format!("semantic off: {err}")
+                "semantic: off (error)".to_string()
             };
             (
                 text,
@@ -1433,27 +1532,108 @@ fn status_line(app: &App) -> Line<'static> {
         }
     };
     spans.push(Span::styled(sem_text, sem_style));
+    spans
+}
 
+/// The scrolling right of the status bar: an optional warning/error followed
+/// by the keyboard-shortcut hint. URLs are stripped here (but not in Detail or
+/// `/config`) so a fetch error can't blow the status bar out to an unreadable
+/// length. Returns the text plus the style to render it in.
+fn status_tail(app: &App) -> (String, Style) {
+    let mut parts: Vec<String> = Vec::new();
+    let mut warn = false;
     if let Some(err) = &app.command_error {
-        spans.push(Span::raw("  ·  "));
-        spans.push(Span::styled(
-            format!("⚠ {err}"),
-            Style::default().fg(Color::Yellow),
-        ));
+        parts.push(format!("⚠ {}", strip_urls(err)));
+        warn = true;
     } else if let Some(w) = app.warnings.first() {
-        spans.push(Span::raw("  ·  "));
-        spans.push(Span::styled(
-            format!("⚠ {w}"),
-            Style::default().fg(Color::Yellow),
-        ));
+        parts.push(format!("⚠ {}", strip_urls(w)));
+        warn = true;
+    }
+    parts.push(
+        "Enter search · ↑↓ select · Tab related · PgUp/PgDn scroll · /help · Esc quit".to_string(),
+    );
+    let style = if warn {
+        Style::default().fg(Color::Yellow)
+    } else {
+        Style::default().fg(Color::DarkGray)
+    };
+    (parts.join("  ·  "), style)
+}
+
+/// Render the status bar: fixed left, then the marqueed tail sized to whatever
+/// width remains. If the tail already fits, it's shown static (no scrolling).
+fn render_status(frame: &mut Frame, app: &App, area: Rect) {
+    let mut spans = status_left_spans(app);
+    let left_w: usize = spans.iter().map(|s| s.content.width()).sum();
+
+    let sep = "  ·  ";
+    let (tail, tail_style) = status_tail(app);
+    let window = (area.width as usize).saturating_sub(left_w + sep.width());
+    if window > 0 && !tail.is_empty() {
+        let offset = (app.app_start.elapsed().as_millis() / MARQUEE_STEP_MS) as usize;
+        spans.push(Span::raw(sep));
+        spans.push(Span::styled(marquee(&tail, window, offset), tail_style));
     }
 
-    spans.push(Span::raw("  ·  "));
-    spans.push(Span::styled(
-        "Enter search · ↑↓ select · Tab related · PgUp/PgDn scroll · /help · Esc quit",
-        Style::default().fg(Color::DarkGray),
-    ));
-    Line::from(spans)
+    frame.render_widget(Line::from(spans), area);
+}
+
+/// Replace any `http://…`/`https://…` token (up to the next whitespace or a
+/// closing `)"'`) with `…`, so fetch-error messages stay short in the status
+/// bar without losing the surrounding context.
+fn strip_urls(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(pos) = rest.find("http") {
+        let after = &rest[pos..];
+        if after.starts_with("http://") || after.starts_with("https://") {
+            out.push_str(&rest[..pos]);
+            out.push('…');
+            let end = after
+                .find(|c: char| c.is_whitespace() || matches!(c, ')' | '"' | '\''))
+                .unwrap_or(after.len());
+            rest = &after[end..];
+        } else {
+            // "http" not part of a URL scheme — keep it and move past it.
+            out.push_str(&rest[..pos + 4]);
+            rest = &rest[pos + 4..];
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+/// A one-line horizontal marquee. If `text` fits in `window` columns it's
+/// returned unchanged; otherwise it's looped (with `MARQUEE_GAP`) and a
+/// `window`-wide slice starting `offset` characters in is returned, so callers
+/// ticking `offset` over time get a scrolling "LED sign". Width-aware for CJK.
+fn marquee(text: &str, window: usize, offset: usize) -> String {
+    use unicode_width::UnicodeWidthChar;
+    if window == 0 {
+        return String::new();
+    }
+    if text.width() <= window {
+        return text.to_string();
+    }
+    let full: Vec<char> = format!("{text}{MARQUEE_GAP}").chars().collect();
+    let n = full.len();
+    let start = offset % n;
+    let mut out = String::new();
+    let mut w = 0usize;
+    let mut i = 0usize;
+    // One revolution of `full` is wider than `window`, so `w` reaches `window`
+    // before `i` wraps — the `i < n` bound just guarantees termination.
+    while w < window && i < n {
+        let ch = full[(start + i) % n];
+        let cw = UnicodeWidthChar::width(ch).unwrap_or(0);
+        if w + cw > window {
+            break;
+        }
+        out.push(ch);
+        w += cw;
+        i += 1;
+    }
+    out
 }
 
 #[cfg(test)]
@@ -1486,5 +1666,46 @@ mod tests {
         let line = Line::raw("");
         assert_eq!(wrapped_row_count(&line, 10), 1);
         assert_eq!(wrapped_row_count(&line, 0), 1);
+    }
+
+    #[test]
+    fn strip_urls_replaces_url_tokens_but_keeps_context() {
+        assert_eq!(
+            strip_urls(
+                "offline? (error sending request for url (https://raw.githubusercontent.com/legrs/physics_notes/x/version.json): connection refused); using cached data"
+            ),
+            "offline? (error sending request for url (…): connection refused); using cached data"
+        );
+        assert_eq!(
+            strip_urls("plain http status text"),
+            "plain http status text"
+        );
+        assert_eq!(strip_urls("see http://a.b/c now"), "see … now");
+        assert_eq!(strip_urls("no urls here"), "no urls here");
+    }
+
+    #[test]
+    fn marquee_returns_text_unchanged_when_it_fits() {
+        assert_eq!(marquee("short", 20, 0), "short");
+        assert_eq!(marquee("short", 20, 999), "short");
+    }
+
+    #[test]
+    fn marquee_scrolls_and_wraps_when_too_long() {
+        let text = "abcdefghij"; // width 10
+        let w = 4;
+        let a = marquee(text, w, 0);
+        assert_eq!(a.width(), w);
+        assert_eq!(a, "abcd");
+        // Advancing the offset scrolls the window forward.
+        assert_eq!(marquee(text, w, 1), "bcde");
+        // Offset past the looped length wraps around without panicking.
+        let wrapped = marquee(text, w, text.chars().count() + MARQUEE_GAP.chars().count());
+        assert_eq!(wrapped, "abcd");
+    }
+
+    #[test]
+    fn marquee_zero_window_is_empty() {
+        assert_eq!(marquee("anything", 0, 0), "");
     }
 }
