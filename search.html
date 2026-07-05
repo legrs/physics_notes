@@ -2646,6 +2646,8 @@
 
     // mode（pro/ultra/max）に必要な全モデルをロードする。
     // max は small+large の両方。1つでも失敗したら false。
+    // 全モデルロード後に embeddings.json を取得する（ダウンロード順序:
+    // small → large → embeddings のように、モデルを先に揃える）。
     async function _loadSemanticModel(modeKey) {
       const keys = MODE_EMB_KEYS[modeKey];
       if (!keys) return false;
@@ -2653,10 +2655,11 @@
         const ok = await _loadModelByKey(embKey);
         if (!ok) return false;
       }
-      return true;
+      return await _loadEmbeddings();
     }
 
     // 単一モデル（embKey = small|large）をロードして _pipelines[embKey] に格納する。
+    // embeddings.json の取得は行わない（_loadEmbeddings で一括管理）。
     async function _loadModelByKey(embKey) {
       if (_pipelines[embKey]) return true;
       const modelCfg = SEMANTIC_MODELS[embKey];
@@ -2719,69 +2722,86 @@
           }
         );
 
-        // embeddings.json を取得（Cache API があれば永続キャッシュを利用）
+        statusEl.classList.remove('visible');
+        return true;
+      } catch (e) {
+        statusEl.classList.remove('visible');
+        statusTxt.textContent = `⚠️ モデルの読み込みに失敗しました: ${e.message}`;
+        console.error(e);
+        return false;
+      }
+    }
+
+    // embeddings.json をロード（Cache API による永続キャッシュ対応）。
+    // モデルロードとは独立しているので、ダウンロード順序を自由に制御できる。
+    async function _loadEmbeddings() {
+      if (_embeddingsData) return true;
+
+      const statusEl = document.getElementById('semantic-status');
+      const statusTxt = document.getElementById('semantic-status-text');
+      statusEl.classList.add('visible');
+
+      try {
+        // まずブラウザキャッシュを確認。ヒットすれば再ダウンロードしない。
+        let cache = null;
+        try {
+          if (typeof caches !== 'undefined') cache = await caches.open(EMBEDDINGS_CACHE);
+        } catch (_) { cache = null; }
+
+        if (cache) {
+          const hit = await cache.match(EMBEDDINGS_URL);
+          if (hit) {
+            statusTxt.textContent = 'Embeddingデータをキャッシュから読み込み中…';
+            _embeddingsData = normalizeEmbeddings(await hit.json());
+          }
+        }
+
         if (!_embeddingsData) {
-          // まずブラウザキャッシュを確認。ヒットすれば再ダウンロードしない。
-          let cache = null;
-          try {
-            if (typeof caches !== 'undefined') cache = await caches.open(EMBEDDINGS_CACHE);
-          } catch (_) { cache = null; }
+          statusTxt.textContent = 'Embeddingデータをダウンロード中…';
+          const res = await fetch(EMBEDDINGS_URL);
+          if (!res.ok) throw new Error(`Embedding取得失敗: HTTP ${res.status}`);
 
+          const total = parseInt(res.headers.get('content-length') || '0');
+          const reader = res.body.getReader();
+          const chunks = [];
+          let loaded = 0;
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            loaded += value.length;
+            if (total > 0) {
+              const pct = Math.round(loaded / total * 100);
+              const mb = `${(loaded / 1024 / 1024).toFixed(1)}MB/${(total / 1024 / 1024).toFixed(1)}MB`;
+              statusTxt.textContent = `Embeddingデータをダウンロード中… ${pct}% (${mb})`;
+            } else {
+              statusTxt.textContent = `Embeddingデータをダウンロード中… ${(loaded / 1024 / 1024).toFixed(1)}MB`;
+            }
+          }
+
+          // チャンクを結合
+          const buf = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+          let offset = 0;
+          for (const chunk of chunks) { buf.set(chunk, offset); offset += chunk.length; }
+
+          // 次回以降のためにブラウザへ永続キャッシュ（失敗しても致命的ではない）
           if (cache) {
-            const hit = await cache.match(EMBEDDINGS_URL);
-            if (hit) {
-              statusTxt.textContent = 'Embeddingデータをキャッシュから読み込み中…';
-              _embeddingsData = normalizeEmbeddings(await hit.json());
-            }
+            try {
+              await cache.put(EMBEDDINGS_URL, new Response(buf, {
+                headers: { 'Content-Type': 'application/json' }
+              }));
+            } catch (_) { /* 容量超過等は無視 */ }
           }
 
-          if (!_embeddingsData) {
-            statusTxt.textContent = 'Embeddingデータをダウンロード中…';
-            const res = await fetch(EMBEDDINGS_URL);
-            if (!res.ok) throw new Error(`Embedding取得失敗: HTTP ${res.status}`);
-
-            const total = parseInt(res.headers.get('content-length') || '0');
-            const reader = res.body.getReader();
-            const chunks = [];
-            let loaded = 0;
-
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              chunks.push(value);
-              loaded += value.length;
-              if (total > 0) {
-                const pct = Math.round(loaded / total * 100);
-                const mb = `${(loaded / 1024 / 1024).toFixed(1)}MB/${(total / 1024 / 1024).toFixed(1)}MB`;
-                statusTxt.textContent = `Embeddingデータをダウンロード中… ${pct}% (${mb})`;
-              } else {
-                statusTxt.textContent = `Embeddingデータをダウンロード中… ${(loaded / 1024 / 1024).toFixed(1)}MB`;
-              }
-            }
-
-            // チャンクを結合
-            const buf = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
-            let offset = 0;
-            for (const chunk of chunks) { buf.set(chunk, offset); offset += chunk.length; }
-
-            // 次回以降のためにブラウザへ永続キャッシュ（失敗しても致命的ではない）
-            if (cache) {
-              try {
-                await cache.put(EMBEDDINGS_URL, new Response(buf, {
-                  headers: { 'Content-Type': 'application/json' }
-                }));
-              } catch (_) { /* 容量超過等は無視 */ }
-            }
-
-            _embeddingsData = normalizeEmbeddings(JSON.parse(new TextDecoder().decode(buf)));
-          }
+          _embeddingsData = normalizeEmbeddings(JSON.parse(new TextDecoder().decode(buf)));
         }
 
         statusEl.classList.remove('visible');
         return true;
       } catch (e) {
         statusEl.classList.remove('visible');
-        statusTxt.textContent = `⚠️ モデルの読み込みに失敗しました: ${e.message}`;
+        statusTxt.textContent = `⚠️ Embeddingデータの読み込みに失敗しました: ${e.message}`;
         console.error(e);
         return false;
       }

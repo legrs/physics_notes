@@ -785,8 +785,8 @@
 
     let allData = null;
     let embeddingsData = null;
-    let semanticPipeline = null;
-    let semanticModelKey = null;
+    // モデル別パイプラインキャッシュ（pro / ultra それぞれ保持）
+    const _pipelines = { pro: null, ultra: null };
 
     // ── ID 正規化（search.html / build.js / .gs と同じ規則）────────────
     // 数値 ID は先頭ゼロを除去（"00001" → "1"）、UUID 等はそのまま返す。
@@ -1139,8 +1139,11 @@
         .sort((a, b) => b.rrfScore - a.rrfScore);
     }
 
-    async function loadSemanticModel(modeKey) {
-      if (semanticPipeline && semanticModelKey === modeKey) return true;
+    // 単一モデル（modeKey = pro|ultra）をロードして _pipelines[modeKey] に格納する。
+    // 既にロード済みならスキップするため、Max モードで pro→ultra と連続呼び出しされても
+    // 2回目以降の余分なダウンロードが発生しない。
+    async function _loadModelByKey(modeKey) {
+      if (_pipelines[modeKey]) return true;
       const modelCfg = SEMANTIC_MODELS[modeKey];
       if (!modelCfg) return false;
 
@@ -1172,7 +1175,7 @@
 
         const label = modeKey === 'ultra' ? 'Ultra (E5-large)' : 'Pro (E5-small)';
         showStatus(`${label} モデルをダウンロード中…`);
-        semanticPipeline = await window._XenovaPipeline('feature-extraction', modelCfg.id, {
+        _pipelines[modeKey] = await window._XenovaPipeline('feature-extraction', modelCfg.id, {
           quantized: true,
           progress_callback: (p) => {
             if (!p || !p.file) return;
@@ -1189,60 +1192,71 @@
             }
           }
         });
-        semanticModelKey = modeKey;
+
+        hideStatus();
+        return true;
+      } catch (e) {
+        hideStatus();
+        console.error(e);
+        return false;
+      }
+    }
+
+    // embeddings.json をロード（Cache API による永続キャッシュ対応）。
+    // モデルロードとは独立して呼べるので、ダウンロード順序を自由に制御できる。
+    async function _loadEmbeddings() {
+      if (embeddingsData) return true;
+      try {
+        // まずブラウザキャッシュ（Cache API）を確認し、あれば再ダウンロードしない。
+        let cache = null;
+        try {
+          if (typeof caches !== 'undefined') cache = await caches.open(EMBEDDINGS_CACHE);
+        } catch (_) { cache = null; }
+
+        if (cache) {
+          const hit = await cache.match(EMBEDDINGS_URL);
+          if (hit) {
+            showStatus('Embeddingデータをキャッシュから読み込み中…');
+            embeddingsData = normalizeEmbeddings(await hit.json());
+          }
+        }
 
         if (!embeddingsData) {
-          // まずブラウザキャッシュ（Cache API）を確認し、あれば再ダウンロードしない。
-          let cache = null;
-          try {
-            if (typeof caches !== 'undefined') cache = await caches.open(EMBEDDINGS_CACHE);
-          } catch (_) { cache = null; }
+          showStatus('Embeddingデータをダウンロード中…');
+          const res = await fetch(EMBEDDINGS_URL);
+          if (!res.ok) throw new Error(`Embedding取得失敗: HTTP ${res.status}`);
 
+          // ストリーミングで読みながら進捗（％／MB）を表示する。
+          const total = parseInt(res.headers.get('content-length') || '0');
+          const reader = res.body.getReader();
+          const chunks = [];
+          let loaded = 0;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            loaded += value.length;
+            if (total > 0) {
+              const pct = Math.round(loaded / total * 100);
+              const mb = `${(loaded / 1024 / 1024).toFixed(1)}MB/${(total / 1024 / 1024).toFixed(1)}MB`;
+              showStatus(`Embeddingデータをダウンロード中… ${pct}% (${mb})`);
+            } else {
+              showStatus(`Embeddingデータをダウンロード中… ${(loaded / 1024 / 1024).toFixed(1)}MB`);
+            }
+          }
+
+          // チャンクを結合（キャッシュ保存とパースの両方に使う）。
+          const buf = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+          let offset = 0;
+          for (const chunk of chunks) { buf.set(chunk, offset); offset += chunk.length; }
           if (cache) {
-            const hit = await cache.match(EMBEDDINGS_URL);
-            if (hit) {
-              showStatus('Embeddingデータをキャッシュから読み込み中…');
-              embeddingsData = normalizeEmbeddings(await hit.json());
-            }
+            try {
+              await cache.put(EMBEDDINGS_URL, new Response(buf, {
+                headers: { 'Content-Type': 'application/json' }
+              }));
+            } catch (_) { /* 容量超過等は無視 */ }
           }
-
-          if (!embeddingsData) {
-            showStatus('Embeddingデータをダウンロード中…');
-            const res = await fetch(EMBEDDINGS_URL);
-            if (!res.ok) throw new Error(`Embedding取得失敗: HTTP ${res.status}`);
-
-            // ストリーミングで読みながら進捗（％／MB）を表示する。
-            const total = parseInt(res.headers.get('content-length') || '0');
-            const reader = res.body.getReader();
-            const chunks = [];
-            let loaded = 0;
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              chunks.push(value);
-              loaded += value.length;
-              if (total > 0) {
-                const pct = Math.round(loaded / total * 100);
-                const mb = `${(loaded / 1024 / 1024).toFixed(1)}MB/${(total / 1024 / 1024).toFixed(1)}MB`;
-                showStatus(`Embeddingデータをダウンロード中… ${pct}% (${mb})`);
-              } else {
-                showStatus(`Embeddingデータをダウンロード中… ${(loaded / 1024 / 1024).toFixed(1)}MB`);
-              }
-            }
-
-            // チャンクを結合（キャッシュ保存とパースの両方に使う）。
-            const buf = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
-            let offset = 0;
-            for (const chunk of chunks) { buf.set(chunk, offset); offset += chunk.length; }
-            if (cache) {
-              try {
-                await cache.put(EMBEDDINGS_URL, new Response(buf, {
-                  headers: { 'Content-Type': 'application/json' }
-                }));
-              } catch (_) { /* 容量超過等は無視 */ }
-            }
-            embeddingsData = normalizeEmbeddings(JSON.parse(new TextDecoder().decode(buf)));
-          }
+          embeddingsData = normalizeEmbeddings(JSON.parse(new TextDecoder().decode(buf)));
         }
 
         hideStatus();
@@ -1254,8 +1268,16 @@
       }
     }
 
-    async function getQueryEmbedding(queryText) {
-      const out = await semanticPipeline(`query: ${queryText}`, { pooling: 'mean', normalize: true });
+    // mode（pro/ultra）に必要なモデル + embeddings をロードする。
+    async function loadSemanticModel(modeKey) {
+      const ok = await _loadModelByKey(modeKey);
+      if (!ok) return false;
+      return await _loadEmbeddings();
+    }
+
+    async function getQueryEmbedding(queryText, modeKey) {
+      const pipe = _pipelines[modeKey];
+      const out = await pipe(`query: ${queryText}`, { pooling: 'mean', normalize: true });
       return Array.from(out.data);
     }
 
@@ -1280,7 +1302,7 @@
       const embKey = modeKey === 'pro' ? 'small' : 'large';
       if (!embeddingsData?.[embKey]) return bm25Results.map(r => ({ ...r, breakdown: { rrf: r.score, note: 'No embeddings data' } }));
 
-      const queryVec = await getQueryEmbedding(q);
+      const queryVec = await getQueryEmbedding(q, modeKey);
       const embeddingsForMode = embeddingsData[embKey];
 
       const semanticRanked = data
@@ -1355,13 +1377,13 @@
     }
 
     // 単一モデル（modeKey = pro|ultra）でセマンティックランキングを1本作る。
+    // ※ モデルと embeddings は事前にロード済みであることを前提とする。
     async function computeRanked(data, q, modeKey) {
-      const loaded = await loadSemanticModel(modeKey);
-      if (!loaded) return null;
+      if (!_pipelines[modeKey]) return null;
       const embKey = modeKey === 'pro' ? 'small' : 'large';
       const embs = embeddingsData?.[embKey];
       if (!embs) return null;
-      const queryVec = await getQueryEmbedding(q);
+      const queryVec = await getQueryEmbedding(q, modeKey);
       return data
         .filter(item => embs[item.id])
         .map(item => ({ ...item, semScore: cosineSim(queryVec, embs[item.id]) }))
@@ -1382,7 +1404,13 @@
       bm25Results.forEach(r => { if (topRel.has(r.id)) r.score += 0.5; });
       bm25Results.sort((a, b) => b.score - a.score);
 
-      // 両モデルのランキングを順に計算（単一パイプラインを再ロード）
+      // 両モデルをロード（キャッシュ済みならスキップ）してから embeddings を取得
+      const okPro = await _loadModelByKey('pro');
+      const okUltra = await _loadModelByKey('ultra');
+      const okEmb = await _loadEmbeddings();
+      if (!okPro || !okUltra || !okEmb) {
+        return bm25Results.map(r => ({ ...r, breakdown: { rrf: r.score, note: 'Semantic model failed to load' } }));
+      }
       const smallRanked = await computeRanked(data, q, 'pro');
       const largeRanked = await computeRanked(data, q, 'ultra');
       if (!smallRanked || !largeRanked) {
