@@ -1,6 +1,6 @@
 [package]
 name = "physq"
-version = "0.1.4-rc3"
+version = "0.1.4"
 edition = "2024"
 description = "Local hybrid search (BM25 + e5 semantic, RRF-fused) for the Physics Notes Q&A corpus"
 license = "Apache-2.0"
