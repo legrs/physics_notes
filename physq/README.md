@@ -11,7 +11,7 @@ embedding is computed at runtime (fastembed / ONNX, no Python).
 
 ## Requirements & installation
 
-**[Latest release](https://github.com/legrs/physics_notes/releases/latest)** — grab the
+**[Latest release](https://github.com/legrs/physics_notes/releases/)** — grab the
 binary for your platform below; `physq` is a single, self-contained executable (no
 runtime dependencies to install separately; the ~470 MB embedding model downloads on
 first use, not at install time). The commands below always fetch whatever the current
