@@ -1,43 +1,69 @@
-//! RRF fusion of the (fully boosted, sorted) BM25 list with the semantic
-//! ranking — port of `search.html` `_rrfMerge(bm25Results, semanticRanked,
-//! k = 60, semanticWeight = 2.0)`.
+//! RRF fusion of the (fully boosted, sorted) BM25 list with one or more
+//! semantic rankings — a generalization of `search.html`
+//! `_rrfMerge(bm25Results, semanticRanked, k = 60, semanticWeight = 2.0)`.
+//! With a single semantic list it is byte-identical to the web; the `max`
+//! ensemble mode (CLAUDE.md §6 accuracy deviation) passes two semantic lists.
 
 use std::collections::HashMap;
 
 use crate::config::{RRF_K, RRF_SEMANTIC_WEIGHT};
 
-/// Merge two ranked lists of `(doc, score)` (only the order matters here).
-/// `rrf[id] = Σ 1/(k+i_bm25+1) + Σ w/(k+i_sem+1)`; the union of ids is
-/// (BM25 results with score>0) ∪ (all semantically ranked docs). Ties keep
-/// first-seen order (BM25 list first), like the web's insertion-ordered Set.
-pub fn rrf_merge(
-    bm25: &[(u32, f64)],
-    semantic: &[(u32, f64)],
-    k: f64,
-    semantic_weight: f64,
-) -> Vec<(u32, f64)> {
-    let mut order: Vec<u32> = Vec::with_capacity(bm25.len() + semantic.len());
-    let mut scores: HashMap<u32, f64> = HashMap::with_capacity(bm25.len() + semantic.len());
-    for &(doc, _) in bm25.iter().chain(semantic.iter()) {
-        scores.entry(doc).or_insert_with(|| {
-            order.push(doc);
-            0.0
-        });
+/// Merge N ranked lists of `(doc, score)`, each with its own RRF weight (only
+/// each list's *order* matters). `rrf[id] = Σ_l w_l/(k + i_l + 1)`. The union
+/// of ids is the first-seen order across `lists` in the given order (ties keep
+/// that order), mirroring the web's insertion-ordered Set: pass the BM25 list
+/// first, then the semantic list(s).
+pub fn rrf_merge_weighted(lists: &[(&[(u32, f64)], f64)], k: f64) -> Vec<(u32, f64)> {
+    let cap: usize = lists.iter().map(|(l, _)| l.len()).sum();
+    let mut order: Vec<u32> = Vec::with_capacity(cap);
+    let mut scores: HashMap<u32, f64> = HashMap::with_capacity(cap);
+    for (list, _) in lists {
+        for &(doc, _) in list.iter() {
+            scores.entry(doc).or_insert_with(|| {
+                order.push(doc);
+                0.0
+            });
+        }
     }
-    for (i, &(doc, _)) in bm25.iter().enumerate() {
-        *scores.get_mut(&doc).unwrap() += 1.0 / (k + i as f64 + 1.0);
-    }
-    for (i, &(doc, _)) in semantic.iter().enumerate() {
-        *scores.get_mut(&doc).unwrap() += semantic_weight / (k + i as f64 + 1.0);
+    for (list, weight) in lists {
+        for (i, &(doc, _)) in list.iter().enumerate() {
+            *scores.get_mut(&doc).unwrap() += weight / (k + i as f64 + 1.0);
+        }
     }
     let mut merged: Vec<(u32, f64)> = order.into_iter().map(|d| (d, scores[&d])).collect();
     merged.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     merged
 }
 
-/// The confirmed web defaults (§6).
+/// Two-list convenience wrapper (BM25 weight 1, semantic weight
+/// `semantic_weight`) — the original web `_rrfMerge` signature.
+pub fn rrf_merge(
+    bm25: &[(u32, f64)],
+    semantic: &[(u32, f64)],
+    k: f64,
+    semantic_weight: f64,
+) -> Vec<(u32, f64)> {
+    rrf_merge_weighted(&[(bm25, 1.0), (semantic, semantic_weight)], k)
+}
+
+/// The confirmed web defaults (§6): single semantic list, k=60, weight 2.0.
 pub fn rrf_merge_default(bm25: &[(u32, f64)], semantic: &[(u32, f64)]) -> Vec<(u32, f64)> {
     rrf_merge(bm25, semantic, RRF_K, RRF_SEMANTIC_WEIGHT)
+}
+
+/// Hybrid fusion for the CLI: BM25 (weight 1) plus **each** semantic list
+/// (weight `RRF_SEMANTIC_WEIGHT` apiece), RRF `k = RRF_K`. One semantic list
+/// reproduces `rrf_merge_default`; two lists are the `max` ensemble. Keeping
+/// each semantic list at the same weight it has in single mode means small vs
+/// large is decided purely by their relative ranks — a hit both models place
+/// 2nd–3rd outscores one a single model places 1st.
+pub fn rrf_merge_hybrid(bm25: &[(u32, f64)], semantics: &[Vec<(u32, f64)>]) -> Vec<(u32, f64)> {
+    let mut lists: Vec<(&[(u32, f64)], f64)> = Vec::with_capacity(1 + semantics.len());
+    lists.push((bm25, 1.0));
+    for s in semantics {
+        lists.push((s.as_slice(), RRF_SEMANTIC_WEIGHT));
+    }
+    rrf_merge_weighted(&lists, RRF_K)
 }
 
 #[cfg(test)]
@@ -85,5 +111,34 @@ mod tests {
         let merged = rrf_merge(&[(2, 5.0), (0, 3.0), (1, 1.0)], &[], 60.0, 2.0);
         let docs: Vec<u32> = merged.iter().map(|(d, _)| *d).collect();
         assert_eq!(docs, vec![2, 0, 1]);
+    }
+
+    #[test]
+    fn hybrid_single_list_matches_default() {
+        // rrf_merge_hybrid with one semantic list == rrf_merge_default.
+        let bm25 = vec![(0, 9.0), (1, 5.0), (2, 1.0)];
+        let semantic = vec![(1, 0.9), (3, 0.8)];
+        let a = rrf_merge_default(&bm25, &semantic);
+        let b = rrf_merge_hybrid(&bm25, std::slice::from_ref(&semantic));
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn max_ensemble_rewards_agreement_across_models() {
+        // The `max` payoff: doc 5 is only 2nd in each model but is placed by
+        // BOTH; doc 1 is 1st in small but far down in large. Agreement wins.
+        let bm25: Vec<(u32, f64)> = vec![];
+        let mut large = vec![(9, 1.0), (5, 0.9)]; // 5 is 2nd
+        for d in 10..30 {
+            large.push((d, 0.5)); // push doc 1 far down in large
+        }
+        large.push((1, 0.1));
+        let small = vec![(1, 1.0), (5, 0.9)]; // 1 is 1st, 5 is 2nd
+        let merged = rrf_merge_hybrid(&bm25, &[small, large]);
+        let rank_of = |doc: u32| merged.iter().position(|(d, _)| *d == doc).unwrap();
+        assert!(
+            rank_of(5) < rank_of(1),
+            "doc placed 2nd by both models should outrank one placed 1st by a single model"
+        );
     }
 }

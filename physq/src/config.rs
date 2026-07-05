@@ -24,7 +24,7 @@ pub const RRF_K: f64 = 60.0;
 pub const RRF_SEMANTIC_WEIGHT: f64 = 2.0;
 pub const RELATED_BOOST: f64 = 0.5;
 
-/// Which pre-computed embedding matrix (and query model) to use.
+/// One physical embedding model / matrix.
 /// `embeddings.json = { "small": …, "large": … }` (CLAUDE.md §7.1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelSize {
@@ -48,14 +48,60 @@ impl ModelSize {
     }
 }
 
+/// How the semantic stage is configured for a run. `Max` is the CLI-only
+/// ensemble mode: it ranks with **both** e5 models (small + large) and fuses
+/// each list into the RRF alongside BM25, so a hit both models rank 2nd–3rd
+/// can outrank one that a single model puts 1st. There is no web equivalent —
+/// this is an accuracy-over-parity deviation on the same shared artifacts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModelSel {
+    /// Semantic stage off (BM25-only): no model download, no `embeddings.json`.
+    Off,
+    /// A single model.
+    Single(ModelSize),
+    /// Ensemble of every model (small + large).
+    Max,
+}
+
+impl ModelSel {
+    /// The physical models to load and rank with, in fusion order. Empty for
+    /// `Off`; the ensemble order for `Max` doubles as the label order.
+    pub fn sizes(self) -> &'static [ModelSize] {
+        const SMALL: &[ModelSize] = &[ModelSize::Small];
+        const LARGE: &[ModelSize] = &[ModelSize::Large];
+        const MAX: &[ModelSize] = &[ModelSize::Small, ModelSize::Large];
+        match self {
+            ModelSel::Off => &[],
+            ModelSel::Single(ModelSize::Small) => SMALL,
+            ModelSel::Single(ModelSize::Large) => LARGE,
+            ModelSel::Max => MAX,
+        }
+    }
+
+    /// Whether the semantic stage runs at all.
+    pub fn is_enabled(self) -> bool {
+        !matches!(self, ModelSel::Off)
+    }
+
+    /// Stable short label for status lines / config screen / CLI parsing.
+    pub fn label(self) -> &'static str {
+        match self {
+            ModelSel::Off => "none",
+            ModelSel::Single(ModelSize::Small) => "small",
+            ModelSel::Single(ModelSize::Large) => "large",
+            ModelSel::Max => "max",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Config {
     pub base_url: String,
     pub cache_root: PathBuf,
-    /// `None` disables the semantic stage entirely (BM25-only): no model
-    /// download, no `embeddings.json` load. Set via `--model none` or
-    /// `--bm25-only`.
-    pub model: Option<ModelSize>,
+    /// `ModelSel::Off` disables the semantic stage entirely (BM25-only): no
+    /// model download, no `embeddings.json` load. Set via `--model none` or
+    /// `--bm25-only`. `ModelSel::Max` runs the small+large ensemble.
+    pub model: ModelSel,
     pub offline: bool,
 }
 
@@ -64,7 +110,7 @@ impl Config {
     pub fn resolve(
         base_url: Option<String>,
         cache_dir: Option<PathBuf>,
-        model: Option<ModelSize>,
+        model: ModelSel,
         offline: bool,
     ) -> Result<Self> {
         let base_url = base_url

@@ -1,16 +1,18 @@
-//! Slash-command parsing for the TUI input box (`/exit`, `/semantic small|large|none`,
-//! `/config`, `/help`). Pure and UI-agnostic so it's unit-testable without an
-//! `App`/`Engine` fixture; `tui::App` owns all the side effects.
+//! Slash-command parsing for the TUI input box (`/exit`,
+//! `/semantic small|large|max|none`, `/config`, `/help`). Pure and UI-agnostic
+//! so it's unit-testable without an `App`/`Engine` fixture; `tui::App` owns all
+//! the side effects.
 
-use crate::config::ModelSize;
+use crate::config::{ModelSel, ModelSize};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParsedCommand {
     Exit,
     Help,
     Config,
-    /// `None` disables the semantic stage (BM25-only).
-    Semantic(Option<ModelSize>),
+    /// `ModelSel::Off` disables the semantic stage (BM25-only); `ModelSel::Max`
+    /// is the small+large ensemble.
+    Semantic(ModelSel),
     Unknown(String),
 }
 
@@ -34,9 +36,14 @@ pub fn parse_command(input: &str) -> Option<ParsedCommand> {
         ("/exit" | "/quit", None, false) => ParsedCommand::Exit,
         ("/help", None, false) => ParsedCommand::Help,
         ("/config", None, false) => ParsedCommand::Config,
-        ("/semantic", Some("small"), false) => ParsedCommand::Semantic(Some(ModelSize::Small)),
-        ("/semantic", Some("large"), false) => ParsedCommand::Semantic(Some(ModelSize::Large)),
-        ("/semantic", Some("none"), false) => ParsedCommand::Semantic(None),
+        ("/semantic", Some("small"), false) => {
+            ParsedCommand::Semantic(ModelSel::Single(ModelSize::Small))
+        }
+        ("/semantic", Some("large"), false) => {
+            ParsedCommand::Semantic(ModelSel::Single(ModelSize::Large))
+        }
+        ("/semantic", Some("max"), false) => ParsedCommand::Semantic(ModelSel::Max),
+        ("/semantic", Some("none"), false) => ParsedCommand::Semantic(ModelSel::Off),
         _ => ParsedCommand::Unknown(trimmed.to_string()),
     })
 }
@@ -69,15 +76,19 @@ mod tests {
     fn recognizes_semantic_switch() {
         assert_eq!(
             parse_command("/semantic small"),
-            Some(ParsedCommand::Semantic(Some(ModelSize::Small)))
+            Some(ParsedCommand::Semantic(ModelSel::Single(ModelSize::Small)))
         );
         assert_eq!(
             parse_command("/semantic large"),
-            Some(ParsedCommand::Semantic(Some(ModelSize::Large)))
+            Some(ParsedCommand::Semantic(ModelSel::Single(ModelSize::Large)))
+        );
+        assert_eq!(
+            parse_command("/semantic max"),
+            Some(ParsedCommand::Semantic(ModelSel::Max))
         );
         assert_eq!(
             parse_command("/semantic none"),
-            Some(ParsedCommand::Semantic(None))
+            Some(ParsedCommand::Semantic(ModelSel::Off))
         );
     }
 

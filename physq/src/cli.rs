@@ -4,11 +4,11 @@
 use std::io::IsTerminal;
 use std::path::PathBuf;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 
-use crate::config::{Config, ModelSize};
-use crate::engine::{hybrid, Engine, SemanticEngine};
+use crate::config::{Config, ModelSel, ModelSize};
+use crate::engine::{Engine, SemanticEngine, hybrid};
 use crate::model::Corpus;
 use crate::query::prepare_query;
 use crate::semantic::SemanticError;
@@ -30,8 +30,9 @@ struct Cli {
     base_url: Option<String>,
 
     /// Embedding model / matrix ("small" = e5-small 384d, "large" = e5-large
-    /// 1024d, "none" = disable the semantic stage entirely — BM25-only, no
-    /// model download). Applies to both the interactive TUI and `search`.
+    /// 1024d, "max" = ensemble both models and RRF-fuse each — most accurate,
+    /// slowest, downloads both, "none" = disable the semantic stage entirely —
+    /// BM25-only, no model download). Applies to the TUI and `search`.
     #[arg(long, global = true, value_enum, default_value_t = ModelArg::Small)]
     model: ModelArg,
 
@@ -57,17 +58,20 @@ struct Cli {
 enum ModelArg {
     Small,
     Large,
+    /// Ensemble of small + large, RRF-fused (most accurate; downloads both).
+    Max,
     /// Disable the semantic stage entirely (BM25-only).
     #[value(name = "none")]
     Off,
 }
 
-impl From<ModelArg> for Option<ModelSize> {
+impl From<ModelArg> for ModelSel {
     fn from(m: ModelArg) -> Self {
         match m {
-            ModelArg::Small => Some(ModelSize::Small),
-            ModelArg::Large => Some(ModelSize::Large),
-            ModelArg::Off => None,
+            ModelArg::Small => ModelSel::Single(ModelSize::Small),
+            ModelArg::Large => ModelSel::Single(ModelSize::Large),
+            ModelArg::Max => ModelSel::Max,
+            ModelArg::Off => ModelSel::Off,
         }
     }
 }
@@ -125,8 +129,8 @@ pub fn run() -> Result<()> {
     let cli = Cli::parse();
     // `--bm25-only` is shorthand for `--model none`; it wins over an explicit
     // `--model` value since it's the more specific ask.
-    let model: Option<ModelSize> = if cli.bm25_only {
-        None
+    let model: ModelSel = if cli.bm25_only {
+        ModelSel::Off
     } else {
         cli.model.into()
     };
@@ -261,11 +265,11 @@ fn run_search(cfg: Config, query: &str, limit: usize, plain: bool) -> Result<()>
     let q = prepare_query(query);
     let bm25_results = engine.bm25(&q);
 
-    let mut mode = "BM25-only";
+    let mut mode = "BM25-only".to_string();
     let mut results = bm25_results.clone();
     let mut sem_warning: Option<String> = None;
 
-    if cfg.model.is_some() && !q.is_empty() {
+    if cfg.model.is_enabled() && !q.is_empty() {
         spinner.set_label("Preparing semantic model… (downloads once on first run)");
         let sem = SemanticEngine::load(&cfg, engine.corpus.clone()).and_then(|mut s| {
             spinner.set_label(""); // short waits get the whimsical verbs (§11)
@@ -274,7 +278,7 @@ fn run_search(cfg: Config, query: &str, limit: usize, plain: bool) -> Result<()>
         match sem {
             Ok(semantic_ranked) => {
                 results = hybrid(&bm25_results, &semantic_ranked);
-                mode = "hybrid (BM25 + semantic, RRF)";
+                mode = format!("hybrid (BM25 + e5 {}, RRF)", cfg.model.label());
             }
             // Shared-artifact invariant breaks fail loudly (CLAUDE.md §7).
             Err(e @ SemanticError::Invariant(_)) => {

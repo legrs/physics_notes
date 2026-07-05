@@ -17,9 +17,9 @@ use crate::bm25::{self, Bm25Index};
 use crate::config::Config;
 use crate::data::{ensure_data, sha256_hex};
 use crate::model::Corpus;
-use crate::query::{expand_query, LinderaIpadic, QueryTokenizer};
-use crate::rank::rrf_merge_default;
-use crate::semantic::{semantic_rank, CorpusEmbeddings, Embedder, SemanticError};
+use crate::query::{LinderaIpadic, QueryTokenizer, expand_query};
+use crate::rank::rrf_merge_hybrid;
+use crate::semantic::{CorpusEmbeddings, Embedder, SemanticError, semantic_rank};
 
 /// Ranked hits: `(index into corpus.records, score)`, best first.
 pub type Ranked = Vec<(u32, f64)>;
@@ -91,49 +91,71 @@ impl Engine {
     }
 }
 
-/// Loaded semantic search state (query embedder + pre-computed corpus
-/// matrix). Constructing this may download the model on first run — do it
-/// off any UI thread.
-pub struct SemanticEngine {
+/// One loaded semantic model: its query embedder plus the matching
+/// pre-computed corpus matrix.
+struct LoadedModel {
     embedder: Embedder,
     embeddings: CorpusEmbeddings,
+}
+
+/// Loaded semantic search state — one or more query embedders each paired with
+/// its pre-computed corpus matrix. `Single` selections load one; `max` loads
+/// both e5 models. Constructing this may download models on first run — do it
+/// off any UI thread.
+pub struct SemanticEngine {
+    models: Vec<LoadedModel>,
     corpus: Arc<Corpus>,
 }
 
 impl SemanticEngine {
-    /// Honors `--offline`: never starts a model download in offline mode
-    /// (reports `Unavailable` instead, so frontends fall back to BM25-only).
-    /// Shared-artifact invariant breaks surface as `Invariant` — frontends
-    /// must fail loudly on those, not degrade silently (CLAUDE.md §7).
+    /// Loads every model in `cfg.model.sizes()`. Honors `--offline`: never
+    /// starts a model download in offline mode (reports `Unavailable` if any
+    /// required model isn't cached, so frontends fall back to BM25-only — the
+    /// `max` ensemble is all-or-nothing rather than silently degrading to one
+    /// model). Shared-artifact invariant breaks surface as `Invariant` —
+    /// frontends must fail loudly on those (CLAUDE.md §7).
     pub fn load(cfg: &Config, corpus: Arc<Corpus>) -> Result<Self, SemanticError> {
-        let Some(model) = cfg.model else {
+        let sizes = cfg.model.sizes();
+        if sizes.is_empty() {
             return Err(SemanticError::Unavailable(
                 "semantic search disabled (--model none / --bm25-only)".to_string(),
             ));
-        };
-        if cfg.offline && !crate::semantic::model_cached(model, &cfg.model_dir()) {
-            return Err(SemanticError::Unavailable(
-                "offline mode and the embedding model is not downloaded yet".to_string(),
-            ));
         }
-        let embedder = Embedder::new(model, &cfg.model_dir())?;
-        let embeddings = CorpusEmbeddings::load(&cfg.embeddings_path(), model)?;
-        Ok(Self {
-            embedder,
-            embeddings,
-            corpus,
-        })
+        let mut models = Vec::with_capacity(sizes.len());
+        for &size in sizes {
+            if cfg.offline && !crate::semantic::model_cached(size, &cfg.model_dir()) {
+                return Err(SemanticError::Unavailable(format!(
+                    "offline mode and the {} embedding model is not downloaded yet",
+                    size.embeddings_key()
+                )));
+            }
+            let embedder = Embedder::new(size, &cfg.model_dir())?;
+            let embeddings = CorpusEmbeddings::load(&cfg.embeddings_path(), size)?;
+            models.push(LoadedModel {
+                embedder,
+                embeddings,
+            });
+        }
+        Ok(Self { models, corpus })
     }
 
-    /// Semantic ranking of the whole embedded corpus for an
-    /// already-lowercased query (§7: `query: ` prefix applied inside).
-    pub fn rank(&mut self, q_lower: &str) -> Result<Ranked, SemanticError> {
-        let qv = self.embedder.embed_query(q_lower)?;
-        semantic_rank(&self.corpus, &self.embeddings, &qv)
+    /// Rank the whole embedded corpus with every configured model, for an
+    /// already-lowercased query (§7: `query: ` prefix applied inside). Returns
+    /// one ranked list per model in `ModelSel::sizes()` order; the caller
+    /// RRF-fuses them with BM25. The query is embedded once per model because
+    /// small (384d) and large (1024d) need their own query vectors.
+    pub fn rank(&mut self, q_lower: &str) -> Result<Vec<Ranked>, SemanticError> {
+        let mut out = Vec::with_capacity(self.models.len());
+        for m in &mut self.models {
+            let qv = m.embedder.embed_query(q_lower)?;
+            out.push(semantic_rank(&self.corpus, &m.embeddings, &qv)?);
+        }
+        Ok(out)
     }
 }
 
-/// RRF fusion of the two stages with the confirmed web constants (§6).
-pub fn hybrid(bm25: &Ranked, semantic: &Ranked) -> Ranked {
-    rrf_merge_default(bm25, semantic)
+/// RRF fusion of BM25 with one or more semantic rankings (§6). One semantic
+/// list reproduces the confirmed web ordering; two = the `max` ensemble.
+pub fn hybrid(bm25: &Ranked, semantics: &[Ranked]) -> Ranked {
+    rrf_merge_hybrid(bm25, semantics)
 }

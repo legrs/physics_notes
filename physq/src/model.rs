@@ -4,8 +4,8 @@
 use std::fmt;
 
 use anyhow::{Context, Result};
-use serde::de::{self, Deserializer, SeqAccess, Visitor};
 use serde::Deserialize;
+use serde::de::{self, Deserializer, SeqAccess, Visitor};
 
 /// Byte-identical port of `normalizeId` in `build.js` / `search.html`:
 /// trim, then strip leading zeros on all-digit ids (`"00001"` → `"1"`,

@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -299,10 +299,10 @@ async fn fetch_one_conditional(
     progress(&format!("Checking {name}…"));
 
     let mut req = client.get(&url);
-    if local.exists() {
-        if let Some(etag) = meta.files.get(name).and_then(|m| m.etag.clone()) {
-            req = req.header(reqwest::header::IF_NONE_MATCH, etag);
-        }
+    if local.exists()
+        && let Some(etag) = meta.files.get(name).and_then(|m| m.etag.clone())
+    {
+        req = req.header(reqwest::header::IF_NONE_MATCH, etag);
     }
     let resp = req
         .send()

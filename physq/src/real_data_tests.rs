@@ -10,8 +10,8 @@
 use crate::bm25::{self, Bm25Index};
 use crate::config::ModelSize;
 use crate::model::Corpus;
-use crate::query::{expand_query, prepare_query, LinderaIpadic};
-use crate::semantic::{semantic_rank, CorpusEmbeddings};
+use crate::query::{LinderaIpadic, expand_query, prepare_query};
+use crate::semantic::{CorpusEmbeddings, semantic_rank};
 
 fn repo_file(name: &str) -> Option<Vec<u8>> {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

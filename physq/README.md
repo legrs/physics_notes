@@ -154,8 +154,9 @@ Typed into the same input box, run on `Enter`:
 | Command | Effect |
 | --- | --- |
 | `/semantic small` / `/semantic large` | switch the embedding model at runtime (reloads, may download on first use) |
+| `/semantic max` | ensemble mode: rank with both e5 models and RRF-fuse each list with BM25 (most accurate; loads both models) |
 | `/semantic none` | turn semantic off at runtime — BM25-only until switched back |
-| `/config` | interactive settings screen — `↑` `↓` picks a field, `←` `→`/`Enter` changes it (model size cycles small → large → none, offline mode), plus read-only info (base URL, cache dir, tokenizer) |
+| `/config` | interactive settings screen — `↑` `↓` picks a field, `←` `→`/`Enter` changes it (model size cycles small → large → max → none, offline mode), plus read-only info (base URL, cache dir, tokenizer) |
 | `/help` | shortcut reference (keyboard, mouse, commands) |
 | `/exit` (or `/quit`) | quit |
 
@@ -195,10 +196,13 @@ Enabled by default. `physq search` and the TUI load
 `multilingual-e5-small` (384-dim, matching `embeddings.json["small"]`) via
 fastembed; the model is cached under `model/`. Use `--model large` to switch
 to `multilingual-e5-large` + `embeddings.json["large"]` (1024-dim, slower,
-bigger download). Use `--bm25-only` (or `--model none`) to skip the semantic
-stage entirely — no model download, lexical ranking only, in both the TUI
-and `search`. Free the downloaded model without touching cached data with
-`cache clean --model-only`.
+bigger download). Use `--model max` for the ensemble: it ranks with **both**
+e5 models and RRF-fuses each list alongside BM25, so a hit both models place
+2nd–3rd can outrank one a single model puts 1st — most accurate, slowest,
+loads both models (query embedded once per model). Use `--bm25-only` (or
+`--model none`) to skip the semantic stage entirely — no model download,
+lexical ranking only, in both the TUI and `search`. Free the downloaded
+model without touching cached data with `cache clean --model-only`.
 
 If the model can't be loaded (e.g. offline before the first download), physq
 warns and serves BM25-only results. If a *shared-artifact invariant* is

@@ -382,7 +382,7 @@ mod tests {
         assert_eq!(typo_score("ab", &tokens), 1.0); // distance 2
         let tokens: Vec<String> = ["xyzzy"].iter().map(|s| s.to_string()).collect();
         assert_eq!(typo_score("ab", &tokens), 0.0); // too far
-                                                    // exact match present → best = 0 → score 0 (web behavior)
+        // exact match present → best = 0 → score 0 (web behavior)
         let tokens: Vec<String> = ["cat", "cut"].iter().map(|s| s.to_string()).collect();
         assert_eq!(typo_score("cat", &tokens), 0.0);
     }
@@ -411,9 +411,9 @@ mod tests {
         let bm25 = idx.term_score("電磁", 0, 2.0);
         // ngram bigrams of 電磁誘導とは？: 電磁(yes) 磁誘(no) 誘導(yes) 導と(no) とは(no) は？(no) → 1.0
         let expected = bm25 + 10.0 + 3.0 + 1.0 + 1.0; // +1 keyword contains? no: keyword "電磁誘導" does not contain the full word 電磁誘導とは？
-                                                      // keyword boost: k.contains(w)? "電磁誘導".contains("電磁誘導とは？") = false → 0
-                                                      // typo score vs tokens [電磁, 誘導]: distances ≥ 5 → 0
-                                                      // synonym contains word? "でんじゆうどう".contains(...) = false → 0
+        // keyword boost: k.contains(w)? "電磁誘導".contains("電磁誘導とは？") = false → 0
+        // typo score vs tokens [電磁, 誘導]: distances ≥ 5 → 0
+        // synonym contains word? "でんじゆうどう".contains(...) = false → 0
         let _ = expected;
         assert!((s - (bm25 + 10.0 + 3.0 + 1.0)).abs() < 1e-9, "got {s}");
 

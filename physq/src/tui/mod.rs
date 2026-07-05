@@ -8,7 +8,7 @@
 //! Beyond the core search loop, the UI supports: mouse wheel scrolling and
 //! click-to-select on both panes, jumping to a `related[]` item (by
 //! re-searching its question — see `jump_to_related`), slash commands typed
-//! into the input box (`/semantic small|large|none`, `/config`, `/help`,
+//! into the input box (`/semantic small|large|max|none`, `/config`, `/help`,
 //! `/exit`), and a `Tab`-focused keyboard path through Related so nothing
 //! here requires a mouse. `/semantic none` (or launching with `--model none`
 //! / `--bm25-only`) disables the semantic stage entirely: no model download,
@@ -19,7 +19,8 @@ mod command;
 use std::sync::mpsc as std_mpsc;
 use std::time::{Duration, Instant};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
+use ratatui::Frame;
 use ratatui::crossterm::event::{
     self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyEventKind,
     KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
@@ -29,16 +30,15 @@ use ratatui::layout::{Constraint, Layout, Position, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Paragraph, Wrap};
-use ratatui::Frame;
 use unicode_width::UnicodeWidthStr;
 
-use crate::config::{Config, ModelSize};
-use crate::engine::{hybrid, Engine, SemanticEngine};
+use crate::config::{Config, ModelSel, ModelSize};
+use crate::engine::{Engine, SemanticEngine, hybrid};
 use crate::query::prepare_query;
 use crate::semantic::SemanticError;
 use crate::spinner;
 
-use command::{parse_command, ParsedCommand};
+use command::{ParsedCommand, parse_command};
 
 const SEMANTIC_DEBOUNCE: Duration = Duration::from_millis(500);
 const DETAIL_SCROLL_STEP: u16 = 5;
@@ -48,20 +48,22 @@ enum AppMsg {
     Progress(String),
     Data(Box<Result<Engine, String>>),
     SemanticUp {
-        gen: u64,
+        generation: u64,
     },
     SemanticDown {
-        gen: u64,
+        generation: u64,
         error: String,
         invariant: bool,
     },
     SemanticRanked {
-        gen: u64,
+        generation: u64,
         seq: u64,
-        ranked: Vec<(u32, f64)>,
+        /// One ranked list per configured model (1 for a single model, 2 for
+        /// the `max` ensemble); the UI thread RRF-fuses them with BM25.
+        ranked: Vec<Vec<(u32, f64)>>,
     },
     SemanticQueryFailed {
-        gen: u64,
+        generation: u64,
         seq: u64,
         error: String,
         invariant: bool,
@@ -282,17 +284,16 @@ impl App {
         if !self.force_semantic && self.last_input_at.elapsed() < SEMANTIC_DEBOUNCE {
             return;
         }
-        if let Some(tx) = &self.sem_tx {
-            if tx
+        if let Some(tx) = &self.sem_tx
+            && tx
                 .send(SemReq {
                     seq: self.seq,
                     q: self.q_lower.clone(),
                 })
                 .is_ok()
-            {
-                self.last_requested_seq = self.seq;
-                self.pending_sem = Some((self.seq, Instant::now()));
-            }
+        {
+            self.last_requested_seq = self.seq;
+            self.pending_sem = Some((self.seq, Instant::now()));
         }
         self.force_semantic = false;
     }
@@ -311,7 +312,7 @@ impl App {
                 Ok(bundle) => {
                     self.warnings.extend(bundle.warnings.iter().cloned());
                     self.data = Some(bundle);
-                    if self.cfg.model.is_some() {
+                    if self.cfg.model.is_enabled() {
                         self.sem_state = SemState::Init;
                         self.phase = Some(("Loading semantic model…".to_string(), Instant::now()));
                         let (tx, rx) = std_mpsc::channel();
@@ -328,33 +329,37 @@ impl App {
                     self.data_error = Some(e);
                 }
             },
-            AppMsg::SemanticUp { gen } => {
-                if gen != self.sem_generation {
+            AppMsg::SemanticUp { generation } => {
+                if generation != self.sem_generation {
                     return;
                 }
                 self.sem_state = SemState::Ready;
                 self.phase = None;
             }
             AppMsg::SemanticDown {
-                gen,
+                generation,
                 error,
                 invariant,
             } => {
-                if gen != self.sem_generation {
+                if generation != self.sem_generation {
                     return;
                 }
                 self.sem_state = SemState::Failed { invariant };
                 self.sem_error = Some(error);
                 self.phase = None;
             }
-            AppMsg::SemanticRanked { gen, seq, ranked } => {
-                if gen != self.sem_generation {
+            AppMsg::SemanticRanked {
+                generation,
+                seq,
+                ranked,
+            } => {
+                if generation != self.sem_generation {
                     return;
                 }
-                if let Some((pseq, _)) = self.pending_sem {
-                    if seq >= pseq {
-                        self.pending_sem = None;
-                    }
+                if let Some((pseq, _)) = self.pending_sem
+                    && seq >= pseq
+                {
+                    self.pending_sem = None;
                 }
                 if seq == self.seq {
                     self.results = hybrid(&self.bm25_results, &ranked);
@@ -370,18 +375,18 @@ impl App {
                 }
             }
             AppMsg::SemanticQueryFailed {
-                gen,
+                generation,
                 seq,
                 error,
                 invariant,
             } => {
-                if gen != self.sem_generation {
+                if generation != self.sem_generation {
                     return;
                 }
-                if let Some((pseq, _)) = self.pending_sem {
-                    if seq >= pseq {
-                        self.pending_sem = None;
-                    }
+                if let Some((pseq, _)) = self.pending_sem
+                    && seq >= pseq
+                {
+                    self.pending_sem = None;
                 }
                 self.sem_error = Some(error);
                 if invariant {
@@ -501,11 +506,12 @@ impl App {
     fn activate_config_field(&mut self) {
         match ConfigField::ALL[self.config_cursor] {
             ConfigField::Model => {
-                // Cycle small → large → none (BM25-only) → small.
+                // Cycle small → large → max (ensemble) → none (BM25-only) → small.
                 let next = match self.cfg.model {
-                    Some(ModelSize::Small) => Some(ModelSize::Large),
-                    Some(ModelSize::Large) => None,
-                    None => Some(ModelSize::Small),
+                    ModelSel::Single(ModelSize::Small) => ModelSel::Single(ModelSize::Large),
+                    ModelSel::Single(ModelSize::Large) => ModelSel::Max,
+                    ModelSel::Max => ModelSel::Off,
+                    ModelSel::Off => ModelSel::Single(ModelSize::Small),
                 };
                 self.reload_semantic(next);
             }
@@ -664,32 +670,29 @@ impl App {
     /// then errors out and the thread exits) and, when switching to a model,
     /// hands `run_loop` a fresh channel to spawn a new worker for — tagged
     /// with a bumped generation so stale messages from the old worker are
-    /// ignored (`handle_msg`'s `gen` checks).
-    fn reload_semantic(&mut self, model: Option<ModelSize>) {
+    /// ignored (`handle_msg`'s `generation` checks).
+    fn reload_semantic(&mut self, model: ModelSel) {
         self.cfg.model = model;
         self.sem_generation += 1;
         self.sem_error = None;
-        match model {
-            Some(size) => {
-                let (tx, rx) = std_mpsc::channel();
-                self.sem_tx = Some(tx);
-                self.pending_sem_rx = Some(rx);
-                self.sem_state = SemState::Init;
-                self.phase = Some((
-                    format!("Switching to {} model…", size.embeddings_key()),
-                    Instant::now(),
-                ));
-            }
-            None => {
-                self.sem_tx = None;
-                self.pending_sem_rx = None;
-                self.sem_state = SemState::Disabled;
-                self.phase = None;
-                // Drop back to the BM25-only view immediately instead of
-                // leaving a stale hybrid result set on screen.
-                self.results = self.bm25_results.clone();
-                self.results_mode = ResultsMode::Bm25;
-            }
+        if model.is_enabled() {
+            let (tx, rx) = std_mpsc::channel();
+            self.sem_tx = Some(tx);
+            self.pending_sem_rx = Some(rx);
+            self.sem_state = SemState::Init;
+            self.phase = Some((
+                format!("Switching to {} model…", model.label()),
+                Instant::now(),
+            ));
+        } else {
+            self.sem_tx = None;
+            self.pending_sem_rx = None;
+            self.sem_state = SemState::Disabled;
+            self.phase = None;
+            // Drop back to the BM25-only view immediately instead of
+            // leaving a stale hybrid result set on screen.
+            self.results = self.bm25_results.clone();
+            self.results_mode = ResultsMode::Bm25;
         }
     }
 
@@ -750,14 +753,6 @@ impl App {
     }
 }
 
-/// Display label for the config-screen/status-line "model" field.
-fn model_label(model: Option<ModelSize>) -> &'static str {
-    match model {
-        Some(m) => m.embeddings_key(),
-        None => "none",
-    }
-}
-
 fn rect_contains(rect: Rect, col: u16, row: u16) -> bool {
     col >= rect.x && col < rect.x + rect.width && row >= rect.y && row < rect.y + rect.height
 }
@@ -789,12 +784,12 @@ fn wrapped_row_count(line: &Line<'_>, width: u16) -> u16 {
 /// The semantic worker owns the `SemanticEngine` on its own thread; the
 /// model loads (and on first run, downloads) behind the spinner while BM25
 /// is already usable. All ranking logic lives in `engine` — this thread is
-/// only channel plumbing. `gen` tags every outgoing message so `App` can
+/// only channel plumbing. `generation` tags every outgoing message so `App` can
 /// ignore messages from a worker generation it has since switched away from.
 fn semantic_worker(
     cfg: Config,
     engine: Engine,
-    gen: u64,
+    generation: u64,
     req_rx: std_mpsc::Receiver<SemReq>,
     tx: std_mpsc::Sender<AppMsg>,
 ) {
@@ -803,14 +798,14 @@ fn semantic_worker(
         Err(e) => {
             let invariant = matches!(e, SemanticError::Invariant(_));
             let _ = tx.send(AppMsg::SemanticDown {
-                gen,
+                generation,
                 error: e.to_string(),
                 invariant,
             });
             return;
         }
     };
-    let _ = tx.send(AppMsg::SemanticUp { gen });
+    let _ = tx.send(AppMsg::SemanticUp { generation });
 
     while let Ok(mut req) = req_rx.recv() {
         // Collapse a burst of requests down to the newest one.
@@ -819,12 +814,12 @@ fn semantic_worker(
         }
         let msg = match sem.rank(&req.q) {
             Ok(ranked) => AppMsg::SemanticRanked {
-                gen,
+                generation,
                 seq: req.seq,
                 ranked,
             },
             Err(e) => AppMsg::SemanticQueryFailed {
-                gen,
+                generation,
                 seq: req.seq,
                 invariant: matches!(e, SemanticError::Invariant(_)),
                 error: e.to_string(),
@@ -880,14 +875,14 @@ fn run_loop(
         // The semantic worker is (re)spawned lazily whenever a new request
         // channel shows up — on initial data load and on every `/semantic`
         // switch alike.
-        if let Some(req_rx) = app.pending_sem_rx.take() {
-            if let Some(engine) = &app.data {
-                let cfg = app.cfg.clone();
-                let engine = engine.clone();
-                let tx = tx.clone();
-                let gen = app.sem_generation;
-                std::thread::spawn(move || semantic_worker(cfg, engine, gen, req_rx, tx));
-            }
+        if let Some(req_rx) = app.pending_sem_rx.take()
+            && let Some(engine) = &app.data
+        {
+            let cfg = app.cfg.clone();
+            let engine = engine.clone();
+            let tx = tx.clone();
+            let generation = app.sem_generation;
+            std::thread::spawn(move || semantic_worker(cfg, engine, generation, req_rx, tx));
         }
         app.maybe_request_semantic();
 
@@ -1023,18 +1018,18 @@ fn draw_results(frame: &mut Frame, app: &mut App, area: Rect) {
     }
 
     let total_rows = row_of_item.len() as u16;
-    if app.scroll_follow_selection {
-        if let Some(sel) = app.selected {
-            let start = row_of_item.iter().position(|&x| x == sel);
-            let end = row_of_item.iter().rposition(|&x| x == sel);
-            if let (Some(start), Some(end)) = (start, end) {
-                let (start, end) = (start as u16, end as u16);
-                if start < app.results_scroll {
-                    app.results_scroll = start;
-                }
-                if inner_height > 0 && end >= app.results_scroll + inner_height {
-                    app.results_scroll = end + 1 - inner_height;
-                }
+    if app.scroll_follow_selection
+        && let Some(sel) = app.selected
+    {
+        let start = row_of_item.iter().position(|&x| x == sel);
+        let end = row_of_item.iter().rposition(|&x| x == sel);
+        if let (Some(start), Some(end)) = (start, end) {
+            let (start, end) = (start as u16, end as u16);
+            if start < app.results_scroll {
+                app.results_scroll = start;
+            }
+            if inner_height > 0 && end >= app.results_scroll + inner_height {
+                app.results_scroll = end + 1 - inner_height;
             }
         }
     }
@@ -1111,7 +1106,7 @@ fn detail_lines(app: &App) -> (Vec<Line<'static>>, Vec<Option<u32>>) {
         return b.finish();
     };
     let Some(doc) = app.selected_doc() else {
-        let hint = if app.cfg.model.is_some() {
+        let hint = if app.cfg.model.is_enabled() {
             "Type to search (BM25), press Enter for semantic + RRF."
         } else {
             "Type to search (BM25-only; semantic is disabled)."
@@ -1311,8 +1306,8 @@ fn draw_config(frame: &mut Frame, app: &App, area: Rect) {
             ConfigField::Model => (
                 "Semantic model",
                 format!(
-                    "{}  (small=384d fast · large=1024d slower/better · none=BM25-only)",
-                    model_label(app.cfg.model)
+                    "{}  (small=384d fast · large=1024d slower/better · max=both fused · none=BM25-only)",
+                    app.cfg.model.label()
                 ),
             ),
             ConfigField::Offline => (
@@ -1421,7 +1416,7 @@ fn status_line(app: &App) -> Line<'static> {
             Style::default().fg(Color::DarkGray),
         ),
         SemState::Ready => (
-            format!("semantic: ready ({})", model_label(app.cfg.model)),
+            format!("semantic: ready ({})", app.cfg.model.label()),
             Style::default().fg(Color::Green),
         ),
         SemState::Failed { invariant } => {

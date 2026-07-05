@@ -14,7 +14,7 @@ use std::path::Path;
 use fastembed::{EmbeddingModel, TextEmbedding, TextInitOptions};
 
 use crate::config::ModelSize;
-use crate::model::{normalize_id, Corpus};
+use crate::model::{Corpus, normalize_id};
 
 /// e5 convention: documents use `passage: `, queries use `query: ` (§7.3).
 pub const E5_QUERY_PREFIX: &str = "query: ";
@@ -98,10 +98,17 @@ impl CorpusEmbeddings {
 /// True if the embedding model has already been downloaded into the
 /// fastembed cache (hf-hub layout). Used to honor `--offline`: never start
 /// a model download in offline mode, fall back to BM25-only instead.
+///
+/// The repo dir names must match the HF repos fastembed actually pulls from:
+/// `MultilingualE5Small` → `intfloat/multilingual-e5-small`, but
+/// `MultilingualE5Large` → `Qdrant/multilingual-e5-large-onnx` (fastembed
+/// sources the large model from Qdrant's ONNX mirror, not intfloat). Getting
+/// this wrong makes offline `--model large`/`max` falsely report the model as
+/// missing and degrade to BM25-only even when it is cached.
 pub fn model_cached(size: ModelSize, model_cache_dir: &Path) -> bool {
     let repo_dir = match size {
         ModelSize::Small => "models--intfloat--multilingual-e5-small",
-        ModelSize::Large => "models--intfloat--multilingual-e5-large",
+        ModelSize::Large => "models--Qdrant--multilingual-e5-large-onnx",
     };
     model_cache_dir.join(repo_dir).join("snapshots").is_dir()
 }
