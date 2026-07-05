@@ -56,6 +56,7 @@
       --fast-color: #10b981;
       --pro-color: #3b82f6;
       --ultra-color: #f59e0b;
+      --max-color: #ec4899;
       --score-bg: #f0f4ff;
       --score-border: #c7d2fe;
     }
@@ -260,6 +261,10 @@
       color: var(--ultra-color);
     }
 
+    .mode-col[data-mode="max"] .mode-name {
+      color: var(--max-color);
+    }
+
     .mode-col[data-mode="legacy"] {
       border-top: 3px solid var(--legacy-color);
     }
@@ -274,6 +279,10 @@
 
     .mode-col[data-mode="ultra"] {
       border-top: 3px solid var(--ultra-color);
+    }
+
+    .mode-col[data-mode="max"] {
+      border-top: 3px solid var(--max-color);
     }
 
     .mode-count {
@@ -523,6 +532,37 @@
       background: var(--ultra-color);
     }
 
+    .mode-tag.max {
+      background: var(--max-color);
+    }
+
+    /* Max モード用の3連ウェイトスライダー */
+    .max-control .rrf-badge {
+      background: var(--max-color);
+    }
+
+    .max-control #max-w-bm25,
+    .max-control #max-w-small,
+    .max-control #max-w-large {
+      flex: 1;
+      accent-color: var(--max-color);
+      cursor: pointer;
+    }
+
+    .max-weight-grid {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 6px 8px;
+      align-items: center;
+    }
+
+    .max-weight-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      min-width: 72px;
+    }
+
     /* Elapsed time */
     .mode-time {
       font-size: 11px;
@@ -549,6 +589,7 @@
       <span class="mode-tag fast">Fast</span> BM25 + フィールドブースト（現行のfast/autoモード）
       <span class="mode-tag pro">Pro</span> BM25 + E5-small セマンティック + RRF
       <span class="mode-tag ultra">Ultra</span> BM25 + E5-large セマンティック + RRF
+      <span class="mode-tag max">Max</span> BM25 + E5-small + E5-large アンサンブル（各リストをRRF融合）
     </div>
 
     <div class="rrf-control">
@@ -563,6 +604,25 @@
       </div>
       <div class="rrf-hint">BM25: 1.0 × 1/(k+rank)　Semantic: <span id="rrf-weight-hint">2.0</span> × 1/(k+rank)　Pro /
         Ultra に適用</div>
+    </div>
+
+    <div class="rrf-control max-control">
+      <label class="rrf-label">
+        Max モード重み（モデル別・独立スライダー）
+      </label>
+      <div class="max-weight-grid">
+        <span class="max-weight-name">BM25</span>
+        <input type="range" id="max-w-bm25" min="0" max="5" step="0.1" value="1.0">
+        <span class="rrf-badge" id="max-w-bm25-val">1.0</span>
+        <span class="max-weight-name">E5-small</span>
+        <input type="range" id="max-w-small" min="0" max="5" step="0.1" value="2.0">
+        <span class="rrf-badge" id="max-w-small-val">2.0</span>
+        <span class="max-weight-name">E5-large</span>
+        <input type="range" id="max-w-large" min="0" max="5" step="0.1" value="2.0">
+        <span class="rrf-badge" id="max-w-large-val">2.0</span>
+      </div>
+      <div class="rrf-hint">rrf[id] = Σ BM25 ×1/(k+rank) + Σ small ×1/(k+rank) + Σ large ×1/(k+rank)　Max
+        にのみ適用（Pro/Ultra スライダーとは独立）</div>
     </div>
 
     <div class="search-row">
@@ -613,6 +673,16 @@
           <span class="mode-time" id="time-ultra"></span>
         </div>
         <div class="mode-body" id="body-ultra">
+          <div class="mode-empty">検索結果なし</div>
+        </div>
+      </div>
+      <div class="mode-col" data-mode="max">
+        <div class="mode-header">
+          <span class="mode-name">Max</span>
+          <span class="mode-count" id="count-max"></span>
+          <span class="mode-time" id="time-max"></span>
+        </div>
+        <div class="mode-body" id="body-max">
           <div class="mode-empty">検索結果なし</div>
         </div>
       </div>
@@ -679,6 +749,25 @@
       rrfValEl.textContent = v;
       rrfHintEl.textContent = v;
     });
+
+    // ── Max モード用の独立ウェイトスライダー（BM25 / small / large）──────
+    const maxSliders = {
+      bm25: document.getElementById('max-w-bm25'),
+      small: document.getElementById('max-w-small'),
+      large: document.getElementById('max-w-large'),
+    };
+    function getMaxWeights() {
+      return {
+        bm25: parseFloat(maxSliders.bm25.value),
+        small: parseFloat(maxSliders.small.value),
+        large: parseFloat(maxSliders.large.value),
+      };
+    }
+    [['bm25', 'max-w-bm25-val'], ['small', 'max-w-small-val'], ['large', 'max-w-large-val']]
+      .forEach(([k, valId]) => {
+        const el = maxSliders[k], valEl = document.getElementById(valId);
+        el.addEventListener('input', () => { valEl.textContent = parseFloat(el.value).toFixed(1); });
+      });
 
     document.getElementById('dark-toggle').addEventListener('click', () => {
       const isDark = !document.documentElement.classList.contains('dark');
@@ -1122,6 +1211,105 @@
     }
 
     // ══════════════════════════════════════════════════════════════════
+    //  Max mode: BM25 + E5-small + E5-large ensemble (RRF), per-model weights
+    // ══════════════════════════════════════════════════════════════════
+    // N本のセマンティックリストを重み付きで RRF 融合する（BM25 は別重み）。
+    function rrfMergeMulti(bm25Results, semanticLists, k = 60, bm25Weight = 1.0) {
+      const scores = {};
+      const order = [];
+      const add = id => { if (!(id in scores)) { scores[id] = 0; order.push(id); } };
+      bm25Results.forEach(r => add(r.id));
+      semanticLists.forEach(({ list }) => list.forEach(r => add(r.id)));
+      bm25Results.forEach((r, i) => { scores[r.id] += bm25Weight / (k + i + 1); });
+      semanticLists.forEach(({ list, weight }) => {
+        list.forEach((r, i) => { scores[r.id] += weight / (k + i + 1); });
+      });
+      return order.map(id => ({ id, rrfScore: scores[id] })).sort((a, b) => b.rrfScore - a.rrfScore);
+    }
+
+    // 単一モデル（modeKey = pro|ultra）でセマンティックランキングを1本作る。
+    async function computeRanked(data, q, modeKey) {
+      const loaded = await loadSemanticModel(modeKey);
+      if (!loaded) return null;
+      const embKey = modeKey === 'pro' ? 'small' : 'large';
+      const embs = embeddingsData?.[embKey];
+      if (!embs) return null;
+      const queryVec = await getQueryEmbedding(q);
+      return data
+        .filter(item => embs[item.id])
+        .map(item => ({ ...item, semScore: cosineSim(queryVec, embs[item.id]) }))
+        .sort((a, b) => b.semScore - a.semScore);
+    }
+
+    async function runMax(data, q) {
+      const { words, expanded } = expandQuery(q);
+      if (!words.length) return [];
+
+      // BM25（Pro/Ultra と同じ）
+      const bm25idx = buildBM25Index(data);
+      let bm25Results = getCandidates(bm25idx, data, expanded).map(item => {
+        const { score } = fastScoreItem(item, words, expanded, q, bm25idx);
+        return { ...item, score };
+      }).filter(r => r.score > 0).sort((a, b) => b.score - a.score);
+      const topRel = new Set(bm25Results.slice(0, 3).flatMap(r => r.related || []));
+      bm25Results.forEach(r => { if (topRel.has(r.id)) r.score += 0.5; });
+      bm25Results.sort((a, b) => b.score - a.score);
+
+      // 両モデルのランキングを順に計算（単一パイプラインを再ロード）
+      const smallRanked = await computeRanked(data, q, 'pro');
+      const largeRanked = await computeRanked(data, q, 'ultra');
+      if (!smallRanked || !largeRanked) {
+        return bm25Results.map(r => ({ ...r, breakdown: { rrf: r.score, note: 'Semantic model failed to load' } }));
+      }
+
+      const idToItem = Object.fromEntries(data.map(d => [d.id, d]));
+      const bm25RankMap = {}; bm25Results.forEach((r, i) => { bm25RankMap[r.id] = { rank: i + 1, score: r.score }; });
+      const smallRankMap = {}; smallRanked.forEach((r, i) => { smallRankMap[r.id] = { rank: i + 1, score: r.semScore }; });
+      const largeRankMap = {}; largeRanked.forEach((r, i) => { largeRankMap[r.id] = { rank: i + 1, score: r.semScore }; });
+
+      function buildResults(w) {
+        const merged = rrfMergeMulti(bm25Results, [
+          { list: smallRanked, weight: w.small },
+          { list: largeRanked, weight: w.large },
+        ], 60, w.bm25);
+        return merged
+          .filter(r => r.rrfScore > 0)
+          .map(r => {
+            const item = idToItem[r.id];
+            if (!item) return null;
+            return {
+              ...item,
+              score: r.rrfScore,
+              breakdown: {
+                rrf_score: r.rrfScore,
+                bm25_rank: bm25RankMap[r.id]?.rank || '–',
+                bm25_score: bm25RankMap[r.id]?.score?.toFixed(2) || '0',
+                small_rank: smallRankMap[r.id]?.rank || '–',
+                small_score: smallRankMap[r.id]?.score?.toFixed(4) || '0',
+                large_rank: largeRankMap[r.id]?.rank || '–',
+                large_score: largeRankMap[r.id]?.score?.toFixed(4) || '0',
+              }
+            };
+          })
+          .filter(Boolean);
+      }
+
+      // 3本の Max スライダーにリアルタイム再描画ハンドラを登録（前のは上書き）
+      const rerender = () => {
+        renderResults('max', buildResults(getMaxWeights()), 0);
+        const timeEl = document.getElementById('time-max');
+        if (timeEl) timeEl.textContent = '再計算';
+      };
+      [maxSliders.bm25, maxSliders.small, maxSliders.large].forEach(sl => {
+        if (sl._live_max) sl.removeEventListener('input', sl._live_max);
+        sl._live_max = rerender;
+        sl.addEventListener('input', rerender);
+      });
+
+      return buildResults(getMaxWeights());
+    }
+
+    // ══════════════════════════════════════════════════════════════════
     //  UI rendering
     // ══════════════════════════════════════════════════════════════════
     function showStatus(msg) {
@@ -1187,6 +1375,16 @@
       `;
     }
 
+    function renderMaxBreakdown(bd) {
+      return `
+        <div class="score-line"><span class="score-line-label">RRF スコア</span><span class="score-line-value positive">${bd.rrf_score?.toFixed(6) || bd.rrf || '–'}</span></div>
+        <div class="score-line"><span class="score-line-label">BM25 ランク / スコア</span><span class="score-line-value">#${bd.bm25_rank || '–'} (${bd.bm25_score || '–'})</span></div>
+        <div class="score-line"><span class="score-line-label">E5-small ランク / コサイン</span><span class="score-line-value">#${bd.small_rank || '–'} (${bd.small_score || '–'})</span></div>
+        <div class="score-line"><span class="score-line-label">E5-large ランク / コサイン</span><span class="score-line-value">#${bd.large_rank || '–'} (${bd.large_score || '–'})</span></div>
+        ${bd.note ? `<div style="margin-top:4px;color:var(--text-muted);font-style:italic">${bd.note}</div>` : ''}
+      `;
+    }
+
     function renderResults(mode, results, elapsed) {
       const body = document.getElementById(`body-${mode}`);
       const count = document.getElementById(`count-${mode}`);
@@ -1206,13 +1404,14 @@
         const el = document.createElement('div');
         el.className = 'result-item';
 
-        const scoreDisplay = (mode === 'pro' || mode === 'ultra')
+        const scoreDisplay = (mode === 'pro' || mode === 'ultra' || mode === 'max')
           ? item.score.toFixed(6)
           : item.score.toFixed(2);
 
         let breakdownHtml = '';
         if (mode === 'legacy') breakdownHtml = renderLegacyBreakdown(item.breakdown);
         else if (mode === 'fast') breakdownHtml = renderFastBreakdown(item.breakdown);
+        else if (mode === 'max') breakdownHtml = renderMaxBreakdown(item.breakdown);
         else breakdownHtml = renderSemanticBreakdown(item.breakdown);
 
         const toggleId = `toggle-${mode}-${i}`;
@@ -1287,6 +1486,17 @@
       } catch (e) {
         console.error('Ultra search failed:', e);
         renderResults('ultra', [], performance.now() - t0);
+      }
+
+      // ── Max（BM25 + small + large アンサンブル）──
+      t0 = performance.now();
+      showStatus('Max モード: アンサンブル検索を実行中…');
+      try {
+        const maxResults = await runMax(allData, q);
+        renderResults('max', maxResults, performance.now() - t0);
+      } catch (e) {
+        console.error('Max search failed:', e);
+        renderResults('max', [], performance.now() - t0);
       }
 
       hideStatus();
