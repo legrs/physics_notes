@@ -27,3 +27,5 @@ prompt.md
 check_tokenization.py
 # Rust (physq CLI)
 physq/target/
+
+docs/

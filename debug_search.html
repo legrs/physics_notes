@@ -202,22 +202,15 @@
     }
 
     /* ── Grid ──────────────────────────────────── */
+    /* すべてのモードを常に横一列に並べる。列が多くて入り切らない場合は
+       縦に折り返さず、横スクロールで全モデルを比較できるようにする。 */
     .mode-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(240px, 1fr);
       gap: 16px;
-    }
-
-    @media (max-width: 1100px) {
-      .mode-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    @media (max-width: 600px) {
-      .mode-grid {
-        grid-template-columns: 1fr;
-      }
+      overflow-x: auto;
+      padding-bottom: 10px;
     }
 
     /* ── Mode column ──────────────────────────── */
@@ -336,6 +329,11 @@
       font-size: 11px;
       color: var(--text-muted);
       font-family: monospace;
+      cursor: pointer;
+    }
+
+    .result-id:hover {
+      text-decoration: underline;
     }
 
     .result-score {
@@ -489,6 +487,87 @@
       color: var(--text-muted);
     }
 
+    /* ── ID 順位ルックアップ ─────────────────────── */
+    .rank-lookup {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-mid);
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .rank-lookup-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .rank-lookup-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    #rank-id-input {
+      flex: 1;
+      min-width: 220px;
+      padding: 7px 10px;
+      border: 1px solid var(--border-mid);
+      border-radius: 8px;
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font-size: 13px;
+      font-family: monospace;
+    }
+
+    .rank-lookup-q {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .rank-lookup-q.rank-notfound {
+      color: var(--ultra-color);
+    }
+
+    .rank-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .rank-chip {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-mid);
+      color: var(--text-primary);
+    }
+
+    .rank-chip-name {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .rank-chip[data-mode="legacy"] .rank-chip-name { color: var(--legacy-color); }
+    .rank-chip[data-mode="fast"] .rank-chip-name { color: var(--fast-color); }
+    .rank-chip[data-mode="pro"] .rank-chip-name { color: var(--pro-color); }
+    .rank-chip[data-mode="ultra"] .rank-chip-name { color: var(--ultra-color); }
+    .rank-chip[data-mode="max"] .rank-chip-name { color: var(--max-color); }
+
+    .rank-chip.rank-out { color: var(--text-muted); }
+
     /* ── Info box ──────────────────────────────── */
     .info-box {
       background: var(--bg-surface);
@@ -633,6 +712,15 @@
     <div id="status-bar">
       <div class="status-spinner"></div>
       <span id="status-text">読み込み中…</span>
+    </div>
+
+    <div class="rank-lookup">
+      <div class="rank-lookup-top">
+        <span class="rank-lookup-label">ID 順位ルックアップ</span>
+        <input type="text" id="rank-id-input" placeholder="レコードID（UUID）を入力、または結果のIDをクリック…">
+      </div>
+      <div class="rank-lookup-q" id="rank-lookup-q"></div>
+      <div class="rank-chip-row" id="rank-lookup-result"></div>
     </div>
 
     <div class="mode-grid" id="mode-grid">
@@ -1082,8 +1170,25 @@
           });
         }
 
-        showStatus(`${modeKey === 'ultra' ? 'Ultra (E5-large)' : 'Pro (E5-small)'} モデルをダウンロード中…`);
-        semanticPipeline = await window._XenovaPipeline('feature-extraction', modelCfg.id, { quantized: true });
+        const label = modeKey === 'ultra' ? 'Ultra (E5-large)' : 'Pro (E5-small)';
+        showStatus(`${label} モデルをダウンロード中…`);
+        semanticPipeline = await window._XenovaPipeline('feature-extraction', modelCfg.id, {
+          quantized: true,
+          progress_callback: (p) => {
+            if (!p || !p.file) return;
+            // 主要なモデルファイル（onnx）の進捗だけ表示
+            const isMainFile = p.file.includes('model') || p.file.includes('onnx');
+            if (!isMainFile) return;
+            if (p.status === 'downloading' || p.status === 'progress') {
+              const pct = Math.round(p.progress ?? 0);
+              const mb = p.loaded ? ` (${(p.loaded / 1024 / 1024).toFixed(0)}MB` +
+                (p.total ? `/${(p.total / 1024 / 1024).toFixed(0)}MB)` : ')') : '';
+              showStatus(`${label} モデルをダウンロード中… ${pct}%${mb}`);
+            } else if (p.status === 'done') {
+              showStatus(`${label} モデルの読み込み完了`);
+            }
+          }
+        });
         semanticModelKey = modeKey;
 
         if (!embeddingsData) {
@@ -1102,11 +1207,33 @@
           }
 
           if (!embeddingsData) {
-            showStatus('Embeddingデータを取得中…');
+            showStatus('Embeddingデータをダウンロード中…');
             const res = await fetch(EMBEDDINGS_URL);
             if (!res.ok) throw new Error(`Embedding取得失敗: HTTP ${res.status}`);
-            // 本文を一度だけ読み、キャッシュ保存とパースの両方に使う。
-            const buf = new Uint8Array(await res.arrayBuffer());
+
+            // ストリーミングで読みながら進捗（％／MB）を表示する。
+            const total = parseInt(res.headers.get('content-length') || '0');
+            const reader = res.body.getReader();
+            const chunks = [];
+            let loaded = 0;
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              chunks.push(value);
+              loaded += value.length;
+              if (total > 0) {
+                const pct = Math.round(loaded / total * 100);
+                const mb = `${(loaded / 1024 / 1024).toFixed(1)}MB/${(total / 1024 / 1024).toFixed(1)}MB`;
+                showStatus(`Embeddingデータをダウンロード中… ${pct}% (${mb})`);
+              } else {
+                showStatus(`Embeddingデータをダウンロード中… ${(loaded / 1024 / 1024).toFixed(1)}MB`);
+              }
+            }
+
+            // チャンクを結合（キャッシュ保存とパースの両方に使う）。
+            const buf = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+            let offset = 0;
+            for (const chunk of chunks) { buf.set(chunk, offset); offset += chunk.length; }
             if (cache) {
               try {
                 await cache.put(EMBEDDINGS_URL, new Response(buf, {
@@ -1385,6 +1512,38 @@
       `;
     }
 
+    // ── ID 順位ルックアップ ────────────────────────────────────────────
+    const MODE_LABELS = { legacy: 'Legacy', fast: 'Fast', pro: 'Pro', ultra: 'Ultra', max: 'Max' };
+    const MODE_ORDER = ['legacy', 'fast', 'pro', 'ultra', 'max'];
+    const _lastResults = {}; // mode -> [id,...]（各モードの現在の順位リスト）
+
+    // 入力されたIDが各モードで何位かを表示する。renderResults の度に呼ばれるので
+    // スライダー操作による再ランキングにもリアルタイムで追従する。
+    function updateRankLookup() {
+      const resultEl = document.getElementById('rank-lookup-result');
+      const qEl = document.getElementById('rank-lookup-q');
+      const raw = document.getElementById('rank-id-input').value.trim();
+      if (!raw) { resultEl.innerHTML = ''; qEl.textContent = ''; return; }
+      const id = normalizeId(raw);
+
+      const item = (allData || []).find(d => d.id === id);
+      if (item) { qEl.className = 'rank-lookup-q'; qEl.textContent = `Q: ${item.questions[0]}`; }
+      else { qEl.className = 'rank-lookup-q rank-notfound'; qEl.textContent = 'このIDはデータに存在しません'; }
+
+      resultEl.innerHTML = MODE_ORDER.map(mode => {
+        const list = _lastResults[mode];
+        let text, cls = '';
+        if (!list) { text = '—'; cls = ' rank-out'; }
+        else {
+          const idx = list.indexOf(id);
+          if (idx >= 0) text = `#${idx + 1} / ${list.length}`;
+          else { text = '圏外'; cls = ' rank-out'; }
+        }
+        return `<span class="rank-chip${cls}" data-mode="${mode}"><span class="rank-chip-name">${MODE_LABELS[mode]}</span> ${text}</span>`;
+      }).join('');
+    }
+    document.getElementById('rank-id-input').addEventListener('input', updateRankLookup);
+
     function renderResults(mode, results, elapsed) {
       const body = document.getElementById(`body-${mode}`);
       const count = document.getElementById(`count-${mode}`);
@@ -1392,6 +1551,10 @@
 
       count.textContent = `${results.length} 件`;
       time.textContent = `${elapsed.toFixed(0)}ms`;
+
+      // 順位ルックアップ用に現在の順位リストを保存し、表示を更新する。
+      _lastResults[mode] = results.map(r => r.id);
+      updateRankLookup();
 
       if (results.length === 0) {
         body.innerHTML = '<div class="mode-empty">0件 — スコア0超の結果なし</div>';
@@ -1437,6 +1600,13 @@
           const detail = document.getElementById(detailId);
           const open = detail.classList.toggle('open');
           this.textContent = open ? '▼ 内訳' : '▶ 内訳';
+        });
+
+        // クリックで順位ルックアップ入力欄にIDを流し込む
+        const idEl = el.querySelector('.result-id');
+        if (idEl) idEl.addEventListener('click', () => {
+          document.getElementById('rank-id-input').value = item.id;
+          updateRankLookup();
         });
       });
     }
