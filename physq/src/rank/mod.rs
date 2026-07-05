@@ -124,6 +124,24 @@ mod tests {
     }
 
     #[test]
+    fn zero_weight_list_contributes_nothing() {
+        // The custom mode can zero out a model. A weight-0 list must not move
+        // any ranking — identical to omitting it.
+        let bm25 = vec![(0, 5.0), (1, 3.0)];
+        let small = vec![(1, 0.9), (2, 0.8)];
+        let large = vec![(9, 1.0)];
+        let with_zero = rrf_merge_weighted(&[(&bm25, 1.0), (&small, 2.0), (&large, 0.0)], 60.0);
+        let without = rrf_merge_weighted(&[(&bm25, 1.0), (&small, 2.0)], 60.0);
+        // Every doc present in both must have an equal score; the zero-weight
+        // doc (9) gets 0 and sorts last.
+        for (id, score) in &without {
+            let got = with_zero.iter().find(|(d, _)| d == id).unwrap().1;
+            assert!((got - score).abs() < 1e-12, "doc {id}");
+        }
+        assert!((with_zero.iter().find(|(d, _)| *d == 9).unwrap().1).abs() < 1e-12);
+    }
+
+    #[test]
     fn max_ensemble_rewards_agreement_across_models() {
         // The `max` payoff: doc 5 is only 2nd in each model but is placed by
         // BOTH; doc 1 is 1st in small but far down in large. Agreement wins.

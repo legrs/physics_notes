@@ -14,11 +14,11 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 
 use crate::bm25::{self, Bm25Index};
-use crate::config::Config;
+use crate::config::{Config, CustomWeights, RRF_K};
 use crate::data::{ensure_data, sha256_hex};
 use crate::model::Corpus;
 use crate::query::{LinderaIpadic, QueryTokenizer, expand_query};
-use crate::rank::rrf_merge_hybrid;
+use crate::rank::{rrf_merge_hybrid, rrf_merge_weighted};
 use crate::semantic::{CorpusEmbeddings, Embedder, SemanticError, semantic_rank};
 
 /// Ranked hits: `(index into corpus.records, score)`, best first.
@@ -158,4 +158,20 @@ impl SemanticEngine {
 /// list reproduces the confirmed web ordering; two = the `max` ensemble.
 pub fn hybrid(bm25: &Ranked, semantics: &[Ranked]) -> Ranked {
     rrf_merge_hybrid(bm25, semantics)
+}
+
+/// RRF fusion for the `custom` (`--debug`) mode: BM25 and each semantic model
+/// carry their own tunable weight. `semantics` are in `ModelSel::sizes()`
+/// order (small, large), matching `weights.small` / `weights.large`.
+pub fn hybrid_custom(bm25: &Ranked, semantics: &[Ranked], weights: &CustomWeights) -> Ranked {
+    let sem_weights = [weights.small, weights.large];
+    let mut lists: Vec<(&[(u32, f64)], f64)> = Vec::with_capacity(1 + semantics.len());
+    lists.push((bm25.as_slice(), weights.bm25));
+    for (i, s) in semantics.iter().enumerate() {
+        lists.push((
+            s.as_slice(),
+            sem_weights.get(i).copied().unwrap_or(weights.large),
+        ));
+    }
+    rrf_merge_weighted(&lists, RRF_K)
 }

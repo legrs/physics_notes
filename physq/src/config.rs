@@ -53,28 +53,33 @@ impl ModelSize {
 /// each list into the RRF alongside BM25, so a hit both models rank 2nd–3rd
 /// can outrank one that a single model puts 1st. There is no web equivalent —
 /// this is an accuracy-over-parity deviation on the same shared artifacts.
+/// `Custom` is the `--debug`-only variant of `Max`: same two models, but the
+/// RRF weights (BM25 / small / large) are user-tunable at runtime (`weights`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelSel {
     /// Semantic stage off (BM25-only): no model download, no `embeddings.json`.
     Off,
     /// A single model.
     Single(ModelSize),
-    /// Ensemble of every model (small + large).
+    /// Ensemble of every model (small + large) with the fixed default weights.
     Max,
+    /// Ensemble like `Max`, but with user-tunable RRF weights (`--debug`).
+    Custom,
 }
 
 impl ModelSel {
     /// The physical models to load and rank with, in fusion order. Empty for
-    /// `Off`; the ensemble order for `Max` doubles as the label order.
+    /// `Off`; the ensemble order (small, large) for `Max`/`Custom` doubles as
+    /// the weight order in [`CustomWeights`].
     pub fn sizes(self) -> &'static [ModelSize] {
         const SMALL: &[ModelSize] = &[ModelSize::Small];
         const LARGE: &[ModelSize] = &[ModelSize::Large];
-        const MAX: &[ModelSize] = &[ModelSize::Small, ModelSize::Large];
+        const BOTH: &[ModelSize] = &[ModelSize::Small, ModelSize::Large];
         match self {
             ModelSel::Off => &[],
             ModelSel::Single(ModelSize::Small) => SMALL,
             ModelSel::Single(ModelSize::Large) => LARGE,
-            ModelSel::Max => MAX,
+            ModelSel::Max | ModelSel::Custom => BOTH,
         }
     }
 
@@ -90,8 +95,38 @@ impl ModelSel {
             ModelSel::Single(ModelSize::Small) => "small",
             ModelSel::Single(ModelSize::Large) => "large",
             ModelSel::Max => "max",
+            ModelSel::Custom => "custom",
         }
     }
+}
+
+/// Per-model RRF weights for `ModelSel::Custom` (the `--debug` tuning mode).
+/// Order mirrors the fusion: BM25 first, then each `ModelSel::sizes()` model
+/// (small, large). Defaults match `Max` (BM25 weight 1, each semantic 2).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CustomWeights {
+    pub bm25: f64,
+    pub small: f64,
+    pub large: f64,
+}
+
+impl Default for CustomWeights {
+    fn default() -> Self {
+        Self {
+            bm25: 1.0,
+            small: RRF_SEMANTIC_WEIGHT,
+            large: RRF_SEMANTIC_WEIGHT,
+        }
+    }
+}
+
+impl CustomWeights {
+    /// Adjustment step and inclusive bounds for the `/config` weight editor,
+    /// mirroring the web debug slider (step 0.1). BM25 may go to 0 to disable
+    /// the lexical contribution entirely.
+    pub const STEP: f64 = 0.1;
+    pub const MIN: f64 = 0.0;
+    pub const MAX: f64 = 5.0;
 }
 
 #[derive(Debug, Clone)]
@@ -103,6 +138,12 @@ pub struct Config {
     /// `--bm25-only`. `ModelSel::Max` runs the small+large ensemble.
     pub model: ModelSel,
     pub offline: bool,
+    /// `--debug`: unlocks the `custom` semantic mode + its weight editor in the
+    /// `/config` TUI screen. Nothing else changes.
+    pub debug: bool,
+    /// RRF weights used when `model == ModelSel::Custom` (tuned live in
+    /// `/config` under `--debug`).
+    pub weights: CustomWeights,
 }
 
 impl Config {
@@ -112,6 +153,7 @@ impl Config {
         cache_dir: Option<PathBuf>,
         model: ModelSel,
         offline: bool,
+        debug: bool,
     ) -> Result<Self> {
         let base_url = base_url
             .or_else(|| std::env::var("PHYSQ_BASE_URL").ok())
@@ -128,6 +170,8 @@ impl Config {
             cache_root,
             model,
             offline,
+            debug,
+            weights: CustomWeights::default(),
         })
     }
 

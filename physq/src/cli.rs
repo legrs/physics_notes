@@ -45,6 +45,12 @@ struct Cli {
     #[arg(long, global = true)]
     offline: bool,
 
+    /// Debug mode: unlock the `custom` semantic model in the /config screen,
+    /// where the per-model RRF weights (BM25 / e5-small / e5-large) can be
+    /// tuned live. Everything else behaves like a normal run.
+    #[arg(long, global = true)]
+    debug: bool,
+
     /// Override the cache directory (default: OS cache dir /physics-notes;
     /// also settable via PHYSQ_CACHE_DIR)
     #[arg(long, global = true, value_name = "DIR")]
@@ -139,6 +145,7 @@ pub fn run() -> Result<()> {
         cli.cache_dir.clone(),
         model,
         cli.offline,
+        cli.debug,
     )?;
 
     match cli.command {

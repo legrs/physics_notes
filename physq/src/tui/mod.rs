@@ -32,8 +32,8 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Paragraph, Wrap};
 use unicode_width::UnicodeWidthStr;
 
-use crate::config::{Config, ModelSel, ModelSize};
-use crate::engine::{Engine, SemanticEngine, hybrid};
+use crate::config::{Config, CustomWeights, ModelSel, ModelSize};
+use crate::engine::{Engine, SemanticEngine, hybrid, hybrid_custom};
 use crate::query::prepare_query;
 use crate::semantic::SemanticError;
 use crate::spinner;
@@ -135,10 +135,11 @@ enum Overlay {
 enum ConfigField {
     Model,
     Offline,
-}
-
-impl ConfigField {
-    const ALL: [ConfigField; 2] = [ConfigField::Model, ConfigField::Offline];
+    /// `--debug` custom-mode weight rows; only present when the model is
+    /// `custom`. Adjusted with ←/→ (see `App::config_fields`).
+    WeightBm25,
+    WeightSmall,
+    WeightLarge,
 }
 
 struct App {
@@ -200,6 +201,12 @@ struct App {
     /// Fixed epoch used to drive time-based UI animation (the status-bar
     /// marquee). Set once at construction.
     app_start: Instant,
+    /// Snapshot of the last real (non-command) hybrid query, kept alive so the
+    /// `--debug` custom weight editor can re-fuse it and show a live preview
+    /// even after typing `/config` cleared the visible results.
+    snap_query: String,
+    snap_bm25: Vec<(u32, f64)>,
+    snap_semantic: Vec<Vec<(u32, f64)>>,
 }
 
 impl App {
@@ -242,7 +249,28 @@ impl App {
             q_lower: String::new(),
             should_quit: false,
             app_start: Instant::now(),
+            snap_query: String::new(),
+            snap_bm25: Vec::new(),
+            snap_semantic: Vec::new(),
         }
+    }
+
+    /// The config-screen fields in visual/navigation order. The custom-mode
+    /// weight rows appear only under `--debug` when the model is `custom`.
+    fn config_fields(&self) -> Vec<ConfigField> {
+        let mut f = vec![ConfigField::Model, ConfigField::Offline];
+        if self.cfg.debug && self.cfg.model == ModelSel::Custom {
+            f.push(ConfigField::WeightBm25);
+            f.push(ConfigField::WeightSmall);
+            f.push(ConfigField::WeightLarge);
+        }
+        f
+    }
+
+    /// The currently focused config field (cursor clamped to the field list).
+    fn focused_config_field(&self) -> ConfigField {
+        let fields = self.config_fields();
+        fields[self.config_cursor.min(fields.len() - 1)]
     }
 
     fn selected_doc(&self) -> Option<u32> {
@@ -386,7 +414,11 @@ impl App {
                     self.pending_sem = None;
                 }
                 if seq == self.seq {
-                    self.results = hybrid(&self.bm25_results, &ranked);
+                    self.results = if self.cfg.model == ModelSel::Custom {
+                        hybrid_custom(&self.bm25_results, &ranked, &self.cfg.weights)
+                    } else {
+                        hybrid(&self.bm25_results, &ranked)
+                    };
                     self.results_mode = ResultsMode::Hybrid;
                     self.selected = if self.results.is_empty() {
                         None
@@ -396,6 +428,11 @@ impl App {
                     self.detail_scroll = 0;
                     self.results_scroll = 0;
                     self.scroll_follow_selection = true;
+                    // Snapshot this query so the /config weight editor can
+                    // re-fuse it live even after the visible results are gone.
+                    self.snap_query = self.q_lower.clone();
+                    self.snap_bm25 = self.bm25_results.clone();
+                    self.snap_semantic = ranked;
                 }
             }
             AppMsg::SemanticQueryFailed {
@@ -498,18 +535,18 @@ impl App {
     /// normal path, so typing immediately continues as a new search.
     fn handle_overlay_key(&mut self, key: KeyEvent) {
         if self.overlay == Overlay::Config {
+            let n = self.config_fields().len();
             match key.code {
                 KeyCode::Esc => {
                     self.overlay = Overlay::None;
                     return;
                 }
                 KeyCode::Up => {
-                    self.config_cursor =
-                        (self.config_cursor + ConfigField::ALL.len() - 1) % ConfigField::ALL.len();
+                    self.config_cursor = (self.config_cursor + n - 1) % n;
                     return;
                 }
                 KeyCode::Down => {
-                    self.config_cursor = (self.config_cursor + 1) % ConfigField::ALL.len();
+                    self.config_cursor = (self.config_cursor + 1) % n;
                     return;
                 }
                 KeyCode::PageUp => {
@@ -520,7 +557,15 @@ impl App {
                     self.config_scroll = self.config_scroll.saturating_add(DETAIL_SCROLL_STEP);
                     return;
                 }
-                KeyCode::Left | KeyCode::Right | KeyCode::Enter | KeyCode::Char(' ') => {
+                KeyCode::Left => {
+                    self.adjust_config_field(-1.0);
+                    return;
+                }
+                KeyCode::Right => {
+                    self.adjust_config_field(1.0);
+                    return;
+                }
+                KeyCode::Enter | KeyCode::Char(' ') => {
                     self.activate_config_field();
                     return;
                 }
@@ -535,29 +580,77 @@ impl App {
         self.handle_key(key);
     }
 
+    /// Enter/Space on the focused config field: Model/Offline cycle/toggle
+    /// forward; a weight row resets to its default.
     fn activate_config_field(&mut self) {
-        match ConfigField::ALL[self.config_cursor] {
-            ConfigField::Model => {
-                // Cycle small → large → max (ensemble) → none (BM25-only) → small.
-                let next = match self.cfg.model {
-                    ModelSel::Single(ModelSize::Small) => ModelSel::Single(ModelSize::Large),
-                    ModelSel::Single(ModelSize::Large) => ModelSel::Max,
-                    ModelSel::Max => ModelSel::Off,
-                    ModelSel::Off => ModelSel::Single(ModelSize::Small),
-                };
-                self.reload_semantic(next);
+        match self.focused_config_field() {
+            ConfigField::Model => self.cycle_model(true),
+            ConfigField::Offline => self.toggle_offline(),
+            ConfigField::WeightBm25 => {
+                self.cfg.weights.bm25 = CustomWeights::default().bm25;
             }
-            ConfigField::Offline => {
-                self.cfg.offline = !self.cfg.offline;
-                // Convenience retry: if we'd previously failed only because
-                // we were offline, going back online should just work again.
-                if !self.cfg.offline
-                    && matches!(self.sem_state, SemState::Failed { invariant: false })
-                {
-                    self.reload_semantic(self.cfg.model);
-                }
+            ConfigField::WeightSmall => {
+                self.cfg.weights.small = CustomWeights::default().small;
+            }
+            ConfigField::WeightLarge => {
+                self.cfg.weights.large = CustomWeights::default().large;
             }
         }
+    }
+
+    /// ←/→ on the focused config field: Model/Offline step through their
+    /// options; a weight row nudges its coefficient by ±STEP (live).
+    fn adjust_config_field(&mut self, dir: f64) {
+        match self.focused_config_field() {
+            ConfigField::Model => self.cycle_model(dir > 0.0),
+            ConfigField::Offline => self.toggle_offline(),
+            ConfigField::WeightBm25 => bump_weight(&mut self.cfg.weights.bm25, dir),
+            ConfigField::WeightSmall => bump_weight(&mut self.cfg.weights.small, dir),
+            ConfigField::WeightLarge => bump_weight(&mut self.cfg.weights.large, dir),
+        }
+    }
+
+    /// Cycle the semantic model. Order is small → large → max → none, with
+    /// `custom` inserted before `none` only under `--debug`.
+    fn cycle_model(&mut self, forward: bool) {
+        let order: &[ModelSel] = if self.cfg.debug {
+            &[
+                ModelSel::Single(ModelSize::Small),
+                ModelSel::Single(ModelSize::Large),
+                ModelSel::Max,
+                ModelSel::Custom,
+                ModelSel::Off,
+            ]
+        } else {
+            &[
+                ModelSel::Single(ModelSize::Small),
+                ModelSel::Single(ModelSize::Large),
+                ModelSel::Max,
+                ModelSel::Off,
+            ]
+        };
+        let cur = order.iter().position(|&m| m == self.cfg.model).unwrap_or(0);
+        let next = if forward {
+            (cur + 1) % order.len()
+        } else {
+            (cur + order.len() - 1) % order.len()
+        };
+        self.reload_semantic(order[next]);
+    }
+
+    fn toggle_offline(&mut self) {
+        self.cfg.offline = !self.cfg.offline;
+        // Convenience retry: if we'd previously failed only because we were
+        // offline, going back online should just work again.
+        if !self.cfg.offline && matches!(self.sem_state, SemState::Failed { invariant: false }) {
+            self.reload_semantic(self.cfg.model);
+        }
+    }
+
+    /// Fuse the last-query snapshot with the current custom weights — the
+    /// source for the `/config` live preview.
+    fn custom_preview(&self) -> Vec<(u32, f64)> {
+        hybrid_custom(&self.snap_bm25, &self.snap_semantic, &self.cfg.weights)
     }
 
     fn submit(&mut self) {
@@ -797,6 +890,13 @@ impl App {
             _ => {}
         }
     }
+}
+
+/// Nudge a custom RRF weight by ±`STEP`, rounded to one decimal (avoids float
+/// drift like 1.9999) and clamped to `[MIN, MAX]`.
+fn bump_weight(w: &mut f64, dir: f64) {
+    let next = ((*w + dir * CustomWeights::STEP) * 10.0).round() / 10.0;
+    *w = next.clamp(CustomWeights::MIN, CustomWeights::MAX);
 }
 
 fn rect_contains(rect: Rect, col: u16, row: u16) -> bool {
@@ -1375,33 +1475,99 @@ fn draw_config(frame: &mut Frame, app: &mut App, area: Rect) {
         Line::raw(""),
     ];
 
-    for field in ConfigField::ALL {
-        let focused = ConfigField::ALL[app.config_cursor] == field;
-        let marker = if focused { "▸ " } else { "  " };
-        let (label, value) = match field {
-            // The per-model descriptions live under "Semantic status" below,
-            // so the value here is just the current selection.
-            ConfigField::Model => ("Semantic model", app.cfg.model.label().to_string()),
-            ConfigField::Offline => (
-                "Offline mode",
-                if app.cfg.offline {
-                    "on".to_string()
-                } else {
-                    "off".to_string()
-                },
-            ),
-        };
-        let style = if focused {
+    let focused = app.focused_config_field();
+    let field_row = |label: &str, value: String, is_focused: bool| -> Line<'static> {
+        let marker = if is_focused { "▸ " } else { "  " };
+        let style = if is_focused {
             Style::default().fg(Color::White).bg(Color::Cyan)
         } else {
             Style::default()
         };
-        lines.push(Line::from(vec![
+        Line::from(vec![
             Span::raw(marker),
             Span::styled(format!("{label:<16}"), style),
             Span::raw("  "),
             Span::styled(value, style),
-        ]));
+        ])
+    };
+    // The per-model descriptions live under "Semantic status" below, so the
+    // model value here is just the current selection.
+    lines.push(field_row(
+        "Semantic model",
+        app.cfg.model.label().to_string(),
+        focused == ConfigField::Model,
+    ));
+    lines.push(field_row(
+        "Offline mode",
+        if app.cfg.offline { "on" } else { "off" }.to_string(),
+        focused == ConfigField::Offline,
+    ));
+
+    // ── Model weights (custom mode only, --debug) ─ shown above Semantic status.
+    if app.cfg.debug && app.cfg.model == ModelSel::Custom {
+        lines.push(Line::raw(""));
+        lines.push(Line::styled(
+            "Model weights  (←/→ adjust · Enter reset)",
+            heading,
+        ));
+        let weight_row = |label: &str, val: f64, is_focused: bool| -> Line<'static> {
+            let marker = if is_focused { "▸ " } else { "  " };
+            let style = if is_focused {
+                Style::default().fg(Color::White).bg(Color::Cyan)
+            } else {
+                Style::default()
+            };
+            Line::from(vec![
+                Span::raw(marker),
+                Span::styled(format!("{label:<10}"), style),
+                Span::raw("  "),
+                Span::styled(format!("×{val:.1}"), style),
+            ])
+        };
+        let w = app.cfg.weights;
+        lines.push(weight_row(
+            "BM25",
+            w.bm25,
+            focused == ConfigField::WeightBm25,
+        ));
+        lines.push(weight_row(
+            "e5-small",
+            w.small,
+            focused == ConfigField::WeightSmall,
+        ));
+        lines.push(weight_row(
+            "e5-large",
+            w.large,
+            focused == ConfigField::WeightLarge,
+        ));
+
+        // Live preview: re-fuse the last query's snapshot with the current
+        // weights every frame, so ←/→ shows the re-ranking in real time.
+        lines.push(Line::raw(""));
+        if app.snap_query.is_empty() || app.snap_semantic.len() < 2 {
+            lines.push(Line::styled(
+                "  preview: run a search in max/custom mode to see live re-ranking",
+                dim,
+            ));
+        } else {
+            lines.push(Line::styled(
+                format!("  Preview · top 5 for \"{}\"", app.snap_query),
+                dim,
+            ));
+            let preview = app.custom_preview();
+            if let Some(data) = &app.data {
+                for (rank, &(doc, score)) in preview.iter().take(5).enumerate() {
+                    let q = data
+                        .corpus
+                        .records
+                        .get(doc as usize)
+                        .and_then(|r| r.questions.first())
+                        .map(String::as_str)
+                        .unwrap_or("(no question)");
+                    lines.push(Line::raw(format!("  {}. {q}  ({score:.4})", rank + 1)));
+                }
+            }
+        }
     }
 
     lines.push(Line::raw(""));
@@ -1430,6 +1596,15 @@ fn draw_config(frame: &mut Frame, app: &mut App, area: Rect) {
         lines.push(Line::from(vec![
             Span::styled(format!("  {name:<7}"), Style::default().fg(Color::Cyan)),
             Span::styled((*desc).to_string(), dim),
+        ]));
+    }
+    if app.cfg.debug {
+        lines.push(Line::from(vec![
+            Span::styled("  custom ", Style::default().fg(Color::Cyan)),
+            Span::styled(
+                "like max, but with tunable per-model weights (--debug)".to_string(),
+                dim,
+            ),
         ]));
     }
 
@@ -1707,5 +1882,21 @@ mod tests {
     #[test]
     fn marquee_zero_window_is_empty() {
         assert_eq!(marquee("anything", 0, 0), "");
+    }
+
+    #[test]
+    fn bump_weight_steps_and_clamps() {
+        let mut w = 2.0;
+        bump_weight(&mut w, 1.0);
+        assert!((w - 2.1).abs() < 1e-9);
+        bump_weight(&mut w, -1.0);
+        assert!((w - 2.0).abs() < 1e-9);
+        // Clamp at the bounds; no float drift below MIN or above MAX.
+        w = CustomWeights::MIN;
+        bump_weight(&mut w, -1.0);
+        assert_eq!(w, CustomWeights::MIN);
+        w = CustomWeights::MAX;
+        bump_weight(&mut w, 1.0);
+        assert_eq!(w, CustomWeights::MAX);
     }
 }
