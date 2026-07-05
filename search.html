@@ -46,7 +46,7 @@
     }
 
     /* mode パラメータの許可リスト（予期しない値を排除） */
-    const VALID_MODES = new Set(['auto', 'fast', 'pro', 'ultra']);
+    const VALID_MODES = new Set(['auto', 'fast', 'pro', 'ultra', 'max']);
 
     /**
      * URL/localStorage から mode を安全に取得。
@@ -2620,16 +2620,22 @@
     }
 
     // ── セマンティック検索エンジン ────────────────────────────
+    // キー = embeddings.json のキー（small / large）。
+    // mode → 使用する embKey 群は MODE_EMB_KEYS で定義する。
     const SEMANTIC_MODELS = {
-      pro: { id: 'Xenova/multilingual-e5-small', dim: 384 },
-      ultra: { id: 'Xenova/multilingual-e5-large', dim: 1024 },
+      small: { id: 'Xenova/multilingual-e5-small', dim: 384, label: 'Pro' },
+      large: { id: 'Xenova/multilingual-e5-large', dim: 1024, label: 'Ultra' },
     };
+    // mode → ランキングに使う embKey 群。max は small+large の両方を
+    // 使うアンサンブル（各リストを BM25 と一緒に RRF 融合する）。
+    const MODE_EMB_KEYS = { pro: ['small'], ultra: ['large'], max: ['small', 'large'] };
     const EMBEDDINGS_URL = 'embeddings.json';
     // embeddings.json をブラウザに永続キャッシュするための Cache API 名
     const EMBEDDINGS_CACHE = 'physics-notes-embeddings-v1';
 
-    let _semanticPipeline = null;
-    let _semanticModelKey = null;
+    // embKey ('small'|'large') → ロード済みパイプライン。
+    // max モードは両方を同時に保持する。
+    const _pipelines = { small: null, large: null };
     let _embeddingsData = null;
 
     function _cosineSim(a, b) {
@@ -2638,9 +2644,22 @@
       return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-9);
     }
 
+    // mode（pro/ultra/max）に必要な全モデルをロードする。
+    // max は small+large の両方。1つでも失敗したら false。
     async function _loadSemanticModel(modeKey) {
-      if (_semanticPipeline && _semanticModelKey === modeKey) return true;
-      const modelCfg = SEMANTIC_MODELS[modeKey];
+      const keys = MODE_EMB_KEYS[modeKey];
+      if (!keys) return false;
+      for (const embKey of keys) {
+        const ok = await _loadModelByKey(embKey);
+        if (!ok) return false;
+      }
+      return true;
+    }
+
+    // 単一モデル（embKey = small|large）をロードして _pipelines[embKey] に格納する。
+    async function _loadModelByKey(embKey) {
+      if (_pipelines[embKey]) return true;
+      const modelCfg = SEMANTIC_MODELS[embKey];
       if (!modelCfg) return false;
 
       const statusEl = document.getElementById('semantic-status');
@@ -2674,10 +2693,10 @@
         }
 
         // モデルダウンロード（progress_callback で進捗表示）
-        const label = modeKey === 'ultra' ? 'Ultra' : 'Pro';
+        const label = modelCfg.label;
         statusTxt.textContent = `${label} モデルをダウンロード中…`;
 
-        _semanticPipeline = await window._XenovaPipeline(
+        _pipelines[embKey] = await window._XenovaPipeline(
           'feature-extraction',
           modelCfg.id,
           {
@@ -2699,7 +2718,6 @@
             }
           }
         );
-        _semanticModelKey = modeKey;
 
         // embeddings.json を取得（Cache API があれば永続キャッシュを利用）
         if (!_embeddingsData) {
@@ -2769,26 +2787,57 @@
       }
     }
 
-    // クエリのEmbeddingを生成（e5はquery:プレフィックスが必要）
-    async function _getQueryEmbedding(queryText) {
-      const out = await _semanticPipeline(`query: ${queryText}`, { pooling: 'mean', normalize: true });
+    // クエリのEmbeddingを生成（e5はquery:プレフィックスが必要）。
+    // embKey で small/large のどちらのパイプラインを使うか指定する。
+    async function _getQueryEmbedding(queryText, embKey) {
+      const pipe = _pipelines[embKey];
+      const out = await pipe(`query: ${queryText}`, { pooling: 'mean', normalize: true });
       return Array.from(out.data);
     }
 
-    // RRF スコア統合
-    // semanticWeight: セマンティックランキングの重み（デフォルト2.0でBM25の2倍）
-    function _rrfMerge(bm25Results, semanticRanked, k = 60, semanticWeight = 2.0) {
+    // mode（pro/ultra/max）に対応する embKey ごとにセマンティックランキングを1本ずつ生成する。
+    // max は small・large の2本を返す。モデル未ロード時は空配列（呼び出し側は BM25 のみ）。
+    async function _semanticLists(mode, queryText, data) {
+      const keys = MODE_EMB_KEYS[mode];
+      if (!keys) return [];
+      const loaded = await _loadSemanticModel(mode);
+      if (!loaded) return [];
+      const lists = [];
+      for (const embKey of keys) {
+        const embs = _embeddingsData?.[embKey];
+        if (!embs) continue;
+        const queryVec = await _getQueryEmbedding(queryText, embKey);
+        const ranked = data
+          .filter(item => embs[item.id])
+          .map(item => ({ ...item, semScore: _cosineSim(queryVec, embs[item.id]) }))
+          .sort((a, b) => b.semScore - a.semScore);
+        lists.push(ranked);
+      }
+      return lists;
+    }
+
+    // RRF スコア統合（N本のセマンティックリストに対応）。
+    // BM25 は重み1、各セマンティックリストはそれぞれ semanticWeight（既定2.0）。
+    // max は small・large の2本を渡すことで、両モデルが2〜3位に置く項目が
+    // 単一モデルの1位を上回るアンサンブル挙動になる。
+    function _rrfMergeMulti(bm25Results, semanticLists, k = 60, semanticWeight = 2.0) {
       const scores = {};
-      const allIds = new Set([
-        ...bm25Results.map(r => r.id),
-        ...semanticRanked.map(r => r.id),
-      ]);
-      allIds.forEach(id => { scores[id] = 0; });
+      const order = [];
+      const addId = (id) => { if (!(id in scores)) { scores[id] = 0; order.push(id); } };
+      bm25Results.forEach(r => addId(r.id));
+      semanticLists.forEach(list => list.forEach(r => addId(r.id)));
       bm25Results.forEach((r, i) => { scores[r.id] += 1 / (k + i + 1); });
-      semanticRanked.forEach((r, i) => { scores[r.id] += semanticWeight / (k + i + 1); });
-      return [...allIds]
+      semanticLists.forEach(list => {
+        list.forEach((r, i) => { scores[r.id] += semanticWeight / (k + i + 1); });
+      });
+      return order
         .map(id => ({ id, rrfScore: scores[id] }))
         .sort((a, b) => b.rrfScore - a.rrfScore);
+    }
+
+    // 従来の単一リスト版（pro/ultra）。挙動は _rrfMergeMulti に1本渡すのと同一。
+    function _rrfMerge(bm25Results, semanticRanked, k = 60, semanticWeight = 2.0) {
+      return _rrfMergeMulti(bm25Results, [semanticRanked], k, semanticWeight);
     }
 
     async function startSearchResults() {
@@ -3007,27 +3056,13 @@
         bm25Results.forEach(r => { if (_topRel.has(r.id)) r.score += 0.5; });
         bm25Results.sort((a, b) => b.score - a.score);
 
-        // Pro / Ultra: セマンティック検索 + RRF
+        // Pro / Ultra / Max: セマンティック検索 + RRF
+        // （max は small+large の2本を RRF に融合するアンサンブル）
         let results = bm25Results;
-        if ((_urlMode === 'pro' || _urlMode === 'ultra') && query.length > 0) {
-          const modeKey = _urlMode;
-          const loaded = await _loadSemanticModel(modeKey);
-          if (loaded && _embeddingsData?.[modeKey === 'pro' ? 'small' : 'large']) {
-            const embKey = modeKey === 'pro' ? 'small' : 'large';
-            const queryVec = await _getQueryEmbedding(query);
-            const embeddingsForMode = _embeddingsData[embKey];
-
-            // セマンティックスコアでランキング（全件対象）
-            const semanticRanked = data
-              .filter(item => embeddingsForMode[item.id])
-              .map(item => ({
-                ...item,
-                semScore: _cosineSim(queryVec, embeddingsForMode[item.id])
-              }))
-              .sort((a, b) => b.semScore - a.semScore);
-
-            // RRF で統合
-            const merged = _rrfMerge(bm25Results, semanticRanked);
+        if (MODE_EMB_KEYS[_urlMode] && query.length > 0) {
+          const lists = await _semanticLists(_urlMode, query, data);
+          if (lists.length > 0) {
+            const merged = _rrfMergeMulti(bm25Results, lists);
             const idToItem = Object.fromEntries(data.map(d => [d.id, d]));
             results = merged
               .map(r => ({ ...idToItem[r.id], score: r.rrfScore }))
@@ -3927,19 +3962,17 @@
           const urlMode = new URLSearchParams(location.search).get('mode')
             || localStorage.getItem('search_mode') || 'auto';
 
-          if (urlMode === 'pro' || urlMode === 'ultra') {
+          if (MODE_EMB_KEYS[urlMode]) {
             // セマンティックモード: モデルが未ロードなら読み込んでから検索
-            const needsLoad = !_semanticPipeline || _semanticModelKey !== urlMode;
+            // （max は small+large の両方が要る）
+            const needsLoad = MODE_EMB_KEYS[urlMode].some(k => !_pipelines[k]);
             if (needsLoad) showDots();
 
             const loaded = await _loadSemanticModel(urlMode);
-            const embKey = urlMode === 'pro' ? 'small' : 'large';
 
-            if (loaded && _embeddingsData?.[embKey]) {
+            if (loaded) {
               showDots(); // ベクトル計算中もドット継続
               try {
-                const queryVec = await _getQueryEmbedding(text);
-                const embs = _embeddingsData[embKey];
                 const q = text.toLowerCase();
                 const { words, expanded } = _expandQuery(q);
                 const bm25idx = _buildBM25Index(allData);
@@ -3948,12 +3981,10 @@
                   .filter(i => i.score > 0)
                   .sort((a, b) => b.score - a.score);
 
-                const semanticRanked = allData
-                  .filter(item => embs[item.id])
-                  .map(item => ({ ...item, semScore: _cosineSim(queryVec, embs[item.id]) }))
-                  .sort((a, b) => b.semScore - a.semScore);
+                const lists = await _semanticLists(urlMode, text, allData);
+                if (lists.length === 0) { finish(searchTopResult(text)); return; }
 
-                const merged = _rrfMerge(bm25Results, semanticRanked);
+                const merged = _rrfMergeMulti(bm25Results, lists);
                 const idToItem = Object.fromEntries(allData.map(d => [d.id, d]));
                 const top = merged[0] ? idToItem[merged[0].id] : null;
                 finish(top || null);
