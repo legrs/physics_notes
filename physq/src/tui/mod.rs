@@ -9,18 +9,27 @@
 //! click-to-select on both panes, jumping to a `related[]` item (by
 //! re-searching its question — see `jump_to_related`), slash commands typed
 //! into the input box (`/semantic small|large|max|none`, `/config`, `/help`,
-//! `/exit`), and a `Tab`-focused keyboard path through Related so nothing
-//! here requires a mouse. `/semantic none` (or launching with `--model none`
-//! / `--bm25-only`) disables the semantic stage entirely: no model download,
-//! BM25-only results.
+//! `/vim`, `/exit`), and a `Tab`-focused keyboard path through Related so
+//! nothing here requires a mouse. `/semantic none` (or launching with
+//! `--model none` / `--bm25-only`) disables the semantic stage entirely: no
+//! model download, BM25-only results.
+//!
+//! Two keybinding schemes (`Config::keys`, switchable live from `/config` or
+//! `/vim`): the default `Normal` map, and a modal `Vim` map (`--vim`) with
+//! INSERT/NORMAL/VISUAL modes over the input line, hjkl/gg/G/Ctrl-d-u-f-b
+//! navigation, `dd` to clear the query, and Shift+HJKL pane focus (Input /
+//! Results / Detail — the focused pane decides what j/k and the scroll keys
+//! act on, and gets a highlighted border).
 
 mod command;
+mod vim;
 
 use std::sync::mpsc as std_mpsc;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, bail};
 use ratatui::Frame;
+use ratatui::crossterm::cursor::SetCursorStyle;
 use ratatui::crossterm::event::{
     self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyEventKind,
     KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
@@ -32,13 +41,14 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Paragraph, Wrap};
 use unicode_width::UnicodeWidthStr;
 
-use crate::config::{Config, CustomWeights, ModelSel, ModelSize};
+use crate::config::{Config, CustomWeights, KeyMode, ModelSel, ModelSize};
 use crate::engine::{Engine, SemanticEngine, hybrid, hybrid_custom};
 use crate::query::prepare_query;
 use crate::semantic::SemanticError;
 use crate::spinner;
 
 use command::{ParsedCommand, parse_command};
+use vim::{InsertAt, VimMode, next_word_start, prev_word_start};
 
 const SEMANTIC_DEBOUNCE: Duration = Duration::from_millis(500);
 const DETAIL_SCROLL_STEP: u16 = 5;
@@ -122,9 +132,20 @@ enum PaneFocus {
     Related,
 }
 
+/// The Vim keymap's pane focus (Shift+HJKL): decides which pane j/k, gg/G
+/// and Ctrl-d/u/f/b act on, and which pane's border is highlighted. Input
+/// editing commands (h/l/x/dd/i…) always target the input line regardless —
+/// it's the only text buffer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FocusPane {
+    Input,
+    Results,
+    Detail,
+}
+
 /// A full-body overlay that replaces Results+Detail. `Help` is a static
 /// reference; `Config` is a small interactive settings form.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Overlay {
     None,
     Help,
@@ -135,6 +156,8 @@ enum Overlay {
 enum ConfigField {
     Model,
     Offline,
+    /// Keybinding scheme (Normal / Vim); toggling applies instantly.
+    Keybindings,
     /// `--debug` custom-mode weight rows; only present when the model is
     /// `custom`. Adjusted with ←/→ (see `App::config_fields`).
     WeightBm25,
@@ -181,6 +204,21 @@ struct App {
     detail_area: Rect,
     pane_focus: PaneFocus,
     related_selected: Option<usize>,
+    /// True while a keyboard-driven Related selection should be kept visible:
+    /// the next draw scrolls Detail so the selected entry is on screen. A
+    /// wheel/Vim scroll clears it (free scrolling), moving the selection
+    /// re-arms it — same pattern as `scroll_follow_selection`.
+    detail_follow_related: bool,
+    /// Vim-keymap modal state (`cfg.keys == KeyMode::Vim` only).
+    vim_mode: VimMode,
+    /// A pending operator/prefix key awaiting its motion: 'd', 'c' or 'g'.
+    vim_pending: Option<char>,
+    /// The unnamed register: text captured by d/c/x/y, pasted with p/P.
+    vim_register: String,
+    /// VISUAL mode's fixed end of the selection (char offset into `input`).
+    visual_anchor: usize,
+    /// Which pane the Vim keymap's navigation targets (Shift+HJKL).
+    vim_focus: FocusPane,
     overlay: Overlay,
     config_cursor: usize,
     /// Vertical scroll offset (rows) for the `/config` overlay body.
@@ -235,6 +273,12 @@ impl App {
             detail_area: Rect::default(),
             pane_focus: PaneFocus::Results,
             related_selected: None,
+            detail_follow_related: false,
+            vim_mode: VimMode::Insert,
+            vim_pending: None,
+            vim_register: String::new(),
+            visual_anchor: 0,
+            vim_focus: FocusPane::Input,
             overlay: Overlay::None,
             config_cursor: 0,
             config_scroll: 0,
@@ -258,7 +302,11 @@ impl App {
     /// The config-screen fields in visual/navigation order. The custom-mode
     /// weight rows appear only under `--debug` when the model is `custom`.
     fn config_fields(&self) -> Vec<ConfigField> {
-        let mut f = vec![ConfigField::Model, ConfigField::Offline];
+        let mut f = vec![
+            ConfigField::Model,
+            ConfigField::Offline,
+            ConfigField::Keybindings,
+        ];
         if self.cfg.debug && self.cfg.model == ModelSel::Custom {
             f.push(ConfigField::WeightBm25);
             f.push(ConfigField::WeightSmall);
@@ -474,18 +522,22 @@ impl App {
             return;
         }
 
+        if self.cfg.keys == KeyMode::Vim {
+            self.handle_vim_key(key);
+            return;
+        }
+
         if self.pane_focus == PaneFocus::Related && self.handle_related_focus_key(key) {
             return;
         }
 
         match key.code {
             KeyCode::Esc => {
+                // Esc only clears; it never quits (use Ctrl-C/Ctrl-Q or /exit).
                 if !self.input.is_empty() {
                     self.input.clear();
                     self.cursor = 0;
                     self.refresh_bm25();
-                } else {
-                    self.should_quit = true;
                 }
             }
             KeyCode::Enter => self.submit_or_run_command(),
@@ -529,23 +581,449 @@ impl App {
         }
     }
 
+    // ── Vim keymap ──────────────────────────────────────────────────────
+    // INSERT edits the query exactly like the Normal keymap; NORMAL turns
+    // the home row into commands; VISUAL is a char-wise selection over the
+    // input line. PgUp/PgDn are deliberately unbound here (replaced by
+    // Ctrl-d/u/f/b); arrow keys keep their Vim-equivalent meanings.
+
+    fn handle_vim_key(&mut self, key: KeyEvent) {
+        if self.pane_focus == PaneFocus::Related && self.vim_related_key(key) {
+            return;
+        }
+        match self.vim_mode {
+            VimMode::Insert => self.vim_insert_key(key),
+            VimMode::Normal => self.vim_normal_key(key),
+            VimMode::Visual => self.vim_visual_key(key),
+        }
+    }
+
+    /// Related-browse keys under the Vim keymap: j/k (or ↑↓) pick, Enter
+    /// jumps, Esc/Tab return to Detail scrolling. Everything else exits the
+    /// browse and falls through to the modal handler.
+    fn vim_related_key(&mut self, key: KeyEvent) -> bool {
+        match key.code {
+            KeyCode::Esc | KeyCode::Tab => {
+                self.pane_focus = PaneFocus::Results;
+                self.related_selected = None;
+                true
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.move_related_selection(-1);
+                true
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                self.move_related_selection(1);
+                true
+            }
+            KeyCode::Enter => {
+                self.activate_related_selection();
+                true
+            }
+            _ => {
+                self.pane_focus = PaneFocus::Results;
+                self.related_selected = None;
+                false
+            }
+        }
+    }
+
+    fn vim_insert_key(&mut self, key: KeyEvent) {
+        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+        match key.code {
+            KeyCode::Esc => {
+                self.vim_mode = VimMode::Normal;
+                self.vim_pending = None;
+            }
+            KeyCode::Enter => self.submit_or_run_command(),
+            KeyCode::Backspace => {
+                if self.cursor > 0 {
+                    let idx = byte_index(&self.input, self.cursor - 1);
+                    self.input.remove(idx);
+                    self.cursor -= 1;
+                    self.refresh_bm25();
+                }
+            }
+            KeyCode::Delete => {
+                if self.cursor < self.input.chars().count() {
+                    let idx = byte_index(&self.input, self.cursor);
+                    self.input.remove(idx);
+                    self.refresh_bm25();
+                }
+            }
+            KeyCode::Left => self.cursor = self.cursor.saturating_sub(1),
+            KeyCode::Right => self.cursor = (self.cursor + 1).min(self.input.chars().count()),
+            KeyCode::Home => self.cursor = 0,
+            KeyCode::End => self.cursor = self.input.chars().count(),
+            KeyCode::Up => self.move_selection(-1),
+            KeyCode::Down => self.move_selection(1),
+            KeyCode::Char('p') if ctrl => self.move_selection(-1),
+            KeyCode::Char('n') if ctrl => self.move_selection(1),
+            KeyCode::Tab => self.toggle_related_focus(),
+            KeyCode::Char(c) if !ctrl && !c.is_control() => {
+                let idx = byte_index(&self.input, self.cursor);
+                self.input.insert(idx, c);
+                self.cursor += 1;
+                self.refresh_bm25();
+            }
+            _ => {}
+        }
+    }
+
+    fn vim_normal_key(&mut self, key: KeyEvent) {
+        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+        if let Some(op) = self.vim_pending.take() {
+            if key.code != KeyCode::Esc {
+                self.vim_apply_operator(op, key);
+            }
+            return;
+        }
+        let len = self.input.chars().count();
+        match key.code {
+            // Viewport scrolling on the focused pane (replaces PgUp/PgDn).
+            KeyCode::Char('d') if ctrl => self.vim_scroll(1, false),
+            KeyCode::Char('u') if ctrl => self.vim_scroll(-1, false),
+            KeyCode::Char('f') if ctrl => self.vim_scroll(1, true),
+            KeyCode::Char('b') if ctrl => self.vim_scroll(-1, true),
+            KeyCode::Char('p') if ctrl => self.move_selection(-1),
+            KeyCode::Char('n') if ctrl => self.move_selection(1),
+            // Shift + home row: pane focus (Input on top, Results | Detail).
+            KeyCode::Char('H') => self.set_focus(FocusPane::Results),
+            KeyCode::Char('L') => self.set_focus(FocusPane::Detail),
+            KeyCode::Char('K') => self.set_focus(FocusPane::Input),
+            KeyCode::Char('J') => {
+                if self.vim_focus == FocusPane::Input {
+                    self.set_focus(FocusPane::Results);
+                }
+            }
+            // INSERT entries.
+            KeyCode::Char('i') => self.enter_insert(InsertAt::Here),
+            KeyCode::Char('a') => self.enter_insert(InsertAt::After),
+            KeyCode::Char('I') => self.enter_insert(InsertAt::Start),
+            KeyCode::Char('A') => self.enter_insert(InsertAt::End),
+            // `/` starts a fresh search, `:` a fresh command (typed as `/…`),
+            // mirroring Vim's search prompt and command line.
+            KeyCode::Char('/') => {
+                self.input.clear();
+                self.cursor = 0;
+                self.refresh_bm25();
+                self.enter_insert(InsertAt::Here);
+            }
+            KeyCode::Char(':') => {
+                self.input = "/".to_string();
+                self.refresh_bm25();
+                self.enter_insert(InsertAt::End);
+            }
+            KeyCode::Char('v') => {
+                if len > 0 {
+                    self.set_focus(FocusPane::Input);
+                    self.cursor = self.cursor.min(len - 1);
+                    self.visual_anchor = self.cursor;
+                    self.vim_mode = VimMode::Visual;
+                }
+            }
+            // Line motions / scrolling on the focused pane.
+            KeyCode::Char('j') | KeyCode::Down => self.vim_line(1),
+            KeyCode::Char('k') | KeyCode::Up => self.vim_line(-1),
+            KeyCode::Char('g') => self.vim_pending = Some('g'),
+            KeyCode::Char('G') => self.vim_goto(true),
+            // Cursor motions on the input line.
+            KeyCode::Char('h') | KeyCode::Left | KeyCode::Backspace => {
+                self.cursor = self.cursor.saturating_sub(1)
+            }
+            KeyCode::Char('l') | KeyCode::Right => self.cursor = (self.cursor + 1).min(len),
+            KeyCode::Char('0') | KeyCode::Char('^') | KeyCode::Home => self.cursor = 0,
+            KeyCode::Char('$') | KeyCode::End => self.cursor = len,
+            KeyCode::Char('w') => {
+                let chars: Vec<char> = self.input.chars().collect();
+                self.cursor = next_word_start(&chars, self.cursor);
+            }
+            KeyCode::Char('b') => {
+                let chars: Vec<char> = self.input.chars().collect();
+                self.cursor = prev_word_start(&chars, self.cursor);
+            }
+            // Editing.
+            KeyCode::Char('x') | KeyCode::Delete => {
+                if self.cursor < len {
+                    self.vim_register = self.remove_char_range(self.cursor, self.cursor + 1);
+                    self.refresh_bm25();
+                }
+            }
+            KeyCode::Char('X') => {
+                if self.cursor > 0 {
+                    self.vim_register = self.remove_char_range(self.cursor - 1, self.cursor);
+                    self.cursor -= 1;
+                    self.refresh_bm25();
+                }
+            }
+            KeyCode::Char('D') => {
+                if self.cursor < len {
+                    self.vim_register = self.remove_char_range(self.cursor, len);
+                    self.refresh_bm25();
+                }
+            }
+            KeyCode::Char('C') => {
+                if self.cursor < len {
+                    self.vim_register = self.remove_char_range(self.cursor, len);
+                    self.refresh_bm25();
+                }
+                self.enter_insert(InsertAt::Here);
+            }
+            KeyCode::Char('d') => self.vim_pending = Some('d'),
+            KeyCode::Char('c') => self.vim_pending = Some('c'),
+            KeyCode::Char('p') => self.vim_paste(true),
+            KeyCode::Char('P') => self.vim_paste(false),
+            KeyCode::Enter => self.submit_or_run_command(),
+            KeyCode::Tab => self.toggle_related_focus(),
+            _ => {}
+        }
+    }
+
+    /// Second key of a pending operator/prefix: `gg`, and `d`/`c` + motion
+    /// (`dd`/`cc` = whole line, w/b/$/0/h/l ranges). `c` variants enter
+    /// INSERT afterwards, like Vim's change operator.
+    fn vim_apply_operator(&mut self, op: char, key: KeyEvent) {
+        if op == 'g' {
+            if key.code == KeyCode::Char('g') {
+                self.vim_goto(false);
+            }
+            return;
+        }
+        let len = self.input.chars().count();
+        let chars: Vec<char> = self.input.chars().collect();
+        let range = match key.code {
+            KeyCode::Char(m) if m == op => Some((0, len)), // dd / cc
+            KeyCode::Char('w') => Some((self.cursor, next_word_start(&chars, self.cursor))),
+            KeyCode::Char('b') => Some((prev_word_start(&chars, self.cursor), self.cursor)),
+            KeyCode::Char('$') => Some((self.cursor, len)),
+            KeyCode::Char('0') | KeyCode::Char('^') => Some((0, self.cursor)),
+            KeyCode::Char('h') | KeyCode::Left => {
+                Some((self.cursor.saturating_sub(1), self.cursor))
+            }
+            KeyCode::Char('l') | KeyCode::Right => Some((self.cursor, (self.cursor + 1).min(len))),
+            _ => None,
+        };
+        if let Some((start, end)) = range
+            && start < end
+        {
+            self.vim_register = self.remove_char_range(start, end);
+            self.cursor = start;
+            self.refresh_bm25();
+        }
+        if op == 'c' && range.is_some() {
+            self.enter_insert(InsertAt::Here);
+        }
+    }
+
+    fn vim_visual_key(&mut self, key: KeyEvent) {
+        let len = self.input.chars().count();
+        if len == 0 {
+            self.vim_mode = VimMode::Normal;
+            return;
+        }
+        let max = len - 1;
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('v') => self.vim_mode = VimMode::Normal,
+            KeyCode::Char('h') | KeyCode::Left => self.cursor = self.cursor.saturating_sub(1),
+            KeyCode::Char('l') | KeyCode::Right => self.cursor = (self.cursor + 1).min(max),
+            KeyCode::Char('0') | KeyCode::Char('^') | KeyCode::Home => self.cursor = 0,
+            KeyCode::Char('$') | KeyCode::End => self.cursor = max,
+            KeyCode::Char('w') => {
+                let chars: Vec<char> = self.input.chars().collect();
+                self.cursor = next_word_start(&chars, self.cursor).min(max);
+            }
+            KeyCode::Char('b') => {
+                let chars: Vec<char> = self.input.chars().collect();
+                self.cursor = prev_word_start(&chars, self.cursor);
+            }
+            KeyCode::Char('o') => std::mem::swap(&mut self.cursor, &mut self.visual_anchor),
+            KeyCode::Char('d') | KeyCode::Char('x') => self.visual_delete(),
+            KeyCode::Char('c') => {
+                self.visual_delete();
+                self.enter_insert(InsertAt::Here);
+            }
+            KeyCode::Char('y') => {
+                let (start, end) = self.visual_range();
+                let chars: Vec<char> = self.input.chars().collect();
+                self.vim_register = chars[start..end].iter().collect();
+                self.cursor = start;
+                self.vim_mode = VimMode::Normal;
+            }
+            _ => {}
+        }
+    }
+
+    /// The VISUAL selection as a half-open char range (both ends inclusive,
+    /// Vim-style; cursor is clamped to the last char while in VISUAL).
+    fn visual_range(&self) -> (usize, usize) {
+        let a = self.visual_anchor.min(self.cursor);
+        let b = self.visual_anchor.max(self.cursor);
+        (a, (b + 1).min(self.input.chars().count()))
+    }
+
+    fn visual_delete(&mut self) {
+        let (start, end) = self.visual_range();
+        self.vim_register = self.remove_char_range(start, end);
+        self.cursor = start;
+        self.vim_mode = VimMode::Normal;
+        self.refresh_bm25();
+    }
+
+    /// Remove `[start, end)` (char offsets) from the input, returning the
+    /// removed text.
+    fn remove_char_range(&mut self, start: usize, end: usize) -> String {
+        let bs = byte_index(&self.input, start);
+        let be = byte_index(&self.input, end);
+        let removed = self.input[bs..be].to_string();
+        self.input.replace_range(bs..be, "");
+        removed
+    }
+
+    fn vim_paste(&mut self, after: bool) {
+        if self.vim_register.is_empty() {
+            return;
+        }
+        let len = self.input.chars().count();
+        let at = if after {
+            (self.cursor + 1).min(len)
+        } else {
+            self.cursor.min(len)
+        };
+        let idx = byte_index(&self.input, at);
+        let register = self.vim_register.clone();
+        self.input.insert_str(idx, &register);
+        self.cursor = at + register.chars().count();
+        self.refresh_bm25();
+    }
+
+    fn enter_insert(&mut self, at: InsertAt) {
+        let len = self.input.chars().count();
+        self.cursor = match at {
+            InsertAt::Here => self.cursor.min(len),
+            InsertAt::After => (self.cursor + 1).min(len),
+            InsertAt::Start => 0,
+            InsertAt::End => len,
+        };
+        self.vim_mode = VimMode::Insert;
+        self.vim_focus = FocusPane::Input;
+        if self.pane_focus == PaneFocus::Related {
+            self.pane_focus = PaneFocus::Results;
+            self.related_selected = None;
+        }
+    }
+
+    fn set_focus(&mut self, pane: FocusPane) {
+        self.vim_focus = pane;
+        if self.pane_focus == PaneFocus::Related {
+            self.pane_focus = PaneFocus::Results;
+            self.related_selected = None;
+        }
+        // INSERT only makes sense while the input pane is focused.
+        if pane != FocusPane::Input && self.vim_mode == VimMode::Insert {
+            self.vim_mode = VimMode::Normal;
+        }
+    }
+
+    /// j/k (and ↑↓ in NORMAL): move the Results selection, or scroll Detail
+    /// one row when it's the focused pane.
+    fn vim_line(&mut self, delta: i64) {
+        if self.vim_focus == FocusPane::Detail {
+            self.detail_scroll = if delta > 0 {
+                self.detail_scroll.saturating_add(1)
+            } else {
+                self.detail_scroll.saturating_sub(1)
+            };
+            self.detail_follow_related = false;
+        } else {
+            self.move_selection(delta);
+        }
+    }
+
+    /// Ctrl-d/u (half page) and Ctrl-f/b (full page) on the focused pane.
+    /// Results scrolls its viewport without moving the selection, like the
+    /// mouse wheel; Detail scrolls its text.
+    fn vim_scroll(&mut self, dir: i64, full: bool) {
+        let (area, scroll) = if self.vim_focus == FocusPane::Detail {
+            (self.detail_area, &mut self.detail_scroll)
+        } else {
+            (self.list_area, &mut self.results_scroll)
+        };
+        let page = area.height.saturating_sub(2).max(1);
+        let step = if full { page } else { (page / 2).max(1) };
+        *scroll = if dir > 0 {
+            scroll.saturating_add(step)
+        } else {
+            scroll.saturating_sub(step)
+        };
+        if self.vim_focus == FocusPane::Detail {
+            self.detail_follow_related = false;
+        } else {
+            self.scroll_follow_selection = false;
+        }
+    }
+
+    /// gg / G: jump the focused pane to its top/bottom (first/last result,
+    /// or the start/end of Detail — the draw pass clamps the overshoot).
+    fn vim_goto(&mut self, bottom: bool) {
+        if self.vim_focus == FocusPane::Detail {
+            self.detail_scroll = if bottom { u16::MAX } else { 0 };
+            self.detail_follow_related = false;
+        } else if !self.results.is_empty() {
+            self.selected = Some(if bottom { self.results.len() - 1 } else { 0 });
+            self.detail_scroll = 0;
+            self.scroll_follow_selection = true;
+        }
+    }
+
+    /// Switch keybinding schemes (config toggle or `/vim`), effective
+    /// immediately. Entering Vim starts in INSERT with the input focused, so
+    /// the status bar shows `-- INSERT --` the moment it flips and typing
+    /// keeps working either way.
+    fn set_key_mode(&mut self, mode: KeyMode) {
+        self.cfg.keys = mode;
+        self.vim_mode = VimMode::Insert;
+        self.vim_pending = None;
+        self.vim_focus = FocusPane::Input;
+        self.pane_focus = PaneFocus::Results;
+        self.related_selected = None;
+    }
+
+    fn toggle_key_mode(&mut self) {
+        self.set_key_mode(match self.cfg.keys {
+            KeyMode::Normal => KeyMode::Vim,
+            KeyMode::Vim => KeyMode::Normal,
+        });
+    }
+
     /// Handles keys while a `Help`/`Config` overlay is showing. `Config`
-    /// intercepts navigation/toggle keys; everything else (including every
-    /// key in `Help`) closes the overlay and re-dispatches through the
-    /// normal path, so typing immediately continues as a new search.
+    /// intercepts navigation/toggle keys — both the arrow-key style and the
+    /// Vim style are always accepted here, regardless of the active
+    /// keybinding scheme, so the settings screen works the same either way.
+    /// Everything else (including every key in `Help`) closes the overlay
+    /// and re-dispatches through the normal path, so typing immediately
+    /// continues as a new search.
     fn handle_overlay_key(&mut self, key: KeyEvent) {
         if self.overlay == Overlay::Config {
+            let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
             let n = self.config_fields().len();
             match key.code {
                 KeyCode::Esc => {
                     self.overlay = Overlay::None;
                     return;
                 }
-                KeyCode::Up => {
+                KeyCode::Char('u') if ctrl => {
+                    self.config_scroll = self.config_scroll.saturating_sub(DETAIL_SCROLL_STEP);
+                    return;
+                }
+                KeyCode::Char('d') if ctrl => {
+                    self.config_scroll = self.config_scroll.saturating_add(DETAIL_SCROLL_STEP);
+                    return;
+                }
+                KeyCode::Up | KeyCode::Char('k') => {
                     self.config_cursor = (self.config_cursor + n - 1) % n;
                     return;
                 }
-                KeyCode::Down => {
+                KeyCode::Down | KeyCode::Char('j') => {
                     self.config_cursor = (self.config_cursor + 1) % n;
                     return;
                 }
@@ -557,11 +1035,11 @@ impl App {
                     self.config_scroll = self.config_scroll.saturating_add(DETAIL_SCROLL_STEP);
                     return;
                 }
-                KeyCode::Left => {
+                KeyCode::Left | KeyCode::Char('h') => {
                     self.adjust_config_field(-1.0);
                     return;
                 }
-                KeyCode::Right => {
+                KeyCode::Right | KeyCode::Char('l') => {
                     self.adjust_config_field(1.0);
                     return;
                 }
@@ -586,6 +1064,7 @@ impl App {
         match self.focused_config_field() {
             ConfigField::Model => self.cycle_model(true),
             ConfigField::Offline => self.toggle_offline(),
+            ConfigField::Keybindings => self.toggle_key_mode(),
             ConfigField::WeightBm25 => {
                 self.cfg.weights.bm25 = CustomWeights::default().bm25;
             }
@@ -604,6 +1083,7 @@ impl App {
         match self.focused_config_field() {
             ConfigField::Model => self.cycle_model(dir > 0.0),
             ConfigField::Offline => self.toggle_offline(),
+            ConfigField::Keybindings => self.toggle_key_mode(),
             ConfigField::WeightBm25 => bump_weight(&mut self.cfg.weights.bm25, dir),
             ConfigField::WeightSmall => bump_weight(&mut self.cfg.weights.small, dir),
             ConfigField::WeightLarge => bump_weight(&mut self.cfg.weights.large, dir),
@@ -678,6 +1158,7 @@ impl App {
                 self.config_scroll = 0;
             }
             ParsedCommand::Semantic(size) => self.reload_semantic(size),
+            ParsedCommand::ToggleVim => self.toggle_key_mode(),
             ParsedCommand::Unknown(s) => {
                 self.command_error = Some(format!("unknown command: {s} (try /help)"));
             }
@@ -702,6 +1183,13 @@ impl App {
                 if self.current_related_count() > 0 {
                     self.pane_focus = PaneFocus::Related;
                     self.related_selected = Some(0);
+                    self.detail_follow_related = true;
+                    if self.cfg.keys == KeyMode::Vim {
+                        // Browsing Related is a Detail-pane activity; leave
+                        // INSERT so j/k pick entries instead of typing.
+                        self.vim_mode = VimMode::Normal;
+                        self.vim_focus = FocusPane::Detail;
+                    }
                 }
             }
             PaneFocus::Related => {
@@ -751,6 +1239,7 @@ impl App {
         let cur = self.related_selected.unwrap_or(0) as i64;
         let next = (cur + delta).rem_euclid(len as i64) as usize;
         self.related_selected = Some(next);
+        self.detail_follow_related = true;
     }
 
     fn activate_related_selection(&mut self) {
@@ -849,6 +1338,7 @@ impl App {
                     self.scroll_follow_selection = false;
                 } else if in_detail {
                     self.detail_scroll = self.detail_scroll.saturating_sub(MOUSE_SCROLL_STEP);
+                    self.detail_follow_related = false;
                 }
             }
             MouseEventKind::ScrollDown => {
@@ -857,9 +1347,19 @@ impl App {
                     self.scroll_follow_selection = false;
                 } else if in_detail {
                     self.detail_scroll = self.detail_scroll.saturating_add(MOUSE_SCROLL_STEP);
+                    self.detail_follow_related = false;
                 }
             }
             MouseEventKind::Down(MouseButton::Left) => {
+                // Under the Vim keymap a click also moves the pane focus,
+                // matching what the highlighted border implies.
+                if self.cfg.keys == KeyMode::Vim {
+                    if in_list {
+                        self.set_focus(FocusPane::Results);
+                    } else if in_detail {
+                        self.set_focus(FocusPane::Detail);
+                    }
+                }
                 if in_list {
                     let local_row = m.row.saturating_sub(self.list_area.y + 1);
                     let abs_row = (self.results_scroll + local_row) as usize;
@@ -897,6 +1397,23 @@ impl App {
 fn bump_weight(w: &mut f64, dir: f64) {
     let next = ((*w + dir * CustomWeights::STEP) * 10.0).round() / 10.0;
     *w = next.clamp(CustomWeights::MIN, CustomWeights::MAX);
+}
+
+/// A bordered pane block; the Vim keymap's focused pane gets a highlighted
+/// border and title so Shift+HJKL focus is always visible.
+fn pane_block(title: &str, focused: bool) -> Block<'static> {
+    if focused {
+        Block::bordered()
+            .border_style(Style::default().fg(Color::Cyan))
+            .title(Span::styled(
+                title.to_string(),
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ))
+    } else {
+        Block::bordered().title(title.to_string())
+    }
 }
 
 fn rect_contains(rect: Rect, col: u16, row: u16) -> bool {
@@ -1003,9 +1520,45 @@ pub fn run(cfg: Config) -> Result<()> {
     let mut terminal = ratatui::init();
     let _ = execute!(std::io::stdout(), EnableMouseCapture);
     let result = run_loop(&mut terminal, &mut app, rx, tx);
-    let _ = execute!(std::io::stdout(), DisableMouseCapture);
+    let _ = execute!(
+        std::io::stdout(),
+        DisableMouseCapture,
+        SetCursorStyle::DefaultUserShape
+    );
     ratatui::restore();
     result
+}
+
+/// What the hardware cursor should look like: a bar in INSERT, a block in
+/// the Vim keymap's NORMAL/VISUAL modes (like Vim itself), the user's
+/// default outside the Vim keymap. Tracked so the escape code is only
+/// emitted on changes.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CursorShape {
+    Default,
+    Bar,
+    Block,
+}
+
+impl CursorShape {
+    fn for_app(app: &App) -> Self {
+        if app.cfg.keys != KeyMode::Vim {
+            return CursorShape::Default;
+        }
+        match app.vim_mode {
+            VimMode::Insert => CursorShape::Bar,
+            VimMode::Normal | VimMode::Visual => CursorShape::Block,
+        }
+    }
+
+    fn apply(self) {
+        let style = match self {
+            CursorShape::Default => SetCursorStyle::DefaultUserShape,
+            CursorShape::Bar => SetCursorStyle::SteadyBar,
+            CursorShape::Block => SetCursorStyle::SteadyBlock,
+        };
+        let _ = execute!(std::io::stdout(), style);
+    }
 }
 
 fn run_loop(
@@ -1014,6 +1567,7 @@ fn run_loop(
     rx: std_mpsc::Receiver<AppMsg>,
     tx: std_mpsc::Sender<AppMsg>,
 ) -> Result<()> {
+    let mut cursor_shape = CursorShape::Default;
     loop {
         while let Ok(msg) = rx.try_recv() {
             app.handle_msg(msg);
@@ -1031,6 +1585,12 @@ fn run_loop(
             std::thread::spawn(move || semantic_worker(cfg, engine, generation, req_rx, tx));
         }
         app.maybe_request_semantic();
+
+        let desired = CursorShape::for_app(app);
+        if desired != cursor_shape {
+            desired.apply();
+            cursor_shape = desired;
+        }
 
         terminal.draw(|frame| draw(frame, app))?;
 
@@ -1064,12 +1624,27 @@ fn draw(frame: &mut Frame, app: &mut App) {
     .areas(frame.area());
 
     // ── input ──────────────────────────────────────────────────────────
-    let input_line = Line::from(vec![
-        Span::styled("» ", Style::default().fg(Color::Cyan)),
-        Span::raw(app.input.as_str()),
-    ]);
+    let vim = app.cfg.keys == KeyMode::Vim;
+    let mut input_spans = vec![Span::styled("» ", Style::default().fg(Color::Cyan))];
+    if vim && app.vim_mode == VimMode::Visual && !app.input.is_empty() {
+        // Render the VISUAL selection inverted, like Vim's hl-Visual.
+        let (start, end) = app.visual_range();
+        let bs = byte_index(&app.input, start);
+        let be = byte_index(&app.input, end);
+        input_spans.push(Span::raw(app.input[..bs].to_string()));
+        input_spans.push(Span::styled(
+            app.input[bs..be].to_string(),
+            Style::default().add_modifier(Modifier::REVERSED),
+        ));
+        input_spans.push(Span::raw(app.input[be..].to_string()));
+    } else {
+        input_spans.push(Span::raw(app.input.as_str()));
+    }
     frame.render_widget(
-        Paragraph::new(input_line).block(Block::bordered().title(" Physics Notes ")),
+        Paragraph::new(Line::from(input_spans)).block(pane_block(
+            " Physics Notes ",
+            vim && app.vim_focus == FocusPane::Input,
+        )),
         input_area,
     );
     let prefix_width = "» ".width() as u16;
@@ -1112,7 +1687,10 @@ fn draw_results(frame: &mut Frame, app: &mut App, area: Rect) {
         ResultsMode::Hybrid => "Hybrid (BM25+semantic RRF)",
     };
     let title = format!(" Results · {} · {} ", mode_label, app.results.len());
-    let block = Block::bordered().title(title);
+    let block = pane_block(
+        &title,
+        app.cfg.keys == KeyMode::Vim && app.vim_focus == FocusPane::Results,
+    );
     let inner = block.inner(area);
     let inner_width = inner.width.max(1);
     let inner_height = inner.height;
@@ -1193,11 +1771,13 @@ fn draw_results(frame: &mut Frame, app: &mut App, area: Rect) {
 
 /// Owns the parallel `lines`/`targets` vectors while building Detail text so
 /// every push keeps them aligned (`targets[i]` is the jump target, if any,
-/// for `lines[i]`).
+/// for `lines[i]`). `related_rows[k]` is the line index of the k-th Related
+/// entry, for scroll-into-view while browsing Related.
 #[derive(Default)]
 struct LineBuilder {
     lines: Vec<Line<'static>>,
     targets: Vec<Option<u32>>,
+    related_rows: Vec<usize>,
 }
 
 impl LineBuilder {
@@ -1206,17 +1786,18 @@ impl LineBuilder {
         self.targets.push(None);
     }
 
-    fn push_target(&mut self, line: Line<'static>, target: Option<u32>) {
+    fn push_related(&mut self, line: Line<'static>, target: Option<u32>) {
+        self.related_rows.push(self.lines.len());
         self.lines.push(line);
         self.targets.push(target);
     }
 
-    fn finish(self) -> (Vec<Line<'static>>, Vec<Option<u32>>) {
-        (self.lines, self.targets)
+    fn finish(self) -> (Vec<Line<'static>>, Vec<Option<u32>>, Vec<usize>) {
+        (self.lines, self.targets, self.related_rows)
     }
 }
 
-fn detail_lines(app: &App) -> (Vec<Line<'static>>, Vec<Option<u32>>) {
+fn detail_lines(app: &App) -> (Vec<Line<'static>>, Vec<Option<u32>>, Vec<usize>) {
     let mut b = LineBuilder::default();
 
     if app.is_command_input() {
@@ -1258,8 +1839,11 @@ fn detail_lines(app: &App) -> (Vec<Line<'static>>, Vec<Option<u32>>) {
         b.push(Line::styled("Commands", heading));
         b.push(Line::raw("/semantic                  switch the embedding"));
         b.push(Line::raw("/config                    settings"));
+        b.push(Line::raw(
+            "/vim                       toggle Vim keybindings",
+        ));
         b.push(Line::raw("/help                      shortcut reference"));
-        b.push(Line::raw("/exit (or /quit)           quit"));
+        b.push(Line::raw("/exit (or /quit, /q)       quit"));
         if let Some(err) = &app.command_error {
             b.push(Line::raw(""));
             b.push(Line::styled(
@@ -1355,10 +1939,12 @@ fn detail_lines(app: &App) -> (Vec<Line<'static>>, Vec<Option<u32>>) {
     }
     if !record.related.is_empty() {
         b.push(Line::raw(""));
-        b.push(Line::styled(
-            "Related (Tab to browse, Enter to jump)",
-            heading,
-        ));
+        let browse_hint = if app.cfg.keys == KeyMode::Vim {
+            "Related (Tab to browse, j/k pick, Enter to jump)"
+        } else {
+            "Related (Tab to browse, Enter to jump)"
+        };
+        b.push(Line::styled(browse_hint, heading));
         for (i, id) in record.related.iter().enumerate() {
             let target = data
                 .corpus
@@ -1380,7 +1966,7 @@ fn detail_lines(app: &App) -> (Vec<Line<'static>>, Vec<Option<u32>>) {
             } else {
                 dim
             };
-            b.push_target(
+            b.push_related(
                 Line::from(vec![Span::raw(marker), Span::styled(label, style)]),
                 target,
             );
@@ -1390,21 +1976,45 @@ fn detail_lines(app: &App) -> (Vec<Line<'static>>, Vec<Option<u32>>) {
 }
 
 fn draw_detail(frame: &mut Frame, app: &mut App, area: Rect) {
-    let block = Block::bordered().title(" Detail ");
+    let block = pane_block(
+        " Detail ",
+        app.cfg.keys == KeyMode::Vim && app.vim_focus == FocusPane::Detail,
+    );
     let inner = block.inner(area);
     let inner_width = inner.width.max(1);
     let inner_height = inner.height;
 
-    let (lines, line_targets) = detail_lines(app);
+    let (lines, line_targets, related_rows) = detail_lines(app);
 
     let mut row_targets: Vec<Option<u32>> = Vec::new();
+    let mut line_start_rows: Vec<u16> = Vec::with_capacity(lines.len());
     for (line, target) in lines.iter().zip(line_targets.iter()) {
+        line_start_rows.push(row_targets.len() as u16);
         let rows = wrapped_row_count(line, inner_width);
         for _ in 0..rows {
             row_targets.push(*target);
         }
     }
     let total_rows = row_targets.len() as u16;
+
+    // Keep the keyboard-selected Related entry visible (same follow logic as
+    // the Results selection) — it lives at the bottom of the Detail text, so
+    // browsing it from an unscrolled pane would otherwise act blindly.
+    if app.pane_focus == PaneFocus::Related
+        && app.detail_follow_related
+        && let Some(i) = app.related_selected
+        && let Some(&li) = related_rows.get(i)
+    {
+        let start = line_start_rows[li];
+        let end = start + wrapped_row_count(&lines[li], inner_width) - 1;
+        if start < app.detail_scroll {
+            app.detail_scroll = start;
+        }
+        if inner_height > 0 && end >= app.detail_scroll + inner_height {
+            app.detail_scroll = end + 1 - inner_height;
+        }
+    }
+
     app.detail_scroll = app
         .detail_scroll
         .min(total_rows.saturating_sub(inner_height));
@@ -1419,26 +2029,62 @@ fn draw_detail(frame: &mut Frame, app: &mut App, area: Rect) {
 
 fn draw_overlay(frame: &mut Frame, app: &mut App, area: Rect) {
     match app.overlay {
-        Overlay::Help => draw_help(frame, area),
+        Overlay::Help => draw_help(frame, app, area),
         Overlay::Config => draw_config(frame, app, area),
         Overlay::None => {}
     }
 }
 
-fn draw_help(frame: &mut Frame, area: Rect) {
+fn draw_help(frame: &mut Frame, app: &App, area: Rect) {
     let heading = Style::default()
         .fg(Color::Cyan)
         .add_modifier(Modifier::BOLD);
     let dim = Style::default().fg(Color::DarkGray);
-    let lines = vec![
-        Line::styled("Keyboard", heading),
-        Line::raw("  type              instant BM25 search"),
-        Line::raw("  Enter             semantic + RRF fusion (or run a /command)"),
-        Line::raw("  ↑ ↓ / Ctrl-P/N    move selection in Results"),
-        Line::raw("  PgUp / PgDn       scroll Detail"),
-        Line::raw("  Tab               browse this item's Related list; ↑↓ pick, Enter jumps"),
-        Line::raw("  Esc               close this screen / clear query / quit"),
-        Line::raw("  Ctrl-C / Ctrl-Q   quit"),
+    let mut lines = if app.cfg.keys == KeyMode::Vim {
+        vec![
+            Line::styled(
+                "Keyboard — Vim keybindings (switch in /config, or /vim)",
+                heading,
+            ),
+            Line::raw(
+                "  i a I A           enter INSERT mode (type to search; Enter = semantic + RRF)",
+            ),
+            Line::raw("  Esc               INSERT/VISUAL → NORMAL (never quits)"),
+            Line::raw("  /                 new search (clears the query, enters INSERT)"),
+            Line::raw("  :                 command line — types a `/`, so :q quits, :config …"),
+            Line::raw(
+                "  Shift-H/J/K/L     focus Results / down / Input / Detail (highlighted border)",
+            ),
+            Line::raw("  j k (↑ ↓)         move the Results selection, or scroll a focused Detail"),
+            Line::raw("  gg / G            first/last result, or top/bottom of Detail"),
+            Line::raw("  Ctrl-d/u, Ctrl-f/b   half/full-page scroll of the focused pane"),
+            Line::raw("  h l w b 0 ^ $     cursor motions on the query line"),
+            Line::raw(
+                "  dd                clear the query (dw/db/d$/d0 delete parts; c… = change)",
+            ),
+            Line::raw("  x X D C p P       delete char/to-end, paste the last deleted/yanked text"),
+            Line::raw(
+                "  v                 VISUAL selection over the query (d/x/y/c, o swaps ends)",
+            ),
+            Line::raw("  Tab               browse this item's Related list; j/k pick, Enter jumps"),
+            Line::raw("  Ctrl-C / Ctrl-Q   quit (also /exit, /quit, /q)"),
+        ]
+    } else {
+        vec![
+            Line::styled(
+                "Keyboard — Normal keybindings (switch in /config, or /vim)",
+                heading,
+            ),
+            Line::raw("  type              instant BM25 search"),
+            Line::raw("  Enter             semantic + RRF fusion (or run a /command)"),
+            Line::raw("  ↑ ↓ / Ctrl-P/N    move selection in Results"),
+            Line::raw("  PgUp / PgDn       scroll Detail"),
+            Line::raw("  Tab               browse this item's Related list; ↑↓ pick, Enter jumps"),
+            Line::raw("  Esc               close this screen / exit Related / clear the query"),
+            Line::raw("  Ctrl-C / Ctrl-Q   quit (also /exit, /quit, /q)"),
+        ]
+    };
+    lines.extend([
         Line::raw(""),
         Line::styled("Mouse", heading),
         Line::raw("  wheel over Results     scroll the list (selection unchanged)"),
@@ -1449,11 +2095,12 @@ fn draw_help(frame: &mut Frame, area: Rect) {
         Line::styled("Commands", heading),
         Line::raw("  /semantic                 switch the embedding (type it for details)"),
         Line::raw("  /config                   settings screen"),
+        Line::raw("  /vim                      toggle Vim keybindings"),
         Line::raw("  /help                     this screen"),
-        Line::raw("  /exit (or /quit)          quit"),
+        Line::raw("  /exit (or /quit, /q)      quit"),
         Line::raw(""),
         Line::styled("press any key to close", dim),
-    ];
+    ]);
     frame.render_widget(
         Paragraph::new(lines)
             .block(Block::bordered().title(" Help "))
@@ -1469,7 +2116,7 @@ fn draw_config(frame: &mut Frame, app: &mut App, area: Rect) {
     let dim = Style::default().fg(Color::DarkGray);
     let mut lines = vec![
         Line::styled(
-            "Settings  (↑↓ select · ←→/Enter change · PgUp/PgDn scroll · Esc close)",
+            "Settings  (↑↓/j·k select · ←→/h·l/Enter change · PgUp·PgDn/Ctrl-d·u scroll · Esc close)",
             heading,
         ),
         Line::raw(""),
@@ -1501,6 +2148,13 @@ fn draw_config(frame: &mut Frame, app: &mut App, area: Rect) {
         "Offline mode",
         if app.cfg.offline { "on" } else { "off" }.to_string(),
         focused == ConfigField::Offline,
+    ));
+    // Applies the moment it's toggled — the status bar's mode indicator and
+    // the whole keymap switch in real time, before the screen is closed.
+    lines.push(field_row(
+        "Keybindings",
+        app.cfg.keys.label().to_string(),
+        focused == ConfigField::Keybindings,
     ));
 
     // ── Model weights (custom mode only, --debug) ─ shown above Semantic status.
@@ -1707,6 +2361,33 @@ fn status_left_spans(app: &App) -> Vec<Span<'static>> {
         }
     };
     spans.push(Span::styled(sem_text, sem_style));
+
+    // Vim mode indicator: fixed next to the semantic status (never part of
+    // the marquee). NORMAL is deliberately blank, like Vim itself; a pending
+    // operator (`d`, `c`, `g`) is echoed showcmd-style.
+    if app.cfg.keys == KeyMode::Vim {
+        let vim_span = match app.vim_mode {
+            VimMode::Insert => Some(Span::styled(
+                "-- INSERT --",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            )),
+            VimMode::Visual => Some(Span::styled(
+                "-- VISUAL --",
+                Style::default()
+                    .fg(Color::Magenta)
+                    .add_modifier(Modifier::BOLD),
+            )),
+            VimMode::Normal => app
+                .vim_pending
+                .map(|op| Span::styled(op.to_string(), Style::default().fg(Color::DarkGray))),
+        };
+        if let Some(span) = vim_span {
+            spans.push(Span::raw("  ·  "));
+            spans.push(span);
+        }
+    }
     spans
 }
 
@@ -1724,9 +2405,20 @@ fn status_tail(app: &App) -> (String, Style) {
         parts.push(format!("⚠ {}", strip_urls(w)));
         warn = true;
     }
-    parts.push(
-        "Enter search · ↑↓ select · Tab related · PgUp/PgDn scroll · /help · Esc quit".to_string(),
-    );
+    let hint = if app.cfg.keys == KeyMode::Vim {
+        match app.vim_mode {
+            VimMode::Insert => "Enter search · Esc normal mode · Tab related · /help · Ctrl-C quit",
+            VimMode::Normal => {
+                "i insert · j/k move · Shift-HJKL panes · dd clear · gg/G · Ctrl-d/u scroll · /help"
+            }
+            VimMode::Visual => {
+                "h/l/w/b extend · o swap ends · d/x delete · y yank · c change · Esc cancel"
+            }
+        }
+    } else {
+        "Enter search · ↑↓ select · Tab related · PgUp/PgDn scroll · /help · Ctrl-C quit"
+    };
+    parts.push(hint.to_string());
     let style = if warn {
         Style::default().fg(Color::Yellow)
     } else {
@@ -1814,6 +2506,233 @@ fn marquee(text: &str, window: usize, offset: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn test_app(vim: bool) -> App {
+        let cfg = Config::resolve(
+            Some("http://localhost/".to_string()),
+            Some(std::path::PathBuf::from("/tmp/physq-test-cache")),
+            ModelSel::Off,
+            true,
+            false,
+            vim,
+        )
+        .unwrap();
+        App::new(cfg)
+    }
+
+    fn key(code: KeyCode) -> KeyEvent {
+        KeyEvent::new(code, KeyModifiers::NONE)
+    }
+
+    fn type_str(app: &mut App, s: &str) {
+        for c in s.chars() {
+            app.handle_key(key(KeyCode::Char(c)));
+        }
+    }
+
+    #[test]
+    fn esc_clears_the_query_but_never_quits() {
+        let mut app = test_app(false);
+        type_str(&mut app, "abc");
+        assert_eq!(app.input, "abc");
+        app.handle_key(key(KeyCode::Esc));
+        assert_eq!(app.input, "");
+        assert!(!app.should_quit);
+        // The old behavior quit on Esc with an empty input; it must not.
+        app.handle_key(key(KeyCode::Esc));
+        assert!(!app.should_quit);
+    }
+
+    #[test]
+    fn ctrl_c_still_quits() {
+        let mut app = test_app(false);
+        app.handle_key(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL));
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn vim_starts_in_insert_and_esc_goes_to_normal_without_clearing() {
+        let mut app = test_app(true);
+        assert_eq!(app.vim_mode, VimMode::Insert);
+        type_str(&mut app, "abc");
+        app.handle_key(key(KeyCode::Esc));
+        assert_eq!(app.vim_mode, VimMode::Normal);
+        assert_eq!(app.input, "abc");
+        assert!(!app.should_quit);
+        app.handle_key(key(KeyCode::Esc));
+        assert!(!app.should_quit);
+    }
+
+    #[test]
+    fn vim_dd_clears_the_query() {
+        let mut app = test_app(true);
+        type_str(&mut app, "電磁誘導");
+        app.handle_key(key(KeyCode::Esc));
+        app.handle_key(key(KeyCode::Char('d')));
+        assert_eq!(app.vim_pending, Some('d'));
+        app.handle_key(key(KeyCode::Char('d')));
+        assert_eq!(app.input, "");
+        assert_eq!(app.vim_register, "電磁誘導");
+        assert_eq!(app.cursor, 0);
+    }
+
+    #[test]
+    fn vim_normal_mode_does_not_type_and_i_reenters_insert() {
+        let mut app = test_app(true);
+        type_str(&mut app, "ab");
+        app.handle_key(key(KeyCode::Esc));
+        type_str(&mut app, "z"); // unmapped in NORMAL — must not insert
+        assert_eq!(app.input, "ab");
+        app.handle_key(key(KeyCode::Char('i')));
+        assert_eq!(app.vim_mode, VimMode::Insert);
+        type_str(&mut app, "z");
+        assert_eq!(app.input, "abz");
+    }
+
+    #[test]
+    fn vim_line_motions_move_the_cursor() {
+        let mut app = test_app(true);
+        type_str(&mut app, "abc def");
+        app.handle_key(key(KeyCode::Esc));
+        app.handle_key(key(KeyCode::Char('0')));
+        assert_eq!(app.cursor, 0);
+        app.handle_key(key(KeyCode::Char('w')));
+        assert_eq!(app.cursor, 4);
+        app.handle_key(key(KeyCode::Char('b')));
+        assert_eq!(app.cursor, 0);
+        app.handle_key(key(KeyCode::Char('$')));
+        assert_eq!(app.cursor, 7);
+        app.handle_key(key(KeyCode::Char('h')));
+        assert_eq!(app.cursor, 6);
+        app.handle_key(key(KeyCode::Char('l')));
+        assert_eq!(app.cursor, 7);
+    }
+
+    #[test]
+    fn vim_dw_deletes_a_word() {
+        let mut app = test_app(true);
+        type_str(&mut app, "abc def");
+        app.handle_key(key(KeyCode::Esc));
+        app.handle_key(key(KeyCode::Char('0')));
+        app.handle_key(key(KeyCode::Char('d')));
+        app.handle_key(key(KeyCode::Char('w')));
+        assert_eq!(app.input, "def");
+        assert_eq!(app.vim_register, "abc ");
+    }
+
+    #[test]
+    fn vim_change_operator_enters_insert() {
+        let mut app = test_app(true);
+        type_str(&mut app, "abc");
+        app.handle_key(key(KeyCode::Esc));
+        app.handle_key(key(KeyCode::Char('c')));
+        app.handle_key(key(KeyCode::Char('c')));
+        assert_eq!(app.input, "");
+        assert_eq!(app.vim_mode, VimMode::Insert);
+    }
+
+    #[test]
+    fn vim_visual_select_delete_and_paste_round_trip() {
+        let mut app = test_app(true);
+        type_str(&mut app, "abc def");
+        app.handle_key(key(KeyCode::Esc));
+        app.handle_key(key(KeyCode::Char('0')));
+        app.handle_key(key(KeyCode::Char('v')));
+        assert_eq!(app.vim_mode, VimMode::Visual);
+        app.handle_key(key(KeyCode::Char('l')));
+        app.handle_key(key(KeyCode::Char('l')));
+        assert_eq!(app.visual_range(), (0, 3));
+        app.handle_key(key(KeyCode::Char('d')));
+        assert_eq!(app.input, " def");
+        assert_eq!(app.vim_register, "abc");
+        assert_eq!(app.vim_mode, VimMode::Normal);
+        app.handle_key(key(KeyCode::Char('P')));
+        assert_eq!(app.input, "abc def");
+    }
+
+    #[test]
+    fn vim_shift_home_row_switches_pane_focus() {
+        let mut app = test_app(true);
+        app.handle_key(key(KeyCode::Esc));
+        assert!(app.vim_focus == FocusPane::Input);
+        app.handle_key(key(KeyCode::Char('L')));
+        assert!(app.vim_focus == FocusPane::Detail);
+        app.handle_key(key(KeyCode::Char('H')));
+        assert!(app.vim_focus == FocusPane::Results);
+        app.handle_key(key(KeyCode::Char('K')));
+        assert!(app.vim_focus == FocusPane::Input);
+        app.handle_key(key(KeyCode::Char('J')));
+        assert!(app.vim_focus == FocusPane::Results);
+        // Focus keys never leak into the query.
+        assert_eq!(app.input, "");
+    }
+
+    #[test]
+    fn vim_insert_mode_types_capital_hjkl_normally() {
+        let mut app = test_app(true);
+        type_str(&mut app, "HJKL");
+        assert_eq!(app.input, "HJKL");
+        assert!(app.vim_focus == FocusPane::Input);
+    }
+
+    #[test]
+    fn vim_colon_opens_a_command_line() {
+        let mut app = test_app(true);
+        app.handle_key(key(KeyCode::Esc));
+        app.handle_key(key(KeyCode::Char(':')));
+        assert_eq!(app.input, "/");
+        assert_eq!(app.cursor, 1);
+        assert_eq!(app.vim_mode, VimMode::Insert);
+        type_str(&mut app, "q");
+        app.handle_key(key(KeyCode::Enter));
+        assert!(app.should_quit); // :q → /q → exit
+    }
+
+    #[test]
+    fn vim_slash_starts_a_fresh_search() {
+        let mut app = test_app(true);
+        type_str(&mut app, "old query");
+        app.handle_key(key(KeyCode::Esc));
+        app.handle_key(key(KeyCode::Char('/')));
+        assert_eq!(app.input, "");
+        assert_eq!(app.vim_mode, VimMode::Insert);
+    }
+
+    #[test]
+    fn config_keybindings_field_toggles_in_real_time() {
+        let mut app = test_app(false);
+        app.overlay = Overlay::Config;
+        // Move the cursor to the Keybindings row (Model, Offline, Keybindings).
+        app.handle_key(key(KeyCode::Down));
+        app.handle_key(key(KeyCode::Down));
+        app.handle_key(key(KeyCode::Enter));
+        assert_eq!(app.cfg.keys, KeyMode::Vim);
+        assert_eq!(app.vim_mode, VimMode::Insert); // visible immediately
+        // Vim-style keys drive the same screen: `l` toggles it back.
+        app.handle_key(key(KeyCode::Char('l')));
+        assert_eq!(app.cfg.keys, KeyMode::Normal);
+        assert_eq!(app.overlay, Overlay::Config); // still open
+    }
+
+    #[test]
+    fn config_screen_accepts_vim_style_navigation() {
+        let mut app = test_app(false);
+        app.overlay = Overlay::Config;
+        app.handle_key(key(KeyCode::Char('j')));
+        assert_eq!(app.config_cursor, 1);
+        app.handle_key(key(KeyCode::Char('k')));
+        assert_eq!(app.config_cursor, 0);
+        assert_eq!(app.overlay, Overlay::Config);
+    }
+
+    #[test]
+    fn slash_vim_command_toggles_keybindings() {
+        let mut app = test_app(false);
+        type_str(&mut app, "/vim");
+        app.handle_key(key(KeyCode::Enter));
+        assert_eq!(app.cfg.keys, KeyMode::Vim);
+        assert_eq!(app.input, "");
+    }
 
     #[test]
     fn wrapped_row_count_fits_on_one_row_when_short() {

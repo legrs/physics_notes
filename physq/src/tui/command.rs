@@ -1,7 +1,7 @@
 //! Slash-command parsing for the TUI input box (`/exit`,
-//! `/semantic small|large|max|none`, `/config`, `/help`). Pure and UI-agnostic
-//! so it's unit-testable without an `App`/`Engine` fixture; `tui::App` owns all
-//! the side effects.
+//! `/semantic small|large|max|none`, `/config`, `/help`, `/vim`). Pure and
+//! UI-agnostic so it's unit-testable without an `App`/`Engine` fixture;
+//! `tui::App` owns all the side effects.
 
 use crate::config::{ModelSel, ModelSize};
 
@@ -13,6 +13,8 @@ pub enum ParsedCommand {
     /// `ModelSel::Off` disables the semantic stage (BM25-only); `ModelSel::Max`
     /// is the small+large ensemble.
     Semantic(ModelSel),
+    /// `/vim` — toggle between the Normal and Vim keybinding schemes.
+    ToggleVim,
     Unknown(String),
 }
 
@@ -33,9 +35,11 @@ pub fn parse_command(input: &str) -> Option<ParsedCommand> {
     let has_extra = parts.next().is_some();
 
     Some(match (cmd, arg, has_extra) {
-        ("/exit" | "/quit", None, false) => ParsedCommand::Exit,
+        // `/q` mirrors Vim's `:q` habit (the Vim keymap's `:` types a `/`).
+        ("/exit" | "/quit" | "/q", None, false) => ParsedCommand::Exit,
         ("/help", None, false) => ParsedCommand::Help,
         ("/config", None, false) => ParsedCommand::Config,
+        ("/vim", None, false) => ParsedCommand::ToggleVim,
         ("/semantic", Some("small"), false) => {
             ParsedCommand::Semantic(ModelSel::Single(ModelSize::Small))
         }
@@ -63,7 +67,17 @@ mod tests {
     fn recognizes_exit_and_quit() {
         assert_eq!(parse_command("/exit"), Some(ParsedCommand::Exit));
         assert_eq!(parse_command("/quit"), Some(ParsedCommand::Exit));
+        assert_eq!(parse_command("/q"), Some(ParsedCommand::Exit));
         assert_eq!(parse_command("  /exit  "), Some(ParsedCommand::Exit));
+    }
+
+    #[test]
+    fn recognizes_vim_toggle() {
+        assert_eq!(parse_command("/vim"), Some(ParsedCommand::ToggleVim));
+        assert_eq!(
+            parse_command("/vim on"),
+            Some(ParsedCommand::Unknown("/vim on".to_string()))
+        );
     }
 
     #[test]

@@ -100,6 +100,25 @@ impl ModelSel {
     }
 }
 
+/// TUI keybinding scheme. `Normal` is the default arrow-key/PgUp-style map;
+/// `Vim` turns the home row into modal (INSERT/NORMAL/VISUAL) navigation —
+/// set at launch with `--vim`, or switched live from `/config` / `/vim`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeyMode {
+    Normal,
+    Vim,
+}
+
+impl KeyMode {
+    /// Stable short label for the `/config` screen.
+    pub fn label(self) -> &'static str {
+        match self {
+            KeyMode::Normal => "normal",
+            KeyMode::Vim => "vim",
+        }
+    }
+}
+
 /// Per-model RRF weights for `ModelSel::Custom` (the `--debug` tuning mode).
 /// Order mirrors the fusion: BM25 first, then each `ModelSel::sizes()` model
 /// (small, large). Defaults match `Max` (BM25 weight 1, each semantic 2).
@@ -144,6 +163,8 @@ pub struct Config {
     /// RRF weights used when `model == ModelSel::Custom` (tuned live in
     /// `/config` under `--debug`).
     pub weights: CustomWeights,
+    /// TUI keybinding scheme (`--vim`, or toggled live in `/config`).
+    pub keys: KeyMode,
 }
 
 impl Config {
@@ -154,6 +175,7 @@ impl Config {
         model: ModelSel,
         offline: bool,
         debug: bool,
+        vim: bool,
     ) -> Result<Self> {
         let base_url = base_url
             .or_else(|| std::env::var("PHYSQ_BASE_URL").ok())
@@ -172,6 +194,7 @@ impl Config {
             offline,
             debug,
             weights: CustomWeights::default(),
+            keys: if vim { KeyMode::Vim } else { KeyMode::Normal },
         })
     }
 

@@ -51,6 +51,12 @@ struct Cli {
     #[arg(long, global = true)]
     debug: bool,
 
+    /// Start the TUI with Vim keybindings (modal INSERT/NORMAL/VISUAL editing,
+    /// hjkl navigation, Shift+HJKL pane focus, dd to clear the query). Also
+    /// switchable at runtime via /config (Keybindings) or /vim.
+    #[arg(long, global = true)]
+    vim: bool,
+
     /// Override the cache directory (default: OS cache dir /physics-notes;
     /// also settable via PHYSQ_CACHE_DIR)
     #[arg(long, global = true, value_name = "DIR")]
@@ -146,6 +152,7 @@ pub fn run() -> Result<()> {
         model,
         cli.offline,
         cli.debug,
+        cli.vim,
     )?;
 
     match cli.command {

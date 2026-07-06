@@ -108,6 +108,7 @@ distros (Ubuntu 22.04, Debian 12, RHEL 9, …) can't link or run the binary.
 cargo build --release          # single binary at target/release/physq
 
 cargo run                      # interactive TUI
+cargo run -- --vim             # interactive TUI with Vim keybindings (see below)
 cargo run -- --bm25-only       # interactive TUI, BM25-only (no model download)
 cargo run -- search "電磁誘導"  # one-shot, hybrid ranking
 cargo run -- search "電磁誘導" --bm25-only   # no model download, lexical only
@@ -131,6 +132,10 @@ fetching it.
 
 ### TUI keys
 
+Two keybinding schemes: the default **Normal** map below, and a modal **Vim**
+map. Launch with `--vim`, or switch at any time from `/config` → Keybindings
+(applies instantly) or with the `/vim` command.
+
 | Key | Action |
 | --- | --- |
 | type | instant BM25 ranking per keystroke |
@@ -138,14 +143,46 @@ fetching it.
 | `↑` `↓` / `Ctrl-P` `Ctrl-N` | select result (auto-scrolls into view) |
 | `PgUp` `PgDn` | scroll the detail pane |
 | `Tab` | browse the selected item's Related list; `↑` `↓` pick, `Enter` jumps |
-| `Esc` | close a `/help`/`/config` screen, then exit Related-browsing, then clear query, then quit |
-| `Ctrl-C` / `Ctrl-Q` | quit |
+| `Esc` | close a `/help`/`/config` screen, then exit Related-browsing, then clear the query — never quits |
+| `Ctrl-C` / `Ctrl-Q` | quit (or `/exit`, `/quit`, `/q`) |
 
 Mouse: wheel over Results scrolls the list (selection is untouched — arrow
 keys still auto-scroll back to it); wheel over Detail scrolls the text;
 clicking a result selects it; clicking a Related entry in Detail jumps to it.
 "Jumping" to a Related item re-searches its question, so it reuses the normal
-ranking pipeline instead of a separate pinned-detail mode.
+ranking pipeline instead of a separate pinned-detail mode. The mouse works
+identically under both keybinding schemes.
+
+### Vim keybindings (`--vim`)
+
+Modal editing over the query line: **INSERT** (type to search), **NORMAL**
+(commands), and a char-wise **VISUAL** selection. The status bar shows a fixed
+`-- INSERT --` / `-- VISUAL --` indicator next to the semantic status (NORMAL
+shows nothing, like Vim; a pending `d`/`c`/`g` operator is echoed there), and
+the hardware cursor switches bar/block with the mode. Esc leaves
+INSERT/VISUAL for NORMAL — it never quits.
+
+| Key | Action |
+| --- | --- |
+| `i` `a` `I` `A` | enter INSERT (at cursor / after it / line start / line end) |
+| `Esc` | INSERT/VISUAL → NORMAL |
+| `/` | new search: clear the query and enter INSERT |
+| `:` | command line: types a `/`, so `:q` quits, `:config` opens settings, … |
+| `Shift-H` `Shift-J` `Shift-K` `Shift-L` | focus the Results / lower / Input / Detail pane — the focused pane gets a highlighted border+title and receives j/k, gg/G and the scroll keys |
+| `j` `k` (and `↑` `↓`) | move the Results selection; with Detail focused, scroll it line by line |
+| `gg` / `G` | first/last result, or top/bottom of a focused Detail |
+| `Ctrl-d` / `Ctrl-u`, `Ctrl-f` / `Ctrl-b` | half/full-page scroll of the focused pane (replaces PgUp/PgDn; Results scrolls its viewport without moving the selection, like the wheel) |
+| `h` `l` `w` `b` `0` `^` `$` | cursor motions on the query line |
+| `dd` | clear the query (`dw` `db` `d$` `d0` `dh` `dl` delete pieces; `x`/`X` chars, `D` to end) |
+| `cc` `cw` `cb` `c$` `c0` / `C` | change: delete, then enter INSERT |
+| `p` / `P` | paste the last deleted/yanked text after/at the cursor |
+| `v` | VISUAL selection (`h l w b 0 $` extend, `o` swaps ends, `d`/`x` delete, `y` yank, `c` change, Esc cancels) |
+| `Tab` | browse the selected item's Related list: `j`/`k` (or `↑` `↓`) pick — the Detail pane auto-scrolls the selection into view — `Enter` jumps, `Esc`/`Tab` exits |
+| `Ctrl-C` / `Ctrl-Q` | quit (or `:q<Enter>`) |
+
+The `/config` screen accepts both key styles at all times, under either
+scheme: `↑↓`/`j k` select a field, `←→`/`h l`/`Enter`/`Space` change it,
+`PgUp PgDn`/`Ctrl-d Ctrl-u` scroll, `Esc` closes.
 
 ### Slash commands
 
@@ -156,9 +193,10 @@ Typed into the same input box, run on `Enter`:
 | `/semantic small` / `/semantic large` | switch the embedding model at runtime (reloads, may download on first use) |
 | `/semantic max` | ensemble mode: rank with both e5 models and RRF-fuse each list with BM25 (most accurate; loads both models) |
 | `/semantic none` | turn semantic off at runtime — BM25-only until switched back |
-| `/config` | interactive settings screen — `↑` `↓` picks a field, `←` `→`/`Enter` changes it (model size cycles small → large → max → none, offline mode), plus read-only info (base URL, cache dir, tokenizer) |
-| `/help` | shortcut reference (keyboard, mouse, commands) |
-| `/exit` (or `/quit`) | quit |
+| `/config` | interactive settings screen — `↑` `↓` (or `j` `k`) picks a field, `←` `→`/`h` `l`/`Enter` changes it (model size cycles small → large → max → none, offline mode, Normal/Vim keybindings), plus read-only info (base URL, cache dir, tokenizer) |
+| `/vim` | toggle between the Normal and Vim keybinding schemes (same as `/config` → Keybindings; applies instantly) |
+| `/help` | shortcut reference (keyboard, mouse, commands) — reflects the active keybinding scheme |
+| `/exit` (or `/quit`, `/q`) | quit |
 
 ## Cache layout
 
