@@ -5,21 +5,24 @@
 //! arrives. All heavy work (fetch, model load, query embedding) runs on
 //! background tasks; the render loop only animates the spinner (§11).
 //!
-//! Beyond the core search loop, the UI supports: mouse wheel scrolling and
-//! click-to-select on both panes, jumping to a `related[]` item (by
-//! re-searching its question — see `jump_to_related`), slash commands typed
-//! into the input box (`/semantic small|large|max|none`, `/config`, `/help`,
-//! `/vim`, `/exit`), and a `Tab`-focused keyboard path through Related so
-//! nothing here requires a mouse. `/semantic none` (or launching with
-//! `--model none` / `--bm25-only`) disables the semantic stage entirely: no
-//! model download, BM25-only results.
+//! Beyond the core search loop, the UI supports: mouse wheel scrolling
+//! (Results, Detail, and the `/help`/`/config` overlays) and click-to-select
+//! on all panes (including the input line, which places the cursor), jumping
+//! to a `related[]` item (by re-searching its question — see
+//! `jump_to_related`), slash commands typed into the input box
+//! (`/semantic small|large|max|none`, `/config`, `/help`, `/vim`, `/exit`),
+//! and a `Tab`-focused keyboard path through Related so nothing here
+//! requires a mouse. `/semantic none` (or launching with `--model none` /
+//! `--bm25-only`) disables the semantic stage entirely: no model download,
+//! BM25-only results.
 //!
 //! Two keybinding schemes (`Config::keys`, switchable live from `/config` or
 //! `/vim`): the default `Normal` map, and a modal `Vim` map (`--vim`) with
 //! INSERT/NORMAL/VISUAL modes over the input line, hjkl/gg/G/Ctrl-d-u-f-b
-//! navigation, `dd` to clear the query, and Shift+HJKL pane focus (Input /
-//! Results / Detail — the focused pane decides what j/k and the scroll keys
-//! act on, and gets a highlighted border).
+//! navigation, `dd` to clear the query, and Shift+HJKL pane focus (H/K/L
+//! jump to Results / Input / Detail, J cycles through them — the focused
+//! pane decides what j/k and the scroll keys act on, and gets a highlighted
+//! border).
 
 mod command;
 mod vim;
@@ -53,6 +56,9 @@ use vim::{InsertAt, VimMode, next_word_start, prev_word_start};
 const SEMANTIC_DEBOUNCE: Duration = Duration::from_millis(500);
 const DETAIL_SCROLL_STEP: u16 = 5;
 const MOUSE_SCROLL_STEP: u16 = 3;
+/// Prompt rendered before the query in the input box; mouse-click cursor
+/// placement subtracts its width, so keep the two in sync via this const.
+const INPUT_PROMPT: &str = "» ";
 
 /// Per-model descriptions, shown under `/config`'s Semantic status and on the
 /// `/semantic` command-suggestion screen. Order matches the `/config` cycle.
@@ -197,6 +203,7 @@ struct App {
     scroll_follow_selection: bool,
     /// row → result index, rebuilt every draw; consumed by mouse clicks.
     results_row_targets: Vec<usize>,
+    input_area: Rect,
     list_area: Rect,
     detail_scroll: u16,
     /// row → corpus index of a clickable Related entry, rebuilt every draw.
@@ -223,6 +230,8 @@ struct App {
     config_cursor: usize,
     /// Vertical scroll offset (rows) for the `/config` overlay body.
     config_scroll: u16,
+    /// Vertical scroll offset (rows) for the `/help` overlay body.
+    help_scroll: u16,
     command_error: Option<String>,
     /// Bumped on every input change; stale semantic responses are dropped.
     seq: u64,
@@ -267,6 +276,7 @@ impl App {
             results_scroll: 0,
             scroll_follow_selection: true,
             results_row_targets: Vec::new(),
+            input_area: Rect::default(),
             list_area: Rect::default(),
             detail_scroll: 0,
             detail_row_targets: Vec::new(),
@@ -282,6 +292,7 @@ impl App {
             overlay: Overlay::None,
             config_cursor: 0,
             config_scroll: 0,
+            help_scroll: 0,
             command_error: None,
             seq: 0,
             last_requested_seq: 0,
@@ -688,14 +699,12 @@ impl App {
             KeyCode::Char('p') if ctrl => self.move_selection(-1),
             KeyCode::Char('n') if ctrl => self.move_selection(1),
             // Shift + home row: pane focus (Input on top, Results | Detail).
+            // H/K/L jump straight to a pane; J cycles through all three, so
+            // every one of the four is a live focus key from anywhere.
             KeyCode::Char('H') => self.set_focus(FocusPane::Results),
             KeyCode::Char('L') => self.set_focus(FocusPane::Detail),
             KeyCode::Char('K') => self.set_focus(FocusPane::Input),
-            KeyCode::Char('J') => {
-                if self.vim_focus == FocusPane::Input {
-                    self.set_focus(FocusPane::Results);
-                }
-            }
+            KeyCode::Char('J') => self.cycle_focus(),
             // INSERT entries.
             KeyCode::Char('i') => self.enter_insert(InsertAt::Here),
             KeyCode::Char('a') => self.enter_insert(InsertAt::After),
@@ -924,25 +933,42 @@ impl App {
         }
     }
 
-    /// j/k (and ↑↓ in NORMAL): move the Results selection, or scroll Detail
-    /// one row when it's the focused pane.
+    /// Shift+J: focus the next pane, Input → Results → Detail → Input.
+    fn cycle_focus(&mut self) {
+        self.set_focus(match self.vim_focus {
+            FocusPane::Input => FocusPane::Results,
+            FocusPane::Results => FocusPane::Detail,
+            FocusPane::Detail => FocusPane::Input,
+        });
+    }
+
+    /// j/k (and ↑↓ in NORMAL) act on the focused pane only: move the Results
+    /// selection, or scroll Detail one row. The input line is a single row,
+    /// so while it's focused they do nothing (like j/k in a one-line Vim
+    /// buffer) — they must not reach over and move Results.
     fn vim_line(&mut self, delta: i64) {
-        if self.vim_focus == FocusPane::Detail {
-            self.detail_scroll = if delta > 0 {
-                self.detail_scroll.saturating_add(1)
-            } else {
-                self.detail_scroll.saturating_sub(1)
-            };
-            self.detail_follow_related = false;
-        } else {
-            self.move_selection(delta);
+        match self.vim_focus {
+            FocusPane::Input => {}
+            FocusPane::Results => self.move_selection(delta),
+            FocusPane::Detail => {
+                self.detail_scroll = if delta > 0 {
+                    self.detail_scroll.saturating_add(1)
+                } else {
+                    self.detail_scroll.saturating_sub(1)
+                };
+                self.detail_follow_related = false;
+            }
         }
     }
 
     /// Ctrl-d/u (half page) and Ctrl-f/b (full page) on the focused pane.
     /// Results scrolls its viewport without moving the selection, like the
-    /// mouse wheel; Detail scrolls its text.
+    /// mouse wheel; Detail scrolls its text; the (single-row) input pane has
+    /// nothing to scroll, so they're no-ops while it's focused.
     fn vim_scroll(&mut self, dir: i64, full: bool) {
+        if self.vim_focus == FocusPane::Input {
+            return;
+        }
         let (area, scroll) = if self.vim_focus == FocusPane::Detail {
             (self.detail_area, &mut self.detail_scroll)
         } else {
@@ -964,14 +990,21 @@ impl App {
 
     /// gg / G: jump the focused pane to its top/bottom (first/last result,
     /// or the start/end of Detail — the draw pass clamps the overshoot).
+    /// No-ops while the single-line input pane is focused, like j/k.
     fn vim_goto(&mut self, bottom: bool) {
-        if self.vim_focus == FocusPane::Detail {
-            self.detail_scroll = if bottom { u16::MAX } else { 0 };
-            self.detail_follow_related = false;
-        } else if !self.results.is_empty() {
-            self.selected = Some(if bottom { self.results.len() - 1 } else { 0 });
-            self.detail_scroll = 0;
-            self.scroll_follow_selection = true;
+        match self.vim_focus {
+            FocusPane::Input => {}
+            FocusPane::Detail => {
+                self.detail_scroll = if bottom { u16::MAX } else { 0 };
+                self.detail_follow_related = false;
+            }
+            FocusPane::Results => {
+                if !self.results.is_empty() {
+                    self.selected = Some(if bottom { self.results.len() - 1 } else { 0 });
+                    self.detail_scroll = 0;
+                    self.scroll_follow_selection = true;
+                }
+            }
         }
     }
 
@@ -995,15 +1028,47 @@ impl App {
         });
     }
 
-    /// Handles keys while a `Help`/`Config` overlay is showing. `Config`
-    /// intercepts navigation/toggle keys — both the arrow-key style and the
-    /// Vim style are always accepted here, regardless of the active
-    /// keybinding scheme, so the settings screen works the same either way.
-    /// Everything else (including every key in `Help`) closes the overlay
-    /// and re-dispatches through the normal path, so typing immediately
-    /// continues as a new search.
+    /// Handles keys while a `Help`/`Config` overlay is showing. Both screens
+    /// intercept navigation/scroll keys — the arrow-key style and the Vim
+    /// style are always accepted here, regardless of the active keybinding
+    /// scheme, so they work the same either way. Everything else closes the
+    /// overlay and re-dispatches through the normal path, so typing
+    /// immediately continues as a new search.
     fn handle_overlay_key(&mut self, key: KeyEvent) {
-        if self.overlay == Overlay::Config {
+        if self.overlay == Overlay::Help {
+            let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+            match key.code {
+                KeyCode::Esc => {
+                    self.overlay = Overlay::None;
+                    return;
+                }
+                KeyCode::Up | KeyCode::Char('k') => {
+                    self.help_scroll = self.help_scroll.saturating_sub(1);
+                    return;
+                }
+                KeyCode::Down | KeyCode::Char('j') => {
+                    self.help_scroll = self.help_scroll.saturating_add(1);
+                    return;
+                }
+                KeyCode::PageUp => {
+                    self.help_scroll = self.help_scroll.saturating_sub(DETAIL_SCROLL_STEP);
+                    return;
+                }
+                KeyCode::PageDown => {
+                    self.help_scroll = self.help_scroll.saturating_add(DETAIL_SCROLL_STEP);
+                    return;
+                }
+                KeyCode::Char('u') | KeyCode::Char('b') if ctrl => {
+                    self.help_scroll = self.help_scroll.saturating_sub(DETAIL_SCROLL_STEP);
+                    return;
+                }
+                KeyCode::Char('d') | KeyCode::Char('f') if ctrl => {
+                    self.help_scroll = self.help_scroll.saturating_add(DETAIL_SCROLL_STEP);
+                    return;
+                }
+                _ => {}
+            }
+        } else if self.overlay == Overlay::Config {
             let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
             let n = self.config_fields().len();
             match key.code {
@@ -1049,9 +1114,6 @@ impl App {
                 }
                 _ => {}
             }
-        } else if key.code == KeyCode::Esc {
-            self.overlay = Overlay::None;
-            return;
         }
 
         self.overlay = Overlay::None;
@@ -1151,7 +1213,10 @@ impl App {
         self.command_error = None;
         match cmd {
             ParsedCommand::Exit => self.should_quit = true,
-            ParsedCommand::Help => self.overlay = Overlay::Help,
+            ParsedCommand::Help => {
+                self.overlay = Overlay::Help;
+                self.help_scroll = 0;
+            }
             ParsedCommand::Config => {
                 self.overlay = Overlay::Config;
                 self.config_cursor = 0;
@@ -1312,22 +1377,21 @@ impl App {
     }
 
     fn handle_mouse(&mut self, m: MouseEvent) {
-        if self.overlay == Overlay::Config {
-            // Config scrolls with the wheel; clicks are ignored (keyboard-driven).
+        if self.overlay != Overlay::None {
+            // Overlays scroll with the wheel; clicks are ignored (keyboard-driven).
+            let scroll = match self.overlay {
+                Overlay::Config => &mut self.config_scroll,
+                Overlay::Help => &mut self.help_scroll,
+                Overlay::None => unreachable!(),
+            };
             match m.kind {
-                MouseEventKind::ScrollUp => {
-                    self.config_scroll = self.config_scroll.saturating_sub(MOUSE_SCROLL_STEP);
-                }
-                MouseEventKind::ScrollDown => {
-                    self.config_scroll = self.config_scroll.saturating_add(MOUSE_SCROLL_STEP);
-                }
+                MouseEventKind::ScrollUp => *scroll = scroll.saturating_sub(MOUSE_SCROLL_STEP),
+                MouseEventKind::ScrollDown => *scroll = scroll.saturating_add(MOUSE_SCROLL_STEP),
                 _ => {}
             }
             return;
         }
-        if self.overlay != Overlay::None {
-            return; // Help is keyboard-only by design.
-        }
+        let in_input = rect_contains(self.input_area, m.column, m.row);
         let in_list = rect_contains(self.list_area, m.column, m.row);
         let in_detail = rect_contains(self.detail_area, m.column, m.row);
 
@@ -1354,13 +1418,21 @@ impl App {
                 // Under the Vim keymap a click also moves the pane focus,
                 // matching what the highlighted border implies.
                 if self.cfg.keys == KeyMode::Vim {
-                    if in_list {
+                    if in_input {
+                        self.set_focus(FocusPane::Input);
+                    } else if in_list {
                         self.set_focus(FocusPane::Results);
                     } else if in_detail {
                         self.set_focus(FocusPane::Detail);
                     }
                 }
-                if in_list {
+                if in_input {
+                    // Place the cursor on the clicked character (either keymap).
+                    let text_x = m
+                        .column
+                        .saturating_sub(self.input_area.x + 1 + INPUT_PROMPT.width() as u16);
+                    self.cursor = char_at_column(&self.input, text_x);
+                } else if in_list {
                     let local_row = m.row.saturating_sub(self.list_area.y + 1);
                     let abs_row = (self.results_scroll + local_row) as usize;
                     if let Some(&item) = self.results_row_targets.get(abs_row) {
@@ -1425,6 +1497,23 @@ fn byte_index(s: &str, char_offset: usize) -> usize {
         .nth(char_offset)
         .map(|(i, _)| i)
         .unwrap_or(s.len())
+}
+
+/// Char offset in `s` whose rendered cell covers display column `x`
+/// (0-based from the start of the text). Width-aware so a click on either
+/// cell of a double-width CJK char lands on that char; past the end of the
+/// text it clamps to the end (cursor after the last char).
+fn char_at_column(s: &str, x: u16) -> usize {
+    use unicode_width::UnicodeWidthChar;
+    let mut w: u16 = 0;
+    for (i, ch) in s.chars().enumerate() {
+        let cw = ch.width().unwrap_or(0) as u16;
+        if w + cw > x {
+            return i;
+        }
+        w += cw;
+    }
+    s.chars().count()
 }
 
 /// Rows `line` will occupy when wrapped to `width` columns. Delegates to
@@ -1625,7 +1714,8 @@ fn draw(frame: &mut Frame, app: &mut App) {
 
     // ── input ──────────────────────────────────────────────────────────
     let vim = app.cfg.keys == KeyMode::Vim;
-    let mut input_spans = vec![Span::styled("» ", Style::default().fg(Color::Cyan))];
+    app.input_area = input_area;
+    let mut input_spans = vec![Span::styled(INPUT_PROMPT, Style::default().fg(Color::Cyan))];
     if vim && app.vim_mode == VimMode::Visual && !app.input.is_empty() {
         // Render the VISUAL selection inverted, like Vim's hl-Visual.
         let (start, end) = app.visual_range();
@@ -1647,7 +1737,7 @@ fn draw(frame: &mut Frame, app: &mut App) {
         )),
         input_area,
     );
-    let prefix_width = "» ".width() as u16;
+    let prefix_width = INPUT_PROMPT.width() as u16;
     let cursor_x = {
         let byte = byte_index(&app.input, app.cursor);
         app.input[..byte].width() as u16
@@ -2035,7 +2125,7 @@ fn draw_overlay(frame: &mut Frame, app: &mut App, area: Rect) {
     }
 }
 
-fn draw_help(frame: &mut Frame, app: &App, area: Rect) {
+fn draw_help(frame: &mut Frame, app: &mut App, area: Rect) {
     let heading = Style::default()
         .fg(Color::Cyan)
         .add_modifier(Modifier::BOLD);
@@ -2052,11 +2142,14 @@ fn draw_help(frame: &mut Frame, app: &App, area: Rect) {
             Line::raw("  Esc               INSERT/VISUAL → NORMAL (never quits)"),
             Line::raw("  /                 new search (clears the query, enters INSERT)"),
             Line::raw("  :                 command line — types a `/`, so :q quits, :config …"),
+            Line::raw("  Shift-H/K/L       focus the Results / Input / Detail pane"),
+            Line::raw("  Shift-J           focus the next pane (Input → Results → Detail → Input)"),
             Line::raw(
-                "  Shift-H/J/K/L     focus Results / down / Input / Detail (highlighted border)",
+                "  j k (↑ ↓)         on the focused pane: move the Results selection / scroll Detail",
             ),
-            Line::raw("  j k (↑ ↓)         move the Results selection, or scroll a focused Detail"),
-            Line::raw("  gg / G            first/last result, or top/bottom of Detail"),
+            Line::raw(
+                "  gg / G            focused pane: first/last result, or top/bottom of Detail",
+            ),
             Line::raw("  Ctrl-d/u, Ctrl-f/b   half/full-page scroll of the focused pane"),
             Line::raw("  h l w b 0 ^ $     cursor motions on the query line"),
             Line::raw(
@@ -2089,8 +2182,10 @@ fn draw_help(frame: &mut Frame, app: &App, area: Rect) {
         Line::styled("Mouse", heading),
         Line::raw("  wheel over Results     scroll the list (selection unchanged)"),
         Line::raw("  wheel over Detail      scroll the text"),
+        Line::raw("  wheel over /help /config   scroll that screen"),
         Line::raw("  click a result         select it"),
         Line::raw("  click a Related item   jump to it"),
+        Line::raw("  click the input line   place the cursor (Vim: also focuses the pane)"),
         Line::raw(""),
         Line::styled("Commands", heading),
         Line::raw("  /semantic                 switch the embedding (type it for details)"),
@@ -2099,12 +2194,25 @@ fn draw_help(frame: &mut Frame, app: &App, area: Rect) {
         Line::raw("  /help                     this screen"),
         Line::raw("  /exit (or /quit, /q)      quit"),
         Line::raw(""),
-        Line::styled("press any key to close", dim),
+        Line::styled(
+            "scroll: j/k ↑↓ PgUp/PgDn Ctrl-d/u or the wheel · close: Esc (or any other key)",
+            dim,
+        ),
     ]);
+
+    let block = Block::bordered().title(" Help ");
+    let inner = block.inner(area);
+    let total_rows: u16 = lines
+        .iter()
+        .map(|l| wrapped_row_count(l, inner.width.max(1)))
+        .sum();
+    app.help_scroll = app.help_scroll.min(total_rows.saturating_sub(inner.height));
+
     frame.render_widget(
         Paragraph::new(lines)
-            .block(Block::bordered().title(" Help "))
-            .wrap(Wrap { trim: false }),
+            .block(block)
+            .wrap(Wrap { trim: false })
+            .scroll((app.help_scroll, 0)),
         area,
     );
 }
@@ -2661,10 +2769,127 @@ mod tests {
         assert!(app.vim_focus == FocusPane::Results);
         app.handle_key(key(KeyCode::Char('K')));
         assert!(app.vim_focus == FocusPane::Input);
-        app.handle_key(key(KeyCode::Char('J')));
-        assert!(app.vim_focus == FocusPane::Results);
         // Focus keys never leak into the query.
         assert_eq!(app.input, "");
+    }
+
+    #[test]
+    fn vim_shift_j_cycles_through_all_panes() {
+        let mut app = test_app(true);
+        app.handle_key(key(KeyCode::Esc));
+        assert!(app.vim_focus == FocusPane::Input);
+        // J is never a dead key: it cycles Input → Results → Detail → Input.
+        app.handle_key(key(KeyCode::Char('J')));
+        assert!(app.vim_focus == FocusPane::Results);
+        app.handle_key(key(KeyCode::Char('J')));
+        assert!(app.vim_focus == FocusPane::Detail);
+        app.handle_key(key(KeyCode::Char('J')));
+        assert!(app.vim_focus == FocusPane::Input);
+        assert_eq!(app.input, "");
+    }
+
+    #[test]
+    fn vim_vertical_nav_respects_input_pane_focus() {
+        let mut app = test_app(true);
+        // Fabricate a result list; vertical nav never touches the corpus.
+        app.results = vec![(0, 2.0), (1, 1.0), (2, 0.5)];
+        app.selected = Some(0);
+        app.handle_key(key(KeyCode::Esc));
+        assert!(app.vim_focus == FocusPane::Input);
+        // With the input focused, j/k/↓/gg/G/Ctrl-d must NOT reach over and
+        // move or scroll Results (the reported bug).
+        app.handle_key(key(KeyCode::Char('j')));
+        app.handle_key(key(KeyCode::Down));
+        assert_eq!(app.selected, Some(0));
+        app.handle_key(key(KeyCode::Char('G')));
+        assert_eq!(app.selected, Some(0));
+        app.results_scroll = 1;
+        app.handle_key(KeyEvent::new(KeyCode::Char('d'), KeyModifiers::CONTROL));
+        assert_eq!(app.results_scroll, 1);
+        // Focus Results: the same keys work again.
+        app.handle_key(key(KeyCode::Char('H')));
+        app.handle_key(key(KeyCode::Char('j')));
+        assert_eq!(app.selected, Some(1));
+        app.handle_key(key(KeyCode::Char('G')));
+        assert_eq!(app.selected, Some(2));
+        // Ctrl-P/N stay explicit selection keys regardless of pane focus.
+        app.handle_key(key(KeyCode::Char('K')));
+        app.handle_key(KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL));
+        assert_eq!(app.selected, Some(1));
+    }
+
+    #[test]
+    fn help_scrolls_with_keys_and_wheel_and_closes_on_other_keys() {
+        let mut app = test_app(false);
+        app.overlay = Overlay::Help;
+        // j / ↓ / PgDn scroll without closing, under either keybinding scheme.
+        app.handle_key(key(KeyCode::Char('j')));
+        app.handle_key(key(KeyCode::Down));
+        assert_eq!(app.help_scroll, 2);
+        app.handle_key(key(KeyCode::PageDown));
+        assert_eq!(app.help_scroll, 2 + DETAIL_SCROLL_STEP);
+        app.handle_key(key(KeyCode::Char('k')));
+        app.handle_key(key(KeyCode::PageUp));
+        assert_eq!(app.help_scroll, 1);
+        assert_eq!(app.overlay, Overlay::Help);
+        // The mouse wheel scrolls it too.
+        app.handle_mouse(MouseEvent {
+            kind: MouseEventKind::ScrollDown,
+            column: 5,
+            row: 5,
+            modifiers: KeyModifiers::NONE,
+        });
+        assert_eq!(app.help_scroll, 1 + MOUSE_SCROLL_STEP);
+        assert_eq!(app.overlay, Overlay::Help);
+        // Any non-scroll key still closes it and re-dispatches (types).
+        app.handle_key(key(KeyCode::Char('x')));
+        assert_eq!(app.overlay, Overlay::None);
+        assert_eq!(app.input, "x");
+    }
+
+    #[test]
+    fn help_esc_closes_without_side_effects() {
+        let mut app = test_app(false);
+        type_str(&mut app, "abc");
+        app.overlay = Overlay::Help;
+        app.handle_key(key(KeyCode::Esc));
+        assert_eq!(app.overlay, Overlay::None);
+        // Esc only closed the overlay; it did not also clear the query.
+        assert_eq!(app.input, "abc");
+    }
+
+    #[test]
+    fn vim_click_on_input_focuses_it_and_places_the_cursor() {
+        let mut app = test_app(true);
+        type_str(&mut app, "abc def");
+        app.handle_key(key(KeyCode::Esc));
+        app.input_area = Rect::new(0, 0, 50, 3);
+        app.handle_key(key(KeyCode::Char('L')));
+        assert!(app.vim_focus == FocusPane::Detail);
+        // Text starts after the border (1 col) + "» " prompt (2 cols) = col 3;
+        // clicking col 7 lands on char offset 4 ("d" of "def").
+        app.handle_mouse(MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column: 7,
+            row: 1,
+            modifiers: KeyModifiers::NONE,
+        });
+        assert!(app.vim_focus == FocusPane::Input);
+        assert_eq!(app.cursor, 4);
+    }
+
+    #[test]
+    fn char_at_column_is_cjk_width_aware() {
+        assert_eq!(char_at_column("abc", 0), 0);
+        assert_eq!(char_at_column("abc", 2), 2);
+        assert_eq!(char_at_column("abc", 99), 3); // past the end → after last char
+        // Double-width chars: either cell of 磁 (cols 2–3) selects char 1.
+        assert_eq!(char_at_column("電磁誘導", 0), 0);
+        assert_eq!(char_at_column("電磁誘導", 1), 0);
+        assert_eq!(char_at_column("電磁誘導", 2), 1);
+        assert_eq!(char_at_column("電磁誘導", 3), 1);
+        assert_eq!(char_at_column("電磁誘導", 8), 4);
+        assert_eq!(char_at_column("", 0), 0);
     }
 
     #[test]

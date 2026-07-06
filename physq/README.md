@@ -147,10 +147,13 @@ map. Launch with `--vim`, or switch at any time from `/config` → Keybindings
 | `Ctrl-C` / `Ctrl-Q` | quit (or `/exit`, `/quit`, `/q`) |
 
 Mouse: wheel over Results scrolls the list (selection is untouched — arrow
-keys still auto-scroll back to it); wheel over Detail scrolls the text;
-clicking a result selects it; clicking a Related entry in Detail jumps to it.
-"Jumping" to a Related item re-searches its question, so it reuses the normal
-ranking pipeline instead of a separate pinned-detail mode. The mouse works
+keys still auto-scroll back to it); wheel over Detail scrolls the text; the
+wheel also scrolls an open `/help` or `/config` screen. Clicking a result
+selects it; clicking a Related entry in Detail jumps to it; clicking the
+input line places the cursor on the clicked character (and, under the Vim
+keymap, focuses the pane — as does clicking Results or Detail). "Jumping" to
+a Related item re-searches its question, so it reuses the normal ranking
+pipeline instead of a separate pinned-detail mode. The mouse works
 identically under both keybinding schemes.
 
 ### Vim keybindings (`--vim`)
@@ -168,9 +171,10 @@ INSERT/VISUAL for NORMAL — it never quits.
 | `Esc` | INSERT/VISUAL → NORMAL |
 | `/` | new search: clear the query and enter INSERT |
 | `:` | command line: types a `/`, so `:q` quits, `:config` opens settings, … |
-| `Shift-H` `Shift-J` `Shift-K` `Shift-L` | focus the Results / lower / Input / Detail pane — the focused pane gets a highlighted border+title and receives j/k, gg/G and the scroll keys |
-| `j` `k` (and `↑` `↓`) | move the Results selection; with Detail focused, scroll it line by line |
-| `gg` / `G` | first/last result, or top/bottom of a focused Detail |
+| `Shift-H` `Shift-K` `Shift-L` | focus the Results / Input / Detail pane — the focused pane gets a highlighted border+title and receives j/k, gg/G and the scroll keys |
+| `Shift-J` | focus the next pane, cycling Input → Results → Detail → Input |
+| `j` `k` (and `↑` `↓`) | act on the focused pane: move the Results selection, or scroll a focused Detail line by line (no-op while Input is focused — a one-line buffer has no up/down) |
+| `gg` / `G` | focused pane: first/last result, or top/bottom of Detail |
 | `Ctrl-d` / `Ctrl-u`, `Ctrl-f` / `Ctrl-b` | half/full-page scroll of the focused pane (replaces PgUp/PgDn; Results scrolls its viewport without moving the selection, like the wheel) |
 | `h` `l` `w` `b` `0` `^` `$` | cursor motions on the query line |
 | `dd` | clear the query (`dw` `db` `d$` `d0` `dh` `dl` delete pieces; `x`/`X` chars, `D` to end) |
@@ -195,7 +199,7 @@ Typed into the same input box, run on `Enter`:
 | `/semantic none` | turn semantic off at runtime — BM25-only until switched back |
 | `/config` | interactive settings screen — `↑` `↓` (or `j` `k`) picks a field, `←` `→`/`h` `l`/`Enter` changes it (model size cycles small → large → max → none, offline mode, Normal/Vim keybindings), plus read-only info (base URL, cache dir, tokenizer) |
 | `/vim` | toggle between the Normal and Vim keybinding schemes (same as `/config` → Keybindings; applies instantly) |
-| `/help` | shortcut reference (keyboard, mouse, commands) — reflects the active keybinding scheme |
+| `/help` | shortcut reference (keyboard, mouse, commands) — reflects the active keybinding scheme; scrolls with `j` `k`/`↑` `↓`/`PgUp` `PgDn`/`Ctrl-d` `Ctrl-u` or the wheel, `Esc` (or any other key) closes |
 | `/exit` (or `/quit`, `/q`) | quit |
 
 ## Cache layout
