@@ -2324,24 +2324,68 @@ $
   bb(F) = mu bb(I) times bb(H) dot l
 $
 
-$bb(F)$ is *Lorentz Force*.
+$bb(F)$ is force.
 The force depends on constant $mu$.
 
 $mu$ is *permeability*, which depends on substances.
+In vacuum, $mu = num("1.26e-6")  unit("N/A^2")$
 
 In a uniform substance space, Let
 $bb(B) := mu bb(H)$
 ,
 
 $
-  bb(F) = bb(I) times bb(B) dot l
+  bb(F) = bb(I) times bb(B) l
 $
 
-$bb(B)$ is called *magnetic flux density*.( unit : Tesla $"[T]"$ )
+$bb(B)$ is called *magnetic flux density*.\
+( unit : Tesla $"[T] = [N / (A m)] = [Wb/""m"^2"]"$ )
 
-(magnetic flux is $|bb(B)| dot "surface"$.)
+(*magnetic flux*[Wb] is  $|bb(B)|S$.)
+
+#text(size:10pt)[単位でやや混乱…[N] = [N A^-2] [A] [A m^-1] [m]
+$mu$かけたら磁場が磁束密度になるんだ，磁力線の密度を磁場にしたせいきあ．[N/Wb]=[A/m]が直感的ではなさすぎる
+何これー！何何これ！(ほんとになんだよ)]
+
+//磁束の式 $B S$を変形して，$ \mu H S$にできますよね．この$H S$は物理的になにか意味をもちますか？
+//
+
+=== Lorentz Force
+#align(center,box(width:15cm, height:5cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      ortho(x:-70deg, y:-00deg,z:-20deg,{
+        //let AXIS_LENGTH = 2.5
+        //line((0, 0, 0), (AXIS_LENGTH, 0, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "x-axis")
+        //line((0, 0, 0), (0, AXIS_LENGTH, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "y-axis")
+        //line((0, 0, 0), (0, 0, AXIS_LENGTH), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "z-axis")
+        //content("x-axis.end", [$x$], anchor: "west")
+        //content("y-axis.end", [$y$], anchor: "south")
+        //content("z-axis.end", [$z$], anchor: "north-east")
+
+        line((0,0,0),(2,0.5,0),mark:(end:">",fill:red),stroke:(paint:red))
+        line((0,0,0),(0,2,0),mark:(end:">",fill:blue),stroke:(paint:blue))
+        line((0,0,0),(0,0,3),mark:(end:">",fill:black))
+
+        content((-0.3,0,1.5),$bb(f)$)
+        content((1,0,-0.3),text(fill:red)[$bb(v)$])
+        content((0,0.8,0.5),text(fill:blue)[$bb(B)$])
+
+      })
+      circle((0,0),radius:0.2,fill:white)
+      content((0,0),$+$)
+      content((0,-0.5),$bold(q)$)
+    })
+  ]
+])
+When a charged particle is moving in magnetic field $bb(B)$
 
 
+$bb(F) = bb(I) times bb(B) l\
+quad = bb(v) times bb(B) e n s l quad(because bb(I) = e n s bb(v))\
+$
 
 //類似性＝アナロジー // 2026-06-29の名言
 //物理においては、同じ式は同じような扱い方ができる。 // id ce63c80b-db29-4d48-a21a-d900ac79b7ed
