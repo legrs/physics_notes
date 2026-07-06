@@ -38,6 +38,7 @@ const NAMES = [
   '_bm25',
   '_getCandidates',
   '_scoreItem',
+  '_rrfMergeMulti',
   '_rrfMerge',
 ];
 // eslint-disable-next-line no-eval
@@ -164,6 +165,22 @@ check('bm25 unknown term', W._bm25('光', 'a', 3, idx), 0);
     'rrf order',
     merged.map((m) => m.id),
     ['B', 'D', 'A', 'C']
+  );
+}
+
+// ── RRF multi-list (Rust: rank::rrf_merge_hybrid — each semantic list
+//    keeps the same weight, agreement across lists wins) ──────────────
+{
+  const small = [{ id: 'S1' }, { id: 'X' }];
+  const large = [{ id: 'L1' }, { id: 'X' }];
+  const merged = W._rrfMergeMulti([], [small, large]);
+  const get = (id) => merged.find((m) => m.id === id).rrfScore;
+  check('rrfMulti S1', get('S1'), 2 / 61);
+  check('rrfMulti X agreement', get('X'), 2 / 62 + 2 / 62);
+  check(
+    'rrfMulti order',
+    merged.map((m) => m.id),
+    ['X', 'S1', 'L1']
   );
 }
 

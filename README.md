@@ -9,6 +9,28 @@
 Physics Notes CLI（ターミナルから検索できるツール `physq`）：\
 [physq/README.md](physq/README.md) | [最新リリース / Latest release](https://github.com/legrs/physics_notes/releases/)
 
+## 検索の自己改善ループ（scripts/self_improve.py）
+
+LM Studio のローカル LLM と `physq eval` を使って、検索データセット
+（`keywords` / `synonyms` / `questions`）を自動改善するループです。
+LLM が「同じ意味の言い換え質問」を生成して検索の弱点を探し、1位を取れなかった
+レコードに語を追加 → 実際に順位が改善した編集だけを採用、を繰り返します。
+編集は作業コピー（`self_improve_work/`、git 管理外）に対して行われ、
+`--apply-only` で確認してから本番へ反映します。
+
+```sh
+# 事前準備: LM Studio を起動しサーバを有効化、physq を physq/ でビルド、npm install 済みであること
+python3 scripts/self_improve.py --model <LM StudioのモデルID> --records 5 --cycles 1  # 動作確認
+python3 scripts/self_improve.py --model <モデルID> --hours 8 --tune-weights          # 一晩コース
+# 翌朝: self_improve_work/report.md を確認して
+python3 scripts/self_improve.py --apply-only   # 本番 q_and_a_data.json へ反映
+git diff q_and_a_data.json                     # 差分を確認してコミット
+```
+
+中断（Ctrl-C）してもチェックポイントから再開できます。詳細は
+`python3 scripts/self_improve.py --help` と
+[physq/README.md の Ranking evaluation 節](physq/README.md#ranking-evaluation-physq-eval) を参照。
+
 ## データベースの書き方
 
 ```json

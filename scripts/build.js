@@ -22,6 +22,11 @@
 //   node scripts/build.js              # search_text のみ
 //   node scripts/build.js --embed      # search_text + Embedding 生成
 //   node scripts/build.js --embed-only # Embedding のみ（search_text はスキップ）
+//   node scripts/build.js --data <path>
+//       # 任意のデータファイルの search_text を再生成（自己改善ループ
+//       # scripts/self_improve.py の作業コピー用）。リポジトリ正本の
+//       # embeddings.json / version.json には一切触れないため、
+//       # --embed とは併用不可で version.json も生成しない。
 // =============================================================
 
 const fs = require('fs');
@@ -29,12 +34,26 @@ const path = require('path');
 const crypto = require('crypto');
 const kuromoji = require('kuromoji');
 
-const JSON_PATH = path.join(__dirname, '..', 'q_and_a_data.json');
+const dataIdx = process.argv.indexOf('--data');
+const CUSTOM_DATA = dataIdx !== -1 ? process.argv[dataIdx + 1] : null;
+if (dataIdx !== -1 && !CUSTOM_DATA) {
+  console.error('❌ --data にはファイルパスを指定してください');
+  process.exit(1);
+}
+
+const JSON_PATH = CUSTOM_DATA
+  ? path.resolve(CUSTOM_DATA)
+  : path.join(__dirname, '..', 'q_and_a_data.json');
 const EMBEDDINGS_PATH = path.join(__dirname, '..', 'embeddings.json');
 const VERSION_PATH = path.join(__dirname, '..', 'version.json');
 
 const DO_EMBED = process.argv.includes('--embed') || process.argv.includes('--embed-only');
 const SKIP_TEXT = process.argv.includes('--embed-only');
+
+if (CUSTOM_DATA && DO_EMBED) {
+  console.error('❌ --data と --embed/--embed-only は併用できません（embeddings.json はリポジトリ正本のみ）');
+  process.exit(1);
+}
 
 // ── モデル定義 ───────────────────────────────────────────────
 const MODELS = {
@@ -224,7 +243,10 @@ async function main() {
   }
 
   // 3. version.json 生成（常に最新の on-disk 状態をハッシュ化する）
-  generateVersionManifest();
+  //    --data（作業コピー）モードでは配信ファイルを触っていないので生成しない
+  if (!CUSTOM_DATA) {
+    generateVersionManifest();
+  }
 }
 
 main().catch(err => { console.error('❌', err); process.exit(1); });

@@ -119,6 +119,7 @@ cargo run -- cache clean             # drop data + index (keeps the model)
 cargo run -- cache clean --all       # also drop the downloaded model
 cargo run -- cache clean --model-only # drop only the model (keeps data + index)
 cargo run -- update --check    # check for a newer release (see Updating below)
+cargo run -- --model max eval --cases cases.jsonl  # ranking evaluation (see below)
 ```
 
 The first run downloads the corpus (~7 MB) and — unless `--bm25-only` /
@@ -281,6 +282,35 @@ query.rs   bm25/   semantic/   rank/   data/   model.rs     ← pure logic
                 └────── engine.rs (facade) ──────┘          update.rs (self-update, CLI-only)
         cli.rs (one-shot printing)   tui/ + spinner.rs (UI)  ← swappable
 ```
+
+## Ranking evaluation (`physq eval`)
+
+Machine-readable evaluation of the ranking pipeline, built for the search
+self-improvement loop (`../scripts/self_improve.py` at the repo root) but
+usable standalone. Each *case* is a query plus the id of the record that
+should win; the output reports where that target actually ranks in every
+method — BM25, each e5 model, and the hybrid RRF fusion — as JSON lines.
+
+```sh
+# batch: one result line per case, then a summary line with
+# top-1/top-3/top-10/MRR aggregates per method
+echo '{"query":"電磁誘導","target":"<record-id>"}' > cases.jsonl
+physq --model max eval --cases cases.jsonl
+
+# long-running mode: reads case/command lines from stdin, answers one line
+# each on stdout. Models load once; each distinct query is embedded once
+# (in-memory cache). Extra commands:
+#   {"cmd":"reload_data","path":"…"}       swap in an edited dataset
+#   {"cmd":"weights","bm25":1,"small":2,"large":2}   retune the RRF fusion
+physq --model max eval --serve --data work.json --embeddings ../embeddings.json
+```
+
+`--data` / `--embeddings` evaluate local working copies (e.g. a dataset with
+candidate edits) instead of the fetched cache — the BM25 index is built in
+memory and never written to the cache. `--weights "<bm25>,<small>,<large>"`
+overrides the RRF weights (default `1,2,2`, the shipped hybrid).
+`--model` picks the methods measured: `max` measures BM25 + both e5 models,
+`none` is BM25-only (no model download needed).
 
 ## Tests
 

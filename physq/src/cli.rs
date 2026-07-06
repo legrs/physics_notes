@@ -9,6 +9,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 
 use crate::config::{Config, ModelSel, ModelSize};
 use crate::engine::{Engine, SemanticEngine, hybrid};
+use crate::eval;
 use crate::model::Corpus;
 use crate::query::prepare_query;
 use crate::semantic::SemanticError;
@@ -101,6 +102,35 @@ enum Cmd {
         #[arg(long)]
         plain: bool,
     },
+    /// Machine-readable ranking evaluation (JSONL in/out) for the search
+    /// self-improvement loop: reports where a target record ranks per method
+    /// (BM25, each e5 model, hybrid). Pair with `--model max` to measure all
+    /// three methods at once.
+    Eval {
+        /// JSONL case file, one {"query":"…","target":"<id>"} per line
+        /// ("-" = stdin); each case yields one result line, then a summary
+        #[arg(long, value_name = "FILE", conflicts_with = "serve")]
+        cases: Option<PathBuf>,
+        /// Long-running mode: read case/command lines from stdin, answer one
+        /// line each on stdout (models load once; queries embed once). Extra
+        /// commands: {"cmd":"reload_data","path":…}, {"cmd":"weights",…}
+        #[arg(long)]
+        serve: bool,
+        /// Evaluate a local q_and_a_data.json (e.g. a working copy with
+        /// candidate edits) instead of the fetched cache
+        #[arg(long, value_name = "FILE")]
+        data: Option<PathBuf>,
+        /// Local embeddings.json to pair with --data (default: fetched cache)
+        #[arg(long, value_name = "FILE")]
+        embeddings: Option<PathBuf>,
+        /// RRF weight overrides "<bm25>,<small>,<large>" (default "1,2,2",
+        /// the shipped hybrid)
+        #[arg(long, value_name = "B,S,L")]
+        weights: Option<String>,
+        /// Top hybrid result ids to include per case
+        #[arg(long, default_value_t = 3)]
+        top: usize,
+    },
     /// Cache utilities
     Cache {
         #[command(subcommand)]
@@ -162,6 +192,24 @@ pub fn run() -> Result<()> {
             limit,
             plain,
         }) => run_search(cfg, &query, limit, plain),
+        Some(Cmd::Eval {
+            cases,
+            serve,
+            data,
+            embeddings,
+            weights,
+            top,
+        }) => eval::run(
+            cfg,
+            eval::EvalArgs {
+                cases,
+                serve,
+                data,
+                embeddings,
+                weights,
+                top,
+            },
+        ),
         Some(Cmd::Cache { cmd }) => run_cache(cfg, cmd),
         Some(Cmd::Update { beta, check, force }) => run_update(cli.offline, beta, check, force),
     }
