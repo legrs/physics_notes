@@ -45,6 +45,9 @@
             margin-bottom: 30px;
             height: 40px;
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+            /* 折り返し禁止。フォントサイズは fitTextFont() が最長フレーズの
+               実測幅から画面幅に収まるよう自動調整する */
+            white-space: nowrap;
         }
 
         .search-wrapper {
@@ -175,6 +178,31 @@
         ];
 
         const textEl = document.getElementById("text");
+
+        // 最長フレーズでも折り返さないフォントサイズに自動調整する。
+        // スマホ等の狭い画面では縮小され、広い画面では基準の28pxのまま。
+        const BASE_FONT_PX = 28;
+        function fitTextFont() {
+            const probe = document.createElement("span");
+            probe.style.cssText =
+                "position:absolute;visibility:hidden;white-space:nowrap;" +
+                "font-size:" + BASE_FONT_PX + "px;";
+            probe.style.fontFamily = getComputedStyle(textEl).fontFamily;
+            document.body.appendChild(probe);
+            let maxWidth = 0;
+            for (const p of phrases) {
+                probe.textContent = p;
+                maxWidth = Math.max(maxWidth, probe.getBoundingClientRect().width);
+            }
+            probe.remove();
+            const available = textEl.clientWidth;
+            const size = maxWidth > available
+                ? Math.max(10, BASE_FONT_PX * available / maxWidth)
+                : BASE_FONT_PX;
+            textEl.style.fontSize = size + "px";
+        }
+        fitTextFont();
+        window.addEventListener("resize", fitTextFont);
 
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             textEl.textContent = phrases[0];
