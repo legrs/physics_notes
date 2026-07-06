@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-06T05:46:28.785Z",
+  "generated_at": "2026-07-06T22:27:15.297Z",
   "schema_version": 3,
   "tokenizer": "lindera-ipadic",
   "embedding_model": "multilingual-e5-small",
