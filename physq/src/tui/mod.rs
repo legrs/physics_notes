@@ -37,8 +37,8 @@ use ratatui::crossterm::event::{
     self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyEventKind,
     KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
 };
-use ratatui::crossterm::execute;
-use ratatui::crossterm::terminal::{BeginSynchronizedUpdate, EndSynchronizedUpdate};
+use ratatui::crossterm::terminal::{Clear, ClearType};
+use ratatui::crossterm::{execute, queue};
 use ratatui::layout::{Constraint, Layout, Position, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span, Text};
@@ -57,11 +57,16 @@ use vim::{InsertAt, VimMode, next_word_start, prev_word_start};
 const SEMANTIC_DEBOUNCE: Duration = Duration::from_millis(500);
 const DETAIL_SCROLL_STEP: u16 = 5;
 const MOUSE_SCROLL_STEP: u16 = 3;
-/// First key after this much keyboard idle → full repaint. Catches screen
-/// damage with no committed text to detect it by (e.g. an IME composition
-/// that scrolled/overwrote cells and was then cancelled): the moment the
-/// user re-engages, the screen heals. Never fires during continuous typing.
-const KEY_IDLE_RESYNC: Duration = Duration::from_secs(10);
+/// How often the UI does a full (clear + rewrite-every-cell) repaint even when
+/// nothing changed, so a screen the terminal scrolled/overwrote behind our back
+/// self-heals within this long. The prime case is macOS Terminal.app rendering
+/// an IME's in-progress (unconverted) composition string: it scrolls the
+/// alternate screen per romaji keystroke and delivers **no events** until the
+/// text is committed, so `force_redraw`-on-commit can't fire in time — only a
+/// timer can. Kept flash-free by `full_repaint` (see there), so running it
+/// continuously is invisible; the app already redraws at `spinner::FRAME_MS`
+/// for the marquee, so this is a cheap upgrade of an occasional frame.
+const HEAL_INTERVAL: Duration = Duration::from_millis(250);
 /// Prompt rendered before the query in the input box; mouse-click cursor
 /// placement subtracts its width, so keep the two in sync via this const.
 const INPUT_PROMPT: &str = "» ";
@@ -251,16 +256,15 @@ struct App {
     warnings: Vec<String>,
     q_lower: String,
     should_quit: bool,
-    /// One-shot: the next `run_loop` pass clears the terminal so the draw
-    /// after it repaints every cell. Set by Ctrl-L / `/redraw`, and
-    /// automatically whenever IME-committed (non-ASCII) text arrives —
-    /// terminals rendering an IME's in-progress composition can scroll the
-    /// alternate screen behind ratatui's back, after which diff-drawing
-    /// paints garbage until a full repaint resyncs the two.
+    /// One-shot: the next `run_loop` pass does a full repaint instead of a
+    /// diff draw. Set by Ctrl-L / `/redraw`, and automatically whenever
+    /// IME-committed (non-ASCII) text arrives, for an *immediate* heal on
+    /// commit (the periodic `HEAL_INTERVAL` repaint would otherwise heal it
+    /// within a fraction of a second anyway — this just makes the common case
+    /// instant). Terminals rendering an IME's composition can scroll the
+    /// alternate screen behind ratatui's back, after which diff-drawing paints
+    /// garbage until a full repaint resyncs the two.
     force_redraw: bool,
-    /// When the last key event arrived; a key after `KEY_IDLE_RESYNC` of
-    /// keyboard idle also sets `force_redraw` (see that constant).
-    last_key_at: Instant,
     /// Fixed epoch used to drive time-based UI animation (the status-bar
     /// marquee). Set once at construction.
     app_start: Instant,
@@ -320,7 +324,6 @@ impl App {
             q_lower: String::new(),
             should_quit: false,
             force_redraw: false,
-            last_key_at: Instant::now(),
             app_start: Instant::now(),
             snap_query: String::new(),
             snap_bm25: Vec::new(),
@@ -539,10 +542,6 @@ impl App {
         if key.kind == KeyEventKind::Release {
             return;
         }
-        if self.last_key_at.elapsed() >= KEY_IDLE_RESYNC {
-            self.force_redraw = true;
-        }
-        self.last_key_at = Instant::now();
         let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
 
         if matches!(key.code, KeyCode::Char('c') | KeyCode::Char('q')) && ctrl {
@@ -1691,6 +1690,24 @@ impl CursorShape {
     }
 }
 
+/// Clear the whole screen and redraw every cell — used to recover from a screen
+/// the terminal shifted/overwrote behind ratatui's back (see `HEAL_INTERVAL`).
+///
+/// Done **flash-free**, even on terminals with no synchronized-output (DECSET
+/// 2026) support like macOS Terminal.app: the `Clear(All)` is `queue!`'d into
+/// the backend's own buffered writer (not `execute!`'d, which would flush it on
+/// its own and risk the terminal drawing a blank frame before the cells land),
+/// and `swap_buffers()` blanks ratatui's "previous" buffer so the following
+/// `draw` rewrites every content cell. The clear and all cells then leave in a
+/// single `Backend::flush` at the end of `draw`, so the terminal only ever sees
+/// clear-then-repaint as one atomic update.
+fn full_repaint(terminal: &mut ratatui::DefaultTerminal, app: &mut App) -> Result<()> {
+    queue!(terminal.backend_mut(), Clear(ClearType::All))?;
+    terminal.swap_buffers();
+    terminal.draw(|frame| draw(frame, app))?;
+    Ok(())
+}
+
 fn run_loop(
     terminal: &mut ratatui::DefaultTerminal,
     app: &mut App,
@@ -1698,6 +1715,7 @@ fn run_loop(
     tx: std_mpsc::Sender<AppMsg>,
 ) -> Result<()> {
     let mut cursor_shape = CursorShape::Default;
+    let mut last_heal = Instant::now();
     loop {
         while let Ok(msg) = rx.try_recv() {
             app.handle_msg(msg);
@@ -1722,16 +1740,19 @@ fn run_loop(
             cursor_shape = desired;
         }
 
-        // Each frame is wrapped in a synchronized update (DECSET 2026) so the
-        // terminal never renders — or anchors IME composition text to — a
-        // half-drawn frame whose cursor is mid-flight. Terminals without 2026
-        // support ignore the markers.
-        let _ = execute!(std::io::stdout(), BeginSynchronizedUpdate);
-        if std::mem::take(&mut app.force_redraw) {
-            terminal.clear()?;
+        // Full-repaint this frame if something asked for it (Ctrl-L, /redraw,
+        // an IME commit) or the periodic self-heal is due — otherwise a normal
+        // diff draw. The heal is what survives macOS Terminal.app scrolling the
+        // screen during IME composition, when we get no events to react to.
+        if last_heal.elapsed() >= HEAL_INTERVAL {
+            app.force_redraw = true;
         }
-        terminal.draw(|frame| draw(frame, app))?;
-        let _ = execute!(std::io::stdout(), EndSynchronizedUpdate);
+        if std::mem::take(&mut app.force_redraw) {
+            full_repaint(terminal, app)?;
+            last_heal = Instant::now();
+        } else {
+            terminal.draw(|frame| draw(frame, app))?;
+        }
 
         if event::poll(Duration::from_millis(spinner::FRAME_MS))? {
             // Drain the whole burst before redrawing: an IME commit (or a
@@ -2222,7 +2243,9 @@ fn draw_help(frame: &mut Frame, app: &mut App, area: Rect) {
                 "  v                 VISUAL selection over the query (d/x/y/c, o swaps ends)",
             ),
             Line::raw("  Tab               browse this item's Related list; j/k pick, Enter jumps"),
-            Line::raw("  Ctrl-L            repaint the screen (fixes IME display glitches)"),
+            Line::raw(
+                "  Ctrl-L            repaint now (screen also self-heals; fixes IME glitches)",
+            ),
             Line::raw("  Ctrl-C / Ctrl-Q   quit (also /exit, /quit, /q)"),
         ]
     } else {
@@ -2237,7 +2260,9 @@ fn draw_help(frame: &mut Frame, app: &mut App, area: Rect) {
             Line::raw("  PgUp / PgDn       scroll Detail"),
             Line::raw("  Tab               browse this item's Related list; ↑↓ pick, Enter jumps"),
             Line::raw("  Esc               close this screen / exit Related / clear the query"),
-            Line::raw("  Ctrl-L            repaint the screen (fixes IME display glitches)"),
+            Line::raw(
+                "  Ctrl-L            repaint now (screen also self-heals; fixes IME glitches)",
+            ),
             Line::raw("  Ctrl-C / Ctrl-Q   quit (also /exit, /quit, /q)"),
         ]
     };
@@ -2745,19 +2770,6 @@ mod tests {
         type_str(&mut app, "電");
         assert!(app.force_redraw);
         assert_eq!(app.input, "abc電");
-    }
-
-    #[test]
-    fn first_key_after_idle_forces_a_repaint_continuous_typing_does_not() {
-        let mut app = test_app(false);
-        type_str(&mut app, "a");
-        assert!(!app.force_redraw);
-        app.last_key_at = Instant::now() - (KEY_IDLE_RESYNC + Duration::from_secs(1));
-        type_str(&mut app, "b");
-        assert!(app.force_redraw);
-        app.force_redraw = false;
-        type_str(&mut app, "c");
-        assert!(!app.force_redraw);
     }
 
     #[test]

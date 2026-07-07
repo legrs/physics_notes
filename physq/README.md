@@ -145,7 +145,7 @@ map. Launch with `--vim`, or switch at any time from `/config` → Keybindings
 | `PgUp` `PgDn` | scroll the detail pane |
 | `Tab` | browse the selected item's Related list; `↑` `↓` pick, `Enter` jumps |
 | `Esc` | close a `/help`/`/config` screen, then exit Related-browsing, then clear the query — never quits |
-| `Ctrl-L` | force a full repaint — recovers a shifted/garbled screen or missing pane borders (some terminals scroll or overwrite the screen while drawing Japanese IME composition text); also runs automatically whenever IME-committed text arrives, and on the first key after ~10 s of keyboard idle |
+| `Ctrl-L` | force a full repaint — recovers a shifted/garbled screen or missing pane borders. The screen already self-heals a few times a second (and instantly whenever IME-committed text arrives), so this is only a manual override; see the note on macOS Terminal.app IME below |
 | `Ctrl-C` / `Ctrl-Q` | quit (or `/exit`, `/quit`, `/q`) |
 
 Mouse: wheel over Results scrolls the list (selection is untouched — arrow
@@ -184,12 +184,25 @@ INSERT/VISUAL for NORMAL — it never quits.
 | `p` / `P` | paste the last deleted/yanked text after/at the cursor |
 | `v` | VISUAL selection (`h l w b 0 $` extend, `o` swaps ends, `d`/`x` delete, `y` yank, `c` change, Esc cancels) |
 | `Tab` | browse the selected item's Related list: `j`/`k` (or `↑` `↓`) pick — the Detail pane auto-scrolls the selection into view — `Enter` jumps, `Esc`/`Tab` exits |
-| `Ctrl-L` | force a full repaint (like Vim's) — recovers a shifted/garbled screen or missing pane borders after Japanese IME composition; also runs automatically whenever IME-committed text arrives, and on the first key after ~10 s of keyboard idle |
+| `Ctrl-L` | force a full repaint (like Vim's) — recovers a shifted/garbled screen or missing pane borders. The screen already self-heals a few times a second (and instantly on IME commit), so this is only a manual override; see the note on macOS Terminal.app IME below |
 | `Ctrl-C` / `Ctrl-Q` | quit (or `:q<Enter>`) |
 
 The `/config` screen accepts both key styles at all times, under either
 scheme: `↑↓`/`j k` select a field, `←→`/`h l`/`Enter`/`Space` change it,
 `PgUp PgDn`/`Ctrl-d Ctrl-u` scroll, `Esc` closes.
+
+#### Japanese IME on macOS Terminal.app
+
+macOS **Terminal.app** renders an IME's in-progress (unconverted) composition
+string at the bottom of the alternate screen and can scroll it there while you
+type romaji — a long-standing Terminal.app limitation that affects full-screen
+TUI apps generally (Vim, tmux, …), not just physq. During that composition the
+app receives no events, so physq can't react per keystroke. To stay usable
+anyway it repaints the whole screen a few times a second (and instantly the
+moment you commit text), so any shift/garbling **self-heals within a fraction of
+a second** and never accumulates; `Ctrl-L` forces it immediately. For
+completely smooth Japanese input, a terminal with proper inline-IME support
+(iTerm2, WezTerm, Ghostty, Alacritty, Kitty) avoids the issue at the source.
 
 ### Slash commands
 
