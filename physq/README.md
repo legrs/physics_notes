@@ -145,6 +145,7 @@ map. Launch with `--vim`, or switch at any time from `/config` → Keybindings
 | `PgUp` `PgDn` | scroll the detail pane |
 | `Tab` | browse the selected item's Related list; `↑` `↓` pick, `Enter` jumps |
 | `Esc` | close a `/help`/`/config` screen, then exit Related-browsing, then clear the query — never quits |
+| `Ctrl-L` | force a full repaint — recovers a shifted/garbled screen or missing pane borders (some terminals scroll or overwrite the screen while drawing Japanese IME composition text); also runs automatically whenever IME-committed text arrives, and on the first key after ~10 s of keyboard idle |
 | `Ctrl-C` / `Ctrl-Q` | quit (or `/exit`, `/quit`, `/q`) |
 
 Mouse: wheel over Results scrolls the list (selection is untouched — arrow
@@ -183,6 +184,7 @@ INSERT/VISUAL for NORMAL — it never quits.
 | `p` / `P` | paste the last deleted/yanked text after/at the cursor |
 | `v` | VISUAL selection (`h l w b 0 $` extend, `o` swaps ends, `d`/`x` delete, `y` yank, `c` change, Esc cancels) |
 | `Tab` | browse the selected item's Related list: `j`/`k` (or `↑` `↓`) pick — the Detail pane auto-scrolls the selection into view — `Enter` jumps, `Esc`/`Tab` exits |
+| `Ctrl-L` | force a full repaint (like Vim's) — recovers a shifted/garbled screen or missing pane borders after Japanese IME composition; also runs automatically whenever IME-committed text arrives, and on the first key after ~10 s of keyboard idle |
 | `Ctrl-C` / `Ctrl-Q` | quit (or `:q<Enter>`) |
 
 The `/config` screen accepts both key styles at all times, under either
@@ -200,6 +202,7 @@ Typed into the same input box, run on `Enter`:
 | `/semantic none` | turn semantic off at runtime — BM25-only until switched back |
 | `/config` | interactive settings screen — `↑` `↓` (or `j` `k`) picks a field, `←` `→`/`h` `l`/`Enter` changes it (model size cycles small → large → max → none, offline mode, Normal/Vim keybindings), plus read-only info (base URL, cache dir, tokenizer) |
 | `/vim` | toggle between the Normal and Vim keybinding schemes (same as `/config` → Keybindings; applies instantly) |
+| `/redraw` | force a full repaint (same as `Ctrl-L`) |
 | `/help` | shortcut reference (keyboard, mouse, commands) — reflects the active keybinding scheme; scrolls with `j` `k`/`↑` `↓`/`PgUp` `PgDn`/`Ctrl-d` `Ctrl-u` or the wheel, `Esc` (or any other key) closes |
 | `/exit` (or `/quit`, `/q`) | quit |
 

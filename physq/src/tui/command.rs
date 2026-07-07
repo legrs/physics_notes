@@ -18,6 +18,9 @@ pub enum ParsedCommand {
     Semantic(ModelSel),
     /// `/vim` — toggle between the Normal and Vim keybinding schemes.
     ToggleVim,
+    /// `/redraw` — force a full repaint (recovers a desynced screen, e.g.
+    /// after a terminal scrolled itself while rendering IME composition text).
+    Redraw,
     Unknown(String),
 }
 
@@ -43,6 +46,7 @@ pub fn parse_command(input: &str) -> Option<ParsedCommand> {
         ("help", None, false) => ParsedCommand::Help,
         ("config", None, false) => ParsedCommand::Config,
         ("vim", None, false) => ParsedCommand::ToggleVim,
+        ("redraw", None, false) => ParsedCommand::Redraw,
         ("semantic", Some("small"), false) => {
             ParsedCommand::Semantic(ModelSel::Single(ModelSize::Small))
         }
@@ -97,6 +101,16 @@ mod tests {
         assert_eq!(
             parse_command("/vim on"),
             Some(ParsedCommand::Unknown("/vim on".to_string()))
+        );
+    }
+
+    #[test]
+    fn recognizes_redraw() {
+        assert_eq!(parse_command("/redraw"), Some(ParsedCommand::Redraw));
+        assert_eq!(parse_command(":redraw"), Some(ParsedCommand::Redraw));
+        assert_eq!(
+            parse_command("/redraw now"),
+            Some(ParsedCommand::Unknown("/redraw now".to_string()))
         );
     }
 

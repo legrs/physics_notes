@@ -38,6 +38,7 @@ use ratatui::crossterm::event::{
     KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
 };
 use ratatui::crossterm::execute;
+use ratatui::crossterm::terminal::{BeginSynchronizedUpdate, EndSynchronizedUpdate};
 use ratatui::layout::{Constraint, Layout, Position, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span, Text};
@@ -56,6 +57,11 @@ use vim::{InsertAt, VimMode, next_word_start, prev_word_start};
 const SEMANTIC_DEBOUNCE: Duration = Duration::from_millis(500);
 const DETAIL_SCROLL_STEP: u16 = 5;
 const MOUSE_SCROLL_STEP: u16 = 3;
+/// First key after this much keyboard idle → full repaint. Catches screen
+/// damage with no committed text to detect it by (e.g. an IME composition
+/// that scrolled/overwrote cells and was then cancelled): the moment the
+/// user re-engages, the screen heals. Never fires during continuous typing.
+const KEY_IDLE_RESYNC: Duration = Duration::from_secs(10);
 /// Prompt rendered before the query in the input box; mouse-click cursor
 /// placement subtracts its width, so keep the two in sync via this const.
 const INPUT_PROMPT: &str = "» ";
@@ -245,6 +251,16 @@ struct App {
     warnings: Vec<String>,
     q_lower: String,
     should_quit: bool,
+    /// One-shot: the next `run_loop` pass clears the terminal so the draw
+    /// after it repaints every cell. Set by Ctrl-L / `/redraw`, and
+    /// automatically whenever IME-committed (non-ASCII) text arrives —
+    /// terminals rendering an IME's in-progress composition can scroll the
+    /// alternate screen behind ratatui's back, after which diff-drawing
+    /// paints garbage until a full repaint resyncs the two.
+    force_redraw: bool,
+    /// When the last key event arrived; a key after `KEY_IDLE_RESYNC` of
+    /// keyboard idle also sets `force_redraw` (see that constant).
+    last_key_at: Instant,
     /// Fixed epoch used to drive time-based UI animation (the status-bar
     /// marquee). Set once at construction.
     app_start: Instant,
@@ -303,6 +319,8 @@ impl App {
             warnings: Vec::new(),
             q_lower: String::new(),
             should_quit: false,
+            force_redraw: false,
+            last_key_at: Instant::now(),
             app_start: Instant::now(),
             snap_query: String::new(),
             snap_bm25: Vec::new(),
@@ -521,11 +539,32 @@ impl App {
         if key.kind == KeyEventKind::Release {
             return;
         }
+        if self.last_key_at.elapsed() >= KEY_IDLE_RESYNC {
+            self.force_redraw = true;
+        }
+        self.last_key_at = Instant::now();
         let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
 
         if matches!(key.code, KeyCode::Char('c') | KeyCode::Char('q')) && ctrl {
             self.should_quit = true;
             return;
+        }
+
+        // Ctrl-L: force a full repaint, in every mode/overlay (terminal
+        // convention, same as Vim's).
+        if key.code == KeyCode::Char('l') && ctrl {
+            self.force_redraw = true;
+            return;
+        }
+
+        // IME-committed text arrives as non-ASCII chars. The terminal may
+        // have scrolled the screen while it displayed the in-progress
+        // composition, so repaint fully — on top of handling the key
+        // normally below.
+        if let KeyCode::Char(c) = key.code
+            && !c.is_ascii()
+        {
+            self.force_redraw = true;
         }
 
         if self.overlay != Overlay::None {
@@ -1225,6 +1264,7 @@ impl App {
             }
             ParsedCommand::Semantic(size) => self.reload_semantic(size),
             ParsedCommand::ToggleVim => self.toggle_key_mode(),
+            ParsedCommand::Redraw => self.force_redraw = true,
             ParsedCommand::Unknown(s) => {
                 self.command_error = Some(format!("unknown command: {s} (try /help)"));
             }
@@ -1682,21 +1722,42 @@ fn run_loop(
             cursor_shape = desired;
         }
 
+        // Each frame is wrapped in a synchronized update (DECSET 2026) so the
+        // terminal never renders — or anchors IME composition text to — a
+        // half-drawn frame whose cursor is mid-flight. Terminals without 2026
+        // support ignore the markers.
+        let _ = execute!(std::io::stdout(), BeginSynchronizedUpdate);
+        if std::mem::take(&mut app.force_redraw) {
+            terminal.clear()?;
+        }
         terminal.draw(|frame| draw(frame, app))?;
+        let _ = execute!(std::io::stdout(), EndSynchronizedUpdate);
 
         if event::poll(Duration::from_millis(spinner::FRAME_MS))? {
-            match event::read()? {
-                Event::Key(key) => app.handle_key(key),
-                Event::Mouse(m) => app.handle_mouse(m),
-                Event::Paste(s) => {
-                    for c in s.chars().filter(|c| !c.is_control()) {
-                        let idx = byte_index(&app.input, app.cursor);
-                        app.input.insert(idx, c);
-                        app.cursor += 1;
+            // Drain the whole burst before redrawing: an IME commit (or a
+            // paste without bracketed paste) delivers one event per char,
+            // and handling one event per frame would repaint per char. The
+            // cap bounds a frame's latency under an endless event flood.
+            for _ in 0..256 {
+                match event::read()? {
+                    Event::Key(key) => app.handle_key(key),
+                    Event::Mouse(m) => app.handle_mouse(m),
+                    Event::Paste(s) => {
+                        if !s.is_ascii() {
+                            app.force_redraw = true;
+                        }
+                        for c in s.chars().filter(|c| !c.is_control()) {
+                            let idx = byte_index(&app.input, app.cursor);
+                            app.input.insert(idx, c);
+                            app.cursor += 1;
+                        }
+                        app.refresh_bm25();
                     }
-                    app.refresh_bm25();
+                    _ => {}
                 }
-                _ => {}
+                if app.should_quit || !event::poll(Duration::ZERO)? {
+                    break;
+                }
             }
         }
         if app.should_quit {
@@ -2161,6 +2222,7 @@ fn draw_help(frame: &mut Frame, app: &mut App, area: Rect) {
                 "  v                 VISUAL selection over the query (d/x/y/c, o swaps ends)",
             ),
             Line::raw("  Tab               browse this item's Related list; j/k pick, Enter jumps"),
+            Line::raw("  Ctrl-L            repaint the screen (fixes IME display glitches)"),
             Line::raw("  Ctrl-C / Ctrl-Q   quit (also /exit, /quit, /q)"),
         ]
     } else {
@@ -2175,6 +2237,7 @@ fn draw_help(frame: &mut Frame, app: &mut App, area: Rect) {
             Line::raw("  PgUp / PgDn       scroll Detail"),
             Line::raw("  Tab               browse this item's Related list; ↑↓ pick, Enter jumps"),
             Line::raw("  Esc               close this screen / exit Related / clear the query"),
+            Line::raw("  Ctrl-L            repaint the screen (fixes IME display glitches)"),
             Line::raw("  Ctrl-C / Ctrl-Q   quit (also /exit, /quit, /q)"),
         ]
     };
@@ -2192,6 +2255,7 @@ fn draw_help(frame: &mut Frame, app: &mut App, area: Rect) {
         Line::raw("  /semantic                 switch the embedding (type it for details)"),
         Line::raw("  /config                   settings screen"),
         Line::raw("  /vim                      toggle Vim keybindings"),
+        Line::raw("  /redraw                   repaint the screen (same as Ctrl-L)"),
         Line::raw("  /help                     this screen"),
         Line::raw("  /exit (or /quit, /q)      quit"),
         Line::raw(""),
@@ -2657,6 +2721,53 @@ mod tests {
         let mut app = test_app(false);
         app.handle_key(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL));
         assert!(app.should_quit);
+    }
+
+    #[test]
+    fn ctrl_l_forces_a_repaint_without_typing() {
+        let mut app = test_app(false);
+        app.handle_key(KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL));
+        assert!(app.force_redraw);
+        assert_eq!(app.input, "");
+        // Also consumed (not typed) with an overlay open and under Vim.
+        let mut app = test_app(true);
+        app.overlay = Overlay::Help;
+        app.handle_key(KeyEvent::new(KeyCode::Char('l'), KeyModifiers::CONTROL));
+        assert!(app.force_redraw);
+        assert_eq!(app.overlay, Overlay::Help);
+    }
+
+    #[test]
+    fn ime_committed_text_forces_a_repaint_ascii_does_not() {
+        let mut app = test_app(false);
+        type_str(&mut app, "abc");
+        assert!(!app.force_redraw);
+        type_str(&mut app, "電");
+        assert!(app.force_redraw);
+        assert_eq!(app.input, "abc電");
+    }
+
+    #[test]
+    fn first_key_after_idle_forces_a_repaint_continuous_typing_does_not() {
+        let mut app = test_app(false);
+        type_str(&mut app, "a");
+        assert!(!app.force_redraw);
+        app.last_key_at = Instant::now() - (KEY_IDLE_RESYNC + Duration::from_secs(1));
+        type_str(&mut app, "b");
+        assert!(app.force_redraw);
+        app.force_redraw = false;
+        type_str(&mut app, "c");
+        assert!(!app.force_redraw);
+    }
+
+    #[test]
+    fn redraw_command_forces_a_repaint() {
+        let mut app = test_app(false);
+        type_str(&mut app, "/redraw");
+        app.handle_key(key(KeyCode::Enter));
+        assert!(app.force_redraw);
+        assert_eq!(app.input, "");
+        assert_eq!(app.command_error, None);
     }
 
     #[test]
