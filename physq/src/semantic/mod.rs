@@ -10,6 +10,8 @@
 
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::Mutex;
+use std::time::Duration;
 
 use fastembed::{EmbeddingModel, TextEmbedding, TextInitOptions};
 
@@ -105,12 +107,34 @@ impl CorpusEmbeddings {
 /// sources the large model from Qdrant's ONNX mirror, not intfloat). Getting
 /// this wrong makes offline `--model large`/`max` falsely report the model as
 /// missing and degrade to BM25-only even when it is cached.
+///
+/// A snapshot directory alone is not proof of a finished download: hf-hub
+/// symlinks each file into the snapshot only after its blob completes, so an
+/// interrupted large download leaves `model.onnx` present but `model.onnx_data`
+/// (2.2 GB, minutes to fetch) missing. Require the model files themselves to
+/// resolve, otherwise offline mode would claim a half-downloaded model works.
 pub fn model_cached(size: ModelSize, model_cache_dir: &Path) -> bool {
-    let repo_dir = match size {
-        ModelSize::Small => "models--intfloat--multilingual-e5-small",
-        ModelSize::Large => "models--Qdrant--multilingual-e5-large-onnx",
+    let (repo_dir, required): (&str, &[&str]) = match size {
+        ModelSize::Small => (
+            "models--intfloat--multilingual-e5-small",
+            &["onnx/model.onnx"],
+        ),
+        ModelSize::Large => (
+            "models--Qdrant--multilingual-e5-large-onnx",
+            &["model.onnx", "model.onnx_data"],
+        ),
     };
-    model_cache_dir.join(repo_dir).join("snapshots").is_dir()
+    let snapshots = model_cache_dir.join(repo_dir).join("snapshots");
+    let Ok(entries) = std::fs::read_dir(&snapshots) else {
+        return false;
+    };
+    // `fs::metadata` follows symlinks, so a dangling link (blob missing or
+    // still downloading) correctly counts as "not cached".
+    entries.flatten().any(|snap| {
+        required
+            .iter()
+            .all(|rel| std::fs::metadata(snap.path().join(rel)).is_ok())
+    })
 }
 
 /// Runtime query embedder (fastembed, model auto-cached in `<cache>/model/`).
@@ -119,18 +143,60 @@ pub struct Embedder {
     dim: usize,
 }
 
+/// Init attempts per model. hf-hub itself never retries (`max_retries = 0`
+/// in the API fastembed builds), and the large model's `model.onnx_data` is
+/// a single 2.2 GB stream — one dropped connection used to surface as
+/// "Failed to retrieve model.onnx_data". Downloads resume from the on-disk
+/// `.part` file, so every retry makes forward progress instead of starting
+/// over; failures that retrying can't help (404, disk full) just fail fast
+/// a few times. Backoff between attempts: 1s, 2s, 4s.
+const INIT_ATTEMPTS: u32 = 4;
+
+/// Serialize model init per model size, process-wide. One init may download
+/// gigabytes into the shared hf-hub cache, which guards each blob with a
+/// non-blocking flock polled for only ~5 s — a concurrent init of the same
+/// model (e.g. the TUI spawning a fresh semantic worker while an abandoned
+/// one is still downloading) would hit that lock and fail instead of
+/// waiting. With this lock the second init blocks until the first finishes,
+/// then loads straight from the cache.
+fn init_lock(size: ModelSize) -> &'static Mutex<()> {
+    static SMALL: Mutex<()> = Mutex::new(());
+    static LARGE: Mutex<()> = Mutex::new(());
+    match size {
+        ModelSize::Small => &SMALL,
+        ModelSize::Large => &LARGE,
+    }
+}
+
 impl Embedder {
     pub fn new(size: ModelSize, model_cache_dir: &Path) -> Result<Self, SemanticError> {
-        let model = match size {
+        let which = match size {
             ModelSize::Small => EmbeddingModel::MultilingualE5Small,
             ModelSize::Large => EmbeddingModel::MultilingualE5Large,
         };
-        let opts = TextInitOptions::new(model)
-            .with_cache_dir(model_cache_dir.to_path_buf())
-            .with_show_download_progress(false);
-        let model = TextEmbedding::try_new(opts).map_err(|e| {
-            SemanticError::Unavailable(format!("failed to init embedding model: {e}"))
-        })?;
+        let _guard = init_lock(size).lock().unwrap_or_else(|p| p.into_inner());
+        let mut attempt = 0;
+        let model = loop {
+            let opts = TextInitOptions::new(which.clone())
+                .with_cache_dir(model_cache_dir.to_path_buf())
+                .with_show_download_progress(false);
+            match TextEmbedding::try_new(opts) {
+                Ok(m) => break m,
+                Err(e) => {
+                    attempt += 1;
+                    if attempt >= INIT_ATTEMPTS {
+                        // `:#` keeps the whole anyhow chain — the root cause
+                        // (lock contention, dropped connection, no disk
+                        // space…) matters more than fastembed's outermost
+                        // "Failed to retrieve …" context.
+                        return Err(SemanticError::Unavailable(format!(
+                            "failed to init embedding model: {e:#}"
+                        )));
+                    }
+                    std::thread::sleep(Duration::from_secs(1 << (attempt - 1)));
+                }
+            }
+        };
         Ok(Self {
             model,
             dim: size.dim(),
@@ -144,7 +210,7 @@ impl Embedder {
         let out = self
             .model
             .embed(&[text], None)
-            .map_err(|e| SemanticError::Unavailable(format!("query embedding failed: {e}")))?;
+            .map_err(|e| SemanticError::Unavailable(format!("query embedding failed: {e:#}")))?;
         let v = out
             .into_iter()
             .next()
@@ -199,6 +265,63 @@ mod tests {
 
     fn record(id: &str) -> Record {
         serde_json::from_str(&format!(r#"{{"id":"{id}"}}"#)).unwrap()
+    }
+
+    #[test]
+    fn model_cached_requires_every_model_file_to_resolve() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = dir.path();
+        assert!(!model_cached(ModelSize::Large, cache));
+
+        // Interrupted large download: model.onnx landed, model.onnx_data
+        // (the 2.2 GB external-data file) didn't. Must not count as cached.
+        let snap = cache
+            .join("models--Qdrant--multilingual-e5-large-onnx")
+            .join("snapshots")
+            .join("abc123");
+        std::fs::create_dir_all(&snap).unwrap();
+        std::fs::write(snap.join("model.onnx"), b"graph").unwrap();
+        assert!(!model_cached(ModelSize::Large, cache));
+
+        std::fs::write(snap.join("model.onnx_data"), b"weights").unwrap();
+        assert!(model_cached(ModelSize::Large, cache));
+    }
+
+    #[test]
+    fn model_cached_small_checks_the_nested_onnx_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = dir.path();
+        assert!(!model_cached(ModelSize::Small, cache));
+
+        let snap = cache
+            .join("models--intfloat--multilingual-e5-small")
+            .join("snapshots")
+            .join("deadbeef");
+        std::fs::create_dir_all(snap.join("onnx")).unwrap();
+        std::fs::write(snap.join("onnx").join("model.onnx"), b"graph").unwrap();
+        assert!(model_cached(ModelSize::Small, cache));
+    }
+
+    /// hf-hub symlinks snapshot files to blobs; a dangling link means the
+    /// blob never finished. `fs::metadata` follows links, so this must be
+    /// "not cached".
+    #[cfg(unix)]
+    #[test]
+    fn model_cached_rejects_dangling_snapshot_symlinks() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache = dir.path();
+        let snap = cache
+            .join("models--Qdrant--multilingual-e5-large-onnx")
+            .join("snapshots")
+            .join("abc123");
+        std::fs::create_dir_all(&snap).unwrap();
+        std::fs::write(snap.join("model.onnx"), b"graph").unwrap();
+        std::os::unix::fs::symlink(
+            cache.join("blobs").join("missing-blob"),
+            snap.join("model.onnx_data"),
+        )
+        .unwrap();
+        assert!(!model_cached(ModelSize::Large, cache));
     }
 
     #[test]
