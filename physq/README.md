@@ -171,7 +171,7 @@ INSERT/VISUAL for NORMAL — it never quits.
 | `i` `a` `I` `A` | enter INSERT (at cursor / after it / line start / line end) |
 | `Esc` | INSERT/VISUAL → NORMAL |
 | `/` | new search: clear the query and enter INSERT |
-| `:` | command line: types a `/`, so `:q` quits, `:config` opens settings, … |
+| `:` | command line (same commands as `/`): `:q` quits, `:config` opens settings, … |
 | `Shift-H` `Shift-K` `Shift-L` | focus the Results / Input / Detail pane — the focused pane gets a highlighted border+title and receives j/k, gg/G and the scroll keys |
 | `Shift-J` | focus the next pane, cycling Input → Results → Detail → Input |
 | `j` `k` (and `↑` `↓`) | act on the focused pane: move the Results selection, or scroll a focused Detail line by line (no-op while Input is focused — a one-line buffer has no up/down) |

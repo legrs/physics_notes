@@ -1,7 +1,10 @@
 //! Slash-command parsing for the TUI input box (`/exit`,
-//! `/semantic small|large|max|none`, `/config`, `/help`, `/vim`). Pure and
-//! UI-agnostic so it's unit-testable without an `App`/`Engine` fixture;
-//! `tui::App` owns all the side effects.
+//! `/semantic small|large|max|none`, `/config`, `/help`, `/vim`). A leading
+//! `:` is accepted as an alias for `/` (the Vim keymap's `:` opens the
+//! command line with a real colon — see `tui::mod`), so `:q`, `:config`, …
+//! work exactly like their slash equivalents. Pure and UI-agnostic so it's
+//! unit-testable without an `App`/`Engine` fixture; `tui::App` owns all the
+//! side effects.
 
 use crate::config::{ModelSel, ModelSize};
 
@@ -18,7 +21,7 @@ pub enum ParsedCommand {
     Unknown(String),
 }
 
-/// Returns `None` if `input` isn't a slash command at all (normal search text).
+/// Returns `None` if `input` isn't a command at all (normal search text).
 /// A recognized-looking command with a bad/missing argument still parses to
 /// `Some(Unknown(..))`, not `None` — the caller can then show an error instead
 /// of silently searching for the literal command text. Owns its data (rather
@@ -26,28 +29,28 @@ pub enum ParsedCommand {
 /// after parsing.
 pub fn parse_command(input: &str) -> Option<ParsedCommand> {
     let trimmed = input.trim();
-    if !trimmed.starts_with('/') {
-        return None;
-    }
-    let mut parts = trimmed.split_whitespace();
+    let rest = trimmed
+        .strip_prefix('/')
+        .or_else(|| trimmed.strip_prefix(':'))?;
+    let mut parts = rest.split_whitespace();
     let cmd = parts.next().unwrap_or("");
     let arg = parts.next();
     let has_extra = parts.next().is_some();
 
     Some(match (cmd, arg, has_extra) {
-        // `/q` mirrors Vim's `:q` habit (the Vim keymap's `:` types a `/`).
-        ("/exit" | "/quit" | "/q", None, false) => ParsedCommand::Exit,
-        ("/help", None, false) => ParsedCommand::Help,
-        ("/config", None, false) => ParsedCommand::Config,
-        ("/vim", None, false) => ParsedCommand::ToggleVim,
-        ("/semantic", Some("small"), false) => {
+        // `q` mirrors Vim's `:q` habit.
+        ("exit" | "quit" | "q", None, false) => ParsedCommand::Exit,
+        ("help", None, false) => ParsedCommand::Help,
+        ("config", None, false) => ParsedCommand::Config,
+        ("vim", None, false) => ParsedCommand::ToggleVim,
+        ("semantic", Some("small"), false) => {
             ParsedCommand::Semantic(ModelSel::Single(ModelSize::Small))
         }
-        ("/semantic", Some("large"), false) => {
+        ("semantic", Some("large"), false) => {
             ParsedCommand::Semantic(ModelSel::Single(ModelSize::Large))
         }
-        ("/semantic", Some("max"), false) => ParsedCommand::Semantic(ModelSel::Max),
-        ("/semantic", Some("none"), false) => ParsedCommand::Semantic(ModelSel::Off),
+        ("semantic", Some("max"), false) => ParsedCommand::Semantic(ModelSel::Max),
+        ("semantic", Some("none"), false) => ParsedCommand::Semantic(ModelSel::Off),
         _ => ParsedCommand::Unknown(trimmed.to_string()),
     })
 }
@@ -69,6 +72,23 @@ mod tests {
         assert_eq!(parse_command("/quit"), Some(ParsedCommand::Exit));
         assert_eq!(parse_command("/q"), Some(ParsedCommand::Exit));
         assert_eq!(parse_command("  /exit  "), Some(ParsedCommand::Exit));
+    }
+
+    #[test]
+    fn colon_prefix_is_an_alias_for_slash() {
+        assert_eq!(parse_command(":q"), Some(ParsedCommand::Exit));
+        assert_eq!(parse_command(":quit"), Some(ParsedCommand::Exit));
+        assert_eq!(parse_command(":exit"), Some(ParsedCommand::Exit));
+        assert_eq!(parse_command(":help"), Some(ParsedCommand::Help));
+        assert_eq!(parse_command(":config"), Some(ParsedCommand::Config));
+        assert_eq!(
+            parse_command(":semantic large"),
+            Some(ParsedCommand::Semantic(ModelSel::Single(ModelSize::Large)))
+        );
+        assert_eq!(
+            parse_command(":bogus"),
+            Some(ParsedCommand::Unknown(":bogus".to_string()))
+        );
     }
 
     #[test]

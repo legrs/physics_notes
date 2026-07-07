@@ -710,8 +710,9 @@ impl App {
             KeyCode::Char('a') => self.enter_insert(InsertAt::After),
             KeyCode::Char('I') => self.enter_insert(InsertAt::Start),
             KeyCode::Char('A') => self.enter_insert(InsertAt::End),
-            // `/` starts a fresh search, `:` a fresh command (typed as `/…`),
-            // mirroring Vim's search prompt and command line.
+            // `/` starts a fresh search, `:` a fresh command line, mirroring
+            // Vim's search prompt and command line. `parse_command` accepts
+            // both prefixes, so `:q`, `:config`, … work like their `/` forms.
             KeyCode::Char('/') => {
                 self.input.clear();
                 self.cursor = 0;
@@ -719,7 +720,7 @@ impl App {
                 self.enter_insert(InsertAt::Here);
             }
             KeyCode::Char(':') => {
-                self.input = "/".to_string();
+                self.input = ":".to_string();
                 self.refresh_bm25();
                 self.enter_insert(InsertAt::End);
             }
@@ -2141,7 +2142,7 @@ fn draw_help(frame: &mut Frame, app: &mut App, area: Rect) {
             ),
             Line::raw("  Esc               INSERT/VISUAL → NORMAL (never quits)"),
             Line::raw("  /                 new search (clears the query, enters INSERT)"),
-            Line::raw("  :                 command line — types a `/`, so :q quits, :config …"),
+            Line::raw("  :                 command line (like `/`): :q quits, :config …"),
             Line::raw("  Shift-H/K/L       focus the Results / Input / Detail pane"),
             Line::raw("  Shift-J           focus the next pane (Input → Results → Detail → Input)"),
             Line::raw(
@@ -2905,12 +2906,13 @@ mod tests {
         let mut app = test_app(true);
         app.handle_key(key(KeyCode::Esc));
         app.handle_key(key(KeyCode::Char(':')));
-        assert_eq!(app.input, "/");
+        assert_eq!(app.input, ":");
         assert_eq!(app.cursor, 1);
         assert_eq!(app.vim_mode, VimMode::Insert);
         type_str(&mut app, "q");
+        assert_eq!(app.input, ":q");
         app.handle_key(key(KeyCode::Enter));
-        assert!(app.should_quit); // :q → /q → exit
+        assert!(app.should_quit); // :q → exit
     }
 
     #[test]
