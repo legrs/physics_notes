@@ -31,4 +31,8 @@ physq/target/
 # 検索自己改善ループの作業ディレクトリ (scripts/self_improve.py)
 self_improve_work/
 
+# Python
+__pycache__/
+*.pyc
+
 docs/
