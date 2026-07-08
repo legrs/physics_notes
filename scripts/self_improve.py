@@ -507,6 +507,29 @@ def find_physq(arg: str | None) -> Path:
     )
 
 
+# e5-small (fp32) ~470MB, e5-large (fp32, 量子化なし) ~2.1GB。fastembed の
+# モデルキャッシュ（未ダウンロードなら）+ 作業用データの余裕を見て閾値を決める。
+_DISK_MIN_GB = {"none": 1.0, "small": 2.0, "large": 4.0, "max": 5.0}
+
+
+def check_disk_space(workdir: Path, eval_model: str) -> None:
+    """ディスク逼迫時、モデルダウンロード/ロードが極端に遅くなる（数分〜）前に警告する。"""
+    try:
+        free_gb = shutil.disk_usage(workdir).free / (1024 ** 3)
+    except OSError:
+        return
+    need = _DISK_MIN_GB.get(eval_model, 2.0)
+    if free_gb < need:
+        log(
+            f"警告: 空きディスクが {free_gb:.1f}GB しかありません "
+            f"(--eval-model {eval_model} の目安 {need}GB 以上を推奨)。"
+            "空きが少ないと e5-large 等のモデル読み込みが数分単位で遅くなり、"
+            "「固まった」ように見えることがあります。"
+            "空き容量を確保するか、--eval-model small で e5-large のダウンロードを"
+            "回避することを検討してください"
+        )
+
+
 def regen_search_text(ctx: Ctx) -> None:
     """作業コピーの search_text を再生成（kuromoji は repo ルートの node_modules）。"""
     r = subprocess.run(
@@ -1010,14 +1033,7 @@ def main() -> None:
     ctx.state.setdefault("history_rows", [])
     log(f"作業コピー: {ctx.dataset_path}（{'再開' if resumed else '新規'}）")
     regen_search_text(ctx)  # search_text を最新化（通常は no-op）
-
-    log(f"physq eval サーバ起動中（--model {args.eval_model}、初回はモデルロードに1分程度）…")
-    ctx.server = EvalServer(
-        physq, ctx.dataset_path, REPO / "embeddings.json",
-        args.eval_model, ctx.workdir / "eval_server.log",
-    )
-    log(f"eval サーバ ready: {ctx.server.ready['records']} レコード, "
-        f"models={ctx.server.ready['models']}")
+    check_disk_space(ctx.workdir, args.eval_model)
 
     def _sigterm(*_):
         raise KeyboardInterrupt
@@ -1027,6 +1043,22 @@ def main() -> None:
     max_cycles = args.cycles if args.cycles else (10 ** 9 if args.hours else 1)
     start_cycle = ctx.state.get("cycle", 0) + 1
     try:
+        # eval サーバの起動待ち（初回は e5-small ~470MB + e5-large ~2GB のダウンロード
+        # 込みで数分かかることがある — 「固まった」ように見えても正常）もこの
+        # try/finally の内側に置き、起動待ち中の Ctrl-C でも安全に終了できるようにする
+        size_note = (
+            "small+large 両モデル計 ~2.5GB を" if args.eval_model == "max"
+            else "e5-large ~2GB を" if args.eval_model == "large" else "e5-small ~470MB を"
+        )
+        log(f"physq eval サーバ起動中（--model {args.eval_model}）… "
+            f"初回は{size_note}ダウンロードするため数分かかることがあります（固まっていません）")
+        ctx.server = EvalServer(
+            physq, ctx.dataset_path, REPO / "embeddings.json",
+            args.eval_model, ctx.workdir / "eval_server.log",
+        )
+        log(f"eval サーバ ready: {ctx.server.ready['records']} レコード, "
+            f"models={ctx.server.ready['models']}")
+
         for cycle in range(start_cycle, start_cycle + max_cycles):
             ctx.check_deadline()
             ctx.state["cycle"] = cycle
@@ -1046,7 +1078,10 @@ def main() -> None:
             except Exception as e:
                 log(f"重みチューニング失敗: {e}")
     except KeyboardInterrupt:
-        log("中断 — 状態は保存済み。同じコマンドで再開できます")
+        if ctx.server is None:
+            log("中断 — physq eval の起動待ち中でした（サイクル未実行のため保存する状態はありません）")
+        else:
+            log("中断 — 状態は保存済み。同じコマンドで再開できます")
     finally:
         ctx.checkpoint()
         write_report(ctx)
