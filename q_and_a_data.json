@@ -104,7 +104,8 @@
     {
         "id": "670e65dd-ddb7-4d06-8c20-105dfb8773b9",
         "questions": [
-            "なぜ、円の面積はπr^2なのか？"
+            "なぜ、円の面積はπr^2なのか？",
+            "円の面積ってどういうこと？"
         ],
         "answer": "うーーーーん円周をrに対して積分したら出ました\n\nヒント：切り刻んで交互に並べても厳密には求められない。バウムクーヘン積分こそが唯一神。",
         "description": "円の面積の公式に関する解説",
@@ -119,7 +120,8 @@
             "area of a circle",
             "circumference",
             "integration",
-            "baumkuchen integration"
+            "baumkuchen integration",
+            "面積"
         ],
         "category": [
             "静電気"
@@ -130,7 +132,7 @@
             "25d19876-e5cc-4d79-bd3d-cce7a2c3c333"
         ],
         "updated_at": "2026-04-29",
-        "search_text": "なぜ、円の面積はπr 2なのか？ うーーーーん円周をrに対して積分したら出ました ヒント：切り刻んで交互に並べても厳密には求められない。バウムクーヘン積分こそが唯一神。 円の面積の公式に関する解説 円の面積 円周 積分 バウムクーヘン積分 why is the area of a circle pi r 2 area of a circle circumference integration baumkuchen integration 静電気 なぜ 面積 r 2 ーーーー 円周 r に対して 積分 たら まし ヒント 切り刻ん 交互 並べ 厳密 求め られ ない バウムクーヘン 積分 こそ 唯一 面積 公式 に関する 解説 面積 円周 積分 バウムクーヘン 積分 why is the area of a circle pi r 2 area of a circle circumference integration baumkuchen integration 静電気 ナゼ、エンノメンセキハパイr 2ナノカ？ ウーーーーンエンシュウヲrニタイシテセキブンシタラデマシタ ヒント：キリキザンデコウゴニナラベテモゲンミツニハモトメラレナイ。バウムクーヘンセキブンコソガユイイツシン。 エンノメンセキノコウシキニカンスルカイセツ エンノメンセキ エンシュウ セキブン バウムクーヘンセキブン why is the area of a circle pi r 2 area of a circle circumference integration baumkuchen integration セイデンキ なぜ、えんのめんせきはぱいr 2なのか？ うーーーーんえんしゅうをrにたいしてせきぶんしたらでました ひんと：きりきざんでこうごにならべてもげんみつにはもとめられない。ばうむくーへんせきぶんこそがゆいいつしん。 えんのめんせきのこうしきにかんするかいせつ えんのめんせき えんしゅう せきぶん ばうむくーへんせきぶん why is the area of a circle pi r 2 area of a circle circumference integration baumkuchen integration せいでんき",
+        "search_text": "なぜ、円の面積はπr 2なのか？ 円の面積ってどういうこと？ うーーーーん円周をrに対して積分したら出ました ヒント：切り刻んで交互に並べても厳密には求められない。バウムクーヘン積分こそが唯一神。 円の面積の公式に関する解説 円の面積 円周 積分 バウムクーヘン積分 why is the area of a circle pi r 2 area of a circle circumference integration baumkuchen integration 面積 静電気 なぜ 面積 r 2 面積 って どういう こと ーーーー 円周 r に対して 積分 たら まし ヒント 切り刻ん 交互 並べ 厳密 求め られ ない バウムクーヘン 積分 こそ 唯一 面積 公式 に関する 解説 面積 円周 積分 バウムクーヘン 積分 why is the area of a circle pi r 2 area of a circle circumference integration baumkuchen integration 面積 静電気 ナゼ、エンノメンセキハパイr 2ナノカ？ エンノメンセキッテドウイウコト？ ウーーーーンエンシュウヲrニタイシテセキブンシタラデマシタ ヒント：キリキザンデコウゴニナラベテモゲンミツニハモトメラレナイ。バウムクーヘンセキブンコソガユイイツシン。 エンノメンセキノコウシキニカンスルカイセツ エンノメンセキ エンシュウ セキブン バウムクーヘンセキブン why is the area of a circle pi r 2 area of a circle circumference integration baumkuchen integration メンセキ セイデンキ なぜ、えんのめんせきはぱいr 2なのか？ えんのめんせきってどういうこと？ うーーーーんえんしゅうをrにたいしてせきぶんしたらでました ひんと：きりきざんでこうごにならべてもげんみつにはもとめられない。ばうむくーへんせきぶんこそがゆいいつしん。 えんのめんせきのこうしきにかんするかいせつ えんのめんせき えんしゅう せきぶん ばうむくーへんせきぶん why is the area of a circle pi r 2 area of a circle circumference integration baumkuchen integration めんせき せいでんき",
         "_note": ""
     },
     {
