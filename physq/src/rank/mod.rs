@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use crate::config::{ModelSize, RRF_K, RRF_WEIGHT_BM25, RRF_WEIGHT_SMALL};
+use crate::config::{ModelSize, RRF_K, RRF_WEIGHT_BM25};
 
 /// Merge N ranked lists of `(doc, score)`, each with its own RRF weight (only
 /// each list's *order* matters). `rrf[id] = Σ_l w_l/(k + i_l + 1)`. The union
@@ -46,21 +46,26 @@ pub fn rrf_merge(
     rrf_merge_weighted(&[(bm25, 1.0), (semantic, semantic_weight)], k)
 }
 
-/// The confirmed web defaults (§6): single semantic list, k=60. Historically
-/// small and large shared one weight (2.0); this anchors on `RRF_WEIGHT_SMALL`
-/// as the representative value since both are still equal by default.
+/// The confirmed web defaults (§6): single semantic list, k=60, weight 2.0 —
+/// a **frozen** parity anchor, like `rrf_merge`'s own hardcoded bm25 weight
+/// of 1. Deliberately independent of `RRF_WEIGHT_BM25`/`RRF_WEIGHT_SMALL`:
+/// those are live-tunable (owner retunes them via `self_improve.py
+/// --tune-weights`) and will drift from these historical defaults, whereas
+/// this function anchors what `../search.html`'s `_rrfMerge` always computes.
 pub fn rrf_merge_default(bm25: &[(u32, f64)], semantic: &[(u32, f64)]) -> Vec<(u32, f64)> {
-    rrf_merge(bm25, semantic, RRF_K, RRF_WEIGHT_SMALL)
+    rrf_merge(bm25, semantic, RRF_K, 2.0)
 }
 
 /// Hybrid fusion for the CLI: BM25 (`RRF_WEIGHT_BM25`) plus **each** semantic
 /// list at its own model's weight (`ModelSize::rrf_weight`), RRF `k = RRF_K`.
 /// `semantics` and `sizes` are index-aligned (both in `ModelSel::sizes()`
-/// order — see `SemanticEngine::rank`). One semantic list reproduces
-/// `rrf_merge_default`; two lists (small, large) are the `max` ensemble.
-/// Keeping each semantic list at the same weight it has in single mode means
-/// small vs large is decided purely by their relative ranks — a hit both
-/// models place 2nd–3rd outscores one a single model places 1st.
+/// order — see `SemanticEngine::rank`). Two lists (small, large) are the
+/// `max` ensemble; keeping each semantic list at the same weight it has in
+/// single mode means small vs large is decided purely by their relative
+/// ranks — a hit both models place 2nd–3rd outscores one a single model
+/// places 1st. Unlike `rrf_merge_default`, this reads the *current* tunable
+/// weights, so it only matches `rrf_merge_default` when those still equal
+/// the historical 1/2/2 defaults.
 pub fn rrf_merge_hybrid(
     bm25: &[(u32, f64)],
     semantics: &[Vec<(u32, f64)>],
@@ -122,11 +127,20 @@ mod tests {
     }
 
     #[test]
-    fn hybrid_single_list_matches_default() {
-        // rrf_merge_hybrid with one semantic list == rrf_merge_default.
+    fn hybrid_single_list_applies_current_tunable_weights() {
+        // rrf_merge_hybrid with one semantic list uses the *live* constants
+        // (RRF_WEIGHT_BM25, ModelSize::rrf_weight), not the frozen historical
+        // defaults rrf_merge_default anchors on — those two only agree while
+        // the tunables happen to still equal 1/2/2.
         let bm25 = vec![(0, 9.0), (1, 5.0), (2, 1.0)];
         let semantic = vec![(1, 0.9), (3, 0.8)];
-        let a = rrf_merge_default(&bm25, &semantic);
+        let a = rrf_merge_weighted(
+            &[
+                (&bm25, RRF_WEIGHT_BM25),
+                (&semantic, ModelSize::Small.rrf_weight()),
+            ],
+            RRF_K,
+        );
         let b = rrf_merge_hybrid(&bm25, std::slice::from_ref(&semantic), &[ModelSize::Small]);
         assert_eq!(a, b);
     }

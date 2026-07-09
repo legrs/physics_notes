@@ -2633,8 +2633,13 @@
     // それぞれ個別に変更したい場合はここを編集する（physq側は physq/src/config.rs の
     // RRF_WEIGHT_BM25 / RRF_WEIGHT_SMALL / RRF_WEIGHT_LARGE と対応 — 変える場合は
     // 両方揃えないと web と physq でランキングがずれる。CLAUDE.md §6 parity）。
-    const RRF_WEIGHT_BM25 = 1.0;
-    const RRF_WEIGHTS = { small: 2.0, large: 2.0 };
+    const RRF_WEIGHT_BM25 = 0.5;
+    const RRF_WEIGHT_SMALL = 2.0;
+    const RRF_WEIGHT_LARGE = 3.0;
+    // embKey ('small'|'large') → その重み（config.rs の ModelSize::rrf_weight() と対応）。
+    function _rrfWeightForKey(embKey) {
+      return embKey === 'small' ? RRF_WEIGHT_SMALL : RRF_WEIGHT_LARGE;
+    }
     const EMBEDDINGS_URL = 'embeddings.json';
     // embeddings.json をブラウザに永続キャッシュするための Cache API 名
     const EMBEDDINGS_CACHE = 'physics-notes-embeddings-v1';
@@ -2848,7 +2853,8 @@
     // 引数省略でこの値を検証する）。semanticWeight は配列も受け付け、その場合は
     // semanticLists と同じ並び（= MODE_EMB_KEYS の順）で1本ずつ別の重みを適用する
     // （Pro/Ultra/Maxを個別の重みにしたい場合はこちらを使う。呼び出し側は
-    // RRF_WEIGHTS を参照）。max は small・large の2本を渡すことで、両モデルが
+    // _rrfWeightForKey / RRF_WEIGHT_SMALL / RRF_WEIGHT_LARGE を参照）。max は
+    // small・large の2本を渡すことで、両モデルが
     // 2〜3位に置く項目が単一モデルの1位を上回るアンサンブル挙動になる。
     function _rrfMergeMulti(bm25Results, semanticLists, k = 60, semanticWeight = 2.0, bm25Weight = 1.0) {
       const scores = {};
@@ -3093,7 +3099,7 @@
         if (MODE_EMB_KEYS[_urlMode] && query.length > 0) {
           const lists = await _semanticLists(_urlMode, query, data);
           if (lists.length > 0) {
-            const weights = MODE_EMB_KEYS[_urlMode].map(k => RRF_WEIGHTS[k]);
+            const weights = MODE_EMB_KEYS[_urlMode].map(_rrfWeightForKey);
             const merged = _rrfMergeMulti(bm25Results, lists, 60, weights, RRF_WEIGHT_BM25);
             const idToItem = Object.fromEntries(data.map(d => [d.id, d]));
             results = merged
@@ -4016,7 +4022,7 @@
                 const lists = await _semanticLists(urlMode, text, allData);
                 if (lists.length === 0) { finish(searchTopResult(text)); return; }
 
-                const weights = MODE_EMB_KEYS[urlMode].map(k => RRF_WEIGHTS[k]);
+                const weights = MODE_EMB_KEYS[urlMode].map(_rrfWeightForKey);
                 const merged = _rrfMergeMulti(bm25Results, lists, 60, weights, RRF_WEIGHT_BM25);
                 const idToItem = Object.fromEntries(allData.map(d => [d.id, d]));
                 const top = merged[0] ? idToItem[merged[0].id] : null;

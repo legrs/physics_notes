@@ -37,7 +37,7 @@ pub const RRF_K: f64 = 60.0;
 /// the starting value for `Custom`'s tunable `weights.bm25` (`CustomWeights`
 /// below). Edit this to retune ranking — keep `search.html`'s matching
 /// `RRF_WEIGHT_BM25` in sync (CLAUDE.md §6 parity).
-pub const RRF_WEIGHT_BM25: f64 = 1.0;
+pub const RRF_WEIGHT_BM25: f64 = 0.5;
 /// RRF weight for the e5-small semantic list: used whenever `Single(Small)`
 /// is active, and for small's slot in the `Max` ensemble. Starting value for
 /// `Custom`'s `weights.small`. Keep `search.html`'s `RRF_WEIGHTS.small` synced.
@@ -45,7 +45,7 @@ pub const RRF_WEIGHT_SMALL: f64 = 2.0;
 /// RRF weight for the e5-large semantic list: used whenever `Single(Large)`
 /// is active, and for large's slot in the `Max` ensemble. Starting value for
 /// `Custom`'s `weights.large`. Keep `search.html`'s `RRF_WEIGHTS.large` synced.
-pub const RRF_WEIGHT_LARGE: f64 = 2.0;
+pub const RRF_WEIGHT_LARGE: f64 = 3.0;
 pub const RELATED_BOOST: f64 = 0.5;
 
 /// One physical embedding model / matrix.
