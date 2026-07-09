@@ -14,7 +14,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 
 use crate::bm25::{self, Bm25Index};
-use crate::config::{Config, CustomWeights, RRF_K};
+use crate::config::{Config, CustomWeights, ModelSize, RRF_K};
 use crate::data::{ensure_data, sha256_hex};
 use crate::model::Corpus;
 use crate::query::{LinderaIpadic, QueryTokenizer, expand_query};
@@ -154,10 +154,13 @@ impl SemanticEngine {
     }
 }
 
-/// RRF fusion of BM25 with one or more semantic rankings (§6). One semantic
-/// list reproduces the confirmed web ordering; two = the `max` ensemble.
-pub fn hybrid(bm25: &Ranked, semantics: &[Ranked]) -> Ranked {
-    rrf_merge_hybrid(bm25, semantics)
+/// RRF fusion of BM25 with one or more semantic rankings (§6), each at its
+/// own model's weight (`ModelSize::rrf_weight`). `sizes` must be
+/// index-aligned with `semantics` (both in `ModelSel::sizes()` order — see
+/// `SemanticEngine::rank`). One semantic list reproduces the confirmed web
+/// ordering; two = the `max` ensemble.
+pub fn hybrid(bm25: &Ranked, semantics: &[Ranked], sizes: &[ModelSize]) -> Ranked {
+    rrf_merge_hybrid(bm25, semantics, sizes)
 }
 
 /// RRF fusion for the `custom` (`--debug`) mode: BM25 and each semantic model

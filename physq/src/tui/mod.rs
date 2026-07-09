@@ -497,7 +497,7 @@ impl App {
                     self.results = if self.cfg.model == ModelSel::Custom {
                         hybrid_custom(&self.bm25_results, &ranked, &self.cfg.weights)
                     } else {
-                        hybrid(&self.bm25_results, &ranked)
+                        hybrid(&self.bm25_results, &ranked, self.cfg.model.sizes())
                     };
                     self.results_mode = ResultsMode::Hybrid;
                     self.selected = if self.results.is_empty() {

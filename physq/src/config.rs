@@ -33,7 +33,19 @@ pub const TOKENIZER_TAG: &str = "lindera-ipadic";
 pub const BM25_K1: f64 = 1.2;
 pub const BM25_B: f64 = 0.75;
 pub const RRF_K: f64 = 60.0;
-pub const RRF_SEMANTIC_WEIGHT: f64 = 2.0;
+/// RRF weight for the BM25 list. Shared by every mode (`Single`, `Max`) and
+/// the starting value for `Custom`'s tunable `weights.bm25` (`CustomWeights`
+/// below). Edit this to retune ranking — keep `search.html`'s matching
+/// `RRF_WEIGHT_BM25` in sync (CLAUDE.md §6 parity).
+pub const RRF_WEIGHT_BM25: f64 = 1.0;
+/// RRF weight for the e5-small semantic list: used whenever `Single(Small)`
+/// is active, and for small's slot in the `Max` ensemble. Starting value for
+/// `Custom`'s `weights.small`. Keep `search.html`'s `RRF_WEIGHTS.small` synced.
+pub const RRF_WEIGHT_SMALL: f64 = 2.0;
+/// RRF weight for the e5-large semantic list: used whenever `Single(Large)`
+/// is active, and for large's slot in the `Max` ensemble. Starting value for
+/// `Custom`'s `weights.large`. Keep `search.html`'s `RRF_WEIGHTS.large` synced.
+pub const RRF_WEIGHT_LARGE: f64 = 2.0;
 pub const RELATED_BOOST: f64 = 0.5;
 
 /// One physical embedding model / matrix.
@@ -56,6 +68,16 @@ impl ModelSize {
         match self {
             ModelSize::Small => 384,
             ModelSize::Large => 1024,
+        }
+    }
+
+    /// This model's RRF weight outside `Custom` mode (`Single`, and its slot
+    /// in the `Max` ensemble). `Custom` starts from the same values
+    /// (`CustomWeights::default`) but can retune them live in `/config`.
+    pub fn rrf_weight(self) -> f64 {
+        match self {
+            ModelSize::Small => RRF_WEIGHT_SMALL,
+            ModelSize::Large => RRF_WEIGHT_LARGE,
         }
     }
 }
@@ -144,9 +166,9 @@ pub struct CustomWeights {
 impl Default for CustomWeights {
     fn default() -> Self {
         Self {
-            bm25: 1.0,
-            small: RRF_SEMANTIC_WEIGHT,
-            large: RRF_SEMANTIC_WEIGHT,
+            bm25: RRF_WEIGHT_BM25,
+            small: RRF_WEIGHT_SMALL,
+            large: RRF_WEIGHT_LARGE,
         }
     }
 }

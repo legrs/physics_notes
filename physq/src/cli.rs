@@ -349,7 +349,7 @@ fn run_search(cfg: Config, query: &str, limit: usize, plain: bool) -> Result<()>
         });
         match sem {
             Ok(semantic_ranked) => {
-                results = hybrid(&bm25_results, &semantic_ranked);
+                results = hybrid(&bm25_results, &semantic_ranked, cfg.model.sizes());
                 mode = format!("hybrid (BM25 + e5 {}, RRF)", cfg.model.label());
             }
             // Shared-artifact invariant breaks fail loudly (CLAUDE.md §7).

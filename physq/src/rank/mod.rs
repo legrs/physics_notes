@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use crate::config::{RRF_K, RRF_SEMANTIC_WEIGHT};
+use crate::config::{ModelSize, RRF_K, RRF_WEIGHT_BM25, RRF_WEIGHT_SMALL};
 
 /// Merge N ranked lists of `(doc, score)`, each with its own RRF weight (only
 /// each list's *order* matters). `rrf[id] = Σ_l w_l/(k + i_l + 1)`. The union
@@ -46,22 +46,30 @@ pub fn rrf_merge(
     rrf_merge_weighted(&[(bm25, 1.0), (semantic, semantic_weight)], k)
 }
 
-/// The confirmed web defaults (§6): single semantic list, k=60, weight 2.0.
+/// The confirmed web defaults (§6): single semantic list, k=60. Historically
+/// small and large shared one weight (2.0); this anchors on `RRF_WEIGHT_SMALL`
+/// as the representative value since both are still equal by default.
 pub fn rrf_merge_default(bm25: &[(u32, f64)], semantic: &[(u32, f64)]) -> Vec<(u32, f64)> {
-    rrf_merge(bm25, semantic, RRF_K, RRF_SEMANTIC_WEIGHT)
+    rrf_merge(bm25, semantic, RRF_K, RRF_WEIGHT_SMALL)
 }
 
-/// Hybrid fusion for the CLI: BM25 (weight 1) plus **each** semantic list
-/// (weight `RRF_SEMANTIC_WEIGHT` apiece), RRF `k = RRF_K`. One semantic list
-/// reproduces `rrf_merge_default`; two lists are the `max` ensemble. Keeping
-/// each semantic list at the same weight it has in single mode means small vs
-/// large is decided purely by their relative ranks — a hit both models place
-/// 2nd–3rd outscores one a single model places 1st.
-pub fn rrf_merge_hybrid(bm25: &[(u32, f64)], semantics: &[Vec<(u32, f64)>]) -> Vec<(u32, f64)> {
+/// Hybrid fusion for the CLI: BM25 (`RRF_WEIGHT_BM25`) plus **each** semantic
+/// list at its own model's weight (`ModelSize::rrf_weight`), RRF `k = RRF_K`.
+/// `semantics` and `sizes` are index-aligned (both in `ModelSel::sizes()`
+/// order — see `SemanticEngine::rank`). One semantic list reproduces
+/// `rrf_merge_default`; two lists (small, large) are the `max` ensemble.
+/// Keeping each semantic list at the same weight it has in single mode means
+/// small vs large is decided purely by their relative ranks — a hit both
+/// models place 2nd–3rd outscores one a single model places 1st.
+pub fn rrf_merge_hybrid(
+    bm25: &[(u32, f64)],
+    semantics: &[Vec<(u32, f64)>],
+    sizes: &[ModelSize],
+) -> Vec<(u32, f64)> {
     let mut lists: Vec<(&[(u32, f64)], f64)> = Vec::with_capacity(1 + semantics.len());
-    lists.push((bm25, 1.0));
-    for s in semantics {
-        lists.push((s.as_slice(), RRF_SEMANTIC_WEIGHT));
+    lists.push((bm25, RRF_WEIGHT_BM25));
+    for (s, size) in semantics.iter().zip(sizes) {
+        lists.push((s.as_slice(), size.rrf_weight()));
     }
     rrf_merge_weighted(&lists, RRF_K)
 }
@@ -119,7 +127,7 @@ mod tests {
         let bm25 = vec![(0, 9.0), (1, 5.0), (2, 1.0)];
         let semantic = vec![(1, 0.9), (3, 0.8)];
         let a = rrf_merge_default(&bm25, &semantic);
-        let b = rrf_merge_hybrid(&bm25, std::slice::from_ref(&semantic));
+        let b = rrf_merge_hybrid(&bm25, std::slice::from_ref(&semantic), &[ModelSize::Small]);
         assert_eq!(a, b);
     }
 
@@ -152,7 +160,11 @@ mod tests {
         }
         large.push((1, 0.1));
         let small = vec![(1, 1.0), (5, 0.9)]; // 1 is 1st, 5 is 2nd
-        let merged = rrf_merge_hybrid(&bm25, &[small, large]);
+        let merged = rrf_merge_hybrid(
+            &bm25,
+            &[small, large],
+            &[ModelSize::Small, ModelSize::Large],
+        );
         let rank_of = |doc: u32| merged.iter().position(|(d, _)| *d == doc).unwrap();
         assert!(
             rank_of(5) < rank_of(1),
