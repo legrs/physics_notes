@@ -56,6 +56,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import math
 import random
 import re
 import shutil
@@ -692,6 +693,7 @@ def run_cycle(ctx: Ctx, cycle: int) -> dict:
             proposals[rid] = {"terms": terms_edit, "questions": quest_edit}
 
     accepted: dict[str, dict] = {}
+    verified_rids: set[str] = set()
     final_results = baseline
     final_sum = base_sum
     if proposals:
@@ -764,6 +766,7 @@ def run_cycle(ctx: Ctx, cycle: int) -> dict:
                     ctx.server.reload(ctx.dataset_path)
                     final_results = baseline
             accepted = trial_parts
+            verified_rids = set(accepted)  # 個別+併用トライアルで改善実証済み（全体ガードで後で破棄されても記録を残す）
             final_sum = summarize(final_results)
             final_rec = per_record(final_results)
 
@@ -773,7 +776,11 @@ def run_cycle(ctx: Ctx, cycle: int) -> dict:
             #    多数のレコードを同時編集すると無関係なレコードに軽微な波及効果が
             #    出るのはある程度避けられない — 「1件でもあれば全滅」だと大量の
             #    失敗レコードを抱えるほど毎サイクル全滅しやすくなるので、
-            #    --max-side-effects 件までは許容し、全体指標のみで判断する。
+            #    許容件数までは許容し、全体指標のみで判断する。許容件数は
+            #    --max-side-effects と「採用件数 × --max-side-effect-ratio」の
+            #    大きい方 — --max-fails-per-cycle を上げるほど巻き添えも比例して
+            #    増えるので、固定件数のままだと大きいバッチほど全体ガードに
+            #    引っかかりやすくなってしまうのを防ぐ。
             side_effect = [
                 rid for rid, b in base_rec.items()
                 if rid not in accepted and final_rec.get(rid, b)["top1"] < b["top1"]
@@ -783,13 +790,18 @@ def run_cycle(ctx: Ctx, cycle: int) -> dict:
                 or (final_sum["hybrid"]["top1"] == base_sum["hybrid"]["top1"]
                     and final_sum["hybrid"]["mrr"] < base_sum["hybrid"]["mrr"] - 1e-9)
             )
-            side_effect_excess = len(side_effect) > args.max_side_effects
+            side_effect_cap = max(
+                args.max_side_effects,
+                math.ceil(len(accepted) * args.max_side_effect_ratio),
+            )
+            side_effect_excess = len(side_effect) > side_effect_cap
             if accepted and (side_effect_excess or globally_worse):
                 if globally_worse:
                     reason = "全体指標の悪化"
                 else:
                     reason = (f"副作用レコード {len(side_effect)} 件が上限"
-                             f"（{args.max_side_effects}）超過: {side_effect}")
+                             f"（{side_effect_cap}、採用{len(accepted)}件×比率"
+                             f"{args.max_side_effect_ratio}）超過: {side_effect}")
                 log(f"cycle {cycle}: {reason} のため全編集を破棄")
                 save_json(ctx.dataset_path, baseline_data)
                 regen_search_text(ctx)
@@ -821,6 +833,11 @@ def run_cycle(ctx: Ctx, cycle: int) -> dict:
     # 7. 修正試行の記録と隔離: 3サイクル連続で改善できなかった言い換えは
     #    低品質（意味のずれた生成）の可能性が高いので評価セットから外す。
     #    原文質問しか失敗していないレコードはしばらく休ませて LLM 呼び出しを節約。
+    #    判定基準は verified_rids（個別+併用トライアルで改善実証済み）であって
+    #    accepted ではない — 全体ガードが発動すると accepted は {} に戻るが、
+    #    それは無関係なレコードへの巻き添えが理由であってこの言い換え自体の
+    #    質が悪いわけではないので、隔離カウントを進めてしまうと全体ガードに
+    #    引っかかるたびに良い言い換えが隔離に近づいてしまう。
     final_fails: dict[str, list[dict]] = {}
     for r in final_results:
         if r["methods"]["hybrid"]["rank"] != 1:
@@ -830,7 +847,7 @@ def run_cycle(ctx: Ctx, cycle: int) -> dict:
         if rid not in final_fails:
             del attempts[rid]  # 直ったのでリセット
     for rid in target_rids:
-        if rid not in final_fails or rid in accepted:
+        if rid not in final_fails or rid in verified_rids:
             continue  # 直った / 改善が進んでいる間はカウントしない
         if cooldowns.get(rid, 0) > cycle:
             continue  # このサイクルでは修正を試みていない（対象外だった）
@@ -1054,7 +1071,13 @@ def parse_args():
                          "毎回引っかかりやすくなる")
     ap.add_argument("--max-side-effects", type=int, default=5,
                     help="編集していないレコードへの巻き添え悪化を何件まで許容するか"
-                         "（超えたら全体指標に関わらずそのサイクルの編集を全て破棄）")
+                         "（下限。実際の上限は採用件数 × --max-side-effect-ratio との"
+                         "大きい方。超えたら全体指標に関わらずそのサイクルの編集を全て破棄）")
+    ap.add_argument("--max-side-effect-ratio", type=float, default=0.3,
+                    help="巻き添え許容数を採用件数に対する比率でも決める（--max-fails-per-cycle"
+                         "を大きくすると巻き添えも比例して増えるため、固定件数だけだと"
+                         "バッチが大きいほど全体ガードに引っかかりやすくなる。--max-side-effects"
+                         "とのmaxを取るので、小バッチでは--max-side-effectsが下限として効く）")
     ap.add_argument("--cycles", type=int, help="サイクル数上限（省略時: --hours まで、両方省略なら1）")
     ap.add_argument("--hours", type=float, help="実行時間の上限（例: 一晩=8）")
     ap.add_argument("--records", type=int, help="先頭Nレコードだけ対象にする（動作確認用）")
