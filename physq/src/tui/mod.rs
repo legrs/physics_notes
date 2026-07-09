@@ -2713,6 +2713,7 @@ mod tests {
             true,
             false,
             vim,
+            None,
         )
         .unwrap();
         App::new(cfg)

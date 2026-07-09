@@ -249,6 +249,16 @@ it's always there. If the data host is ever unreachable for `version.json`
 specifically but a local cache exists, physq falls back to conditional
 (ETag) fetches of the data files directly and warns once.
 
+By default every launch checks `version.json` (cheap, but still a network
+request each time). If you're launching physq many times in quick succession
+— e.g. manually spot-checking search results while iterating on something —
+pass `--refresh-interval SECONDS` (or set `PHYSQ_REFRESH_INTERVAL_SECS`) to
+skip that check entirely on launches within the window once the cache is
+already complete: `physq --refresh-interval 3600 search "..."` only touches
+the network once an hour, regardless of how many times you run it. `0`
+(the default) checks every launch; `--offline` always skips the network
+regardless of this setting.
+
 ## Semantic search
 
 Enabled by default. `physq search` and the TUI load

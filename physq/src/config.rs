@@ -13,6 +13,18 @@ pub const QA_DATA_FILE: &str = "q_and_a_data.json";
 pub const EMBEDDINGS_FILE: &str = "embeddings.json";
 pub const VERSION_FILE: &str = "version.json";
 
+/// How often a normal (non-`--offline`) run is willing to hit the network to
+/// check `version.json`, once the cache is already complete. `0` (the
+/// default) checks on *every* launch, matching the original always-check
+/// behavior — owner-confirmed: a manual `physq search`/TUI launch checking
+/// every time is fine day-to-day. Set via `--refresh-interval SECONDS` /
+/// `PHYSQ_REFRESH_INTERVAL_SECS` when doing many quick repeated launches in a
+/// short session (e.g. manually spot-checking search quality while iterating
+/// on the self-improvement loop) — a burst of manual runs can otherwise rack
+/// up enough requests to get rate-limited by the data host (observed: HTTP
+/// 429). `--offline` always skips the network regardless of this value.
+pub const DEFAULT_REFRESH_INTERVAL_SECS: u64 = 0;
+
 /// Tag stored in the BM25 index cache; a mismatch (or a different tag in
 /// `version.json`) forces a rebuild (CLAUDE.md §3).
 pub const TOKENIZER_TAG: &str = "lindera-ipadic";
@@ -165,10 +177,15 @@ pub struct Config {
     pub weights: CustomWeights,
     /// TUI keybinding scheme (`--vim`, or toggled live in `/config`).
     pub keys: KeyMode,
+    /// Minimum seconds between `version.json` network checks once the cache
+    /// is complete (`--refresh-interval` / `PHYSQ_REFRESH_INTERVAL_SECS`).
+    /// `--offline` bypasses this (it never touches the network at all).
+    pub refresh_interval_secs: u64,
 }
 
 impl Config {
     /// Resolve configuration. Precedence: CLI flag > environment > default.
+    #[allow(clippy::too_many_arguments)]
     pub fn resolve(
         base_url: Option<String>,
         cache_dir: Option<PathBuf>,
@@ -176,6 +193,7 @@ impl Config {
         offline: bool,
         debug: bool,
         vim: bool,
+        refresh_interval_secs: Option<u64>,
     ) -> Result<Self> {
         let base_url = base_url
             .or_else(|| std::env::var("PHYSQ_BASE_URL").ok())
@@ -187,6 +205,13 @@ impl Config {
                     .context("could not determine the OS cache directory")?
                     .join("physics-notes"),
             };
+        let refresh_interval_secs = refresh_interval_secs
+            .or_else(|| {
+                std::env::var("PHYSQ_REFRESH_INTERVAL_SECS")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+            })
+            .unwrap_or(DEFAULT_REFRESH_INTERVAL_SECS);
         Ok(Self {
             base_url,
             cache_root,
@@ -195,6 +220,7 @@ impl Config {
             debug,
             weights: CustomWeights::default(),
             keys: if vim { KeyMode::Vim } else { KeyMode::Normal },
+            refresh_interval_secs,
         })
     }
 

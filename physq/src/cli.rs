@@ -63,6 +63,15 @@ struct Cli {
     #[arg(long, global = true, value_name = "DIR")]
     cache_dir: Option<PathBuf>,
 
+    /// Minimum seconds between version.json network checks once the cache is
+    /// complete (default: 0 = check every launch; also settable via
+    /// PHYSQ_REFRESH_INTERVAL_SECS). Set this when doing many quick repeated
+    /// launches in one session (e.g. spot-checking search quality while
+    /// iterating on the self-improvement loop) so only the first launch
+    /// touches the network; has no effect with --offline.
+    #[arg(long, global = true, value_name = "SECONDS")]
+    refresh_interval: Option<u64>,
+
     #[command(subcommand)]
     command: Option<Cmd>,
 }
@@ -183,6 +192,7 @@ pub fn run() -> Result<()> {
         cli.offline,
         cli.debug,
         cli.vim,
+        cli.refresh_interval,
     )?;
 
     match cli.command {

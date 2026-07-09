@@ -5,10 +5,17 @@
 //! upstream yet — on 404, fall back to conditional GETs (ETag /
 //! If-None-Match) on the data files and warn once. Offline with a complete
 //! cache → use the cache and warn.
+//!
+//! With a complete cache, the network is only touched once per
+//! `refresh_interval_secs` window (`Config::refresh_interval_secs`, default
+//! 15 min) — repeated launches within that window reuse the cache with zero
+//! requests. Every check (success, 404, unexpected status, or a connection
+//! error) resets the window, so a rate-limited host doesn't get hammered by
+//! quick repeated launches either.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
@@ -47,6 +54,29 @@ pub struct ManifestFile {
 struct Meta {
     #[serde(default)]
     files: HashMap<String, FileMeta>,
+    /// Unix timestamp of the last time we checked (not necessarily changed)
+    /// `version.json`, regardless of the outcome. `None` (fresh/old cache)
+    /// always allows an immediate check.
+    #[serde(default)]
+    last_checked_unix: Option<u64>,
+}
+
+fn unix_now() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+/// Pure decision so it's unit-testable without a network/clock dependency:
+/// skip the version check entirely if the cache is complete and was checked
+/// more recently than `refresh_interval_secs` ago. `refresh_interval_secs ==
+/// 0` always checks (never skips) — the pre-refresh-window behavior.
+fn should_skip_check(last_checked_unix: Option<u64>, now: u64, refresh_interval_secs: u64) -> bool {
+    match last_checked_unix {
+        Some(last) if refresh_interval_secs > 0 => now.saturating_sub(last) < refresh_interval_secs,
+        _ => false,
+    }
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -135,6 +165,23 @@ pub async fn ensure_data(
         });
     }
 
+    let mut meta = load_meta(cfg);
+
+    if cache_complete(cfg)
+        && should_skip_check(
+            meta.last_checked_unix,
+            unix_now(),
+            cfg.refresh_interval_secs,
+        )
+    {
+        return Ok(DataFiles {
+            qa_path: cfg.qa_data_path(),
+            embeddings_path: cfg.embeddings_path(),
+            tokenizer_tag,
+            warnings,
+        });
+    }
+
     let client = reqwest::Client::builder()
         .user_agent(concat!("physq/", env!("CARGO_PKG_VERSION")))
         .timeout(Duration::from_secs(120))
@@ -144,7 +191,6 @@ pub async fn ensure_data(
 
     progress(&format!("Fetching {VERSION_FILE}…"));
     let version_url = cfg.file_url(VERSION_FILE);
-    let mut meta = load_meta(cfg);
 
     match client.get(&version_url).send().await {
         Ok(resp) if resp.status().is_success() => {
@@ -197,6 +243,10 @@ pub async fn ensure_data(
         }
     }
 
+    // Record that a check happened regardless of outcome (including errors)
+    // so a rate-limited or unreachable host can't be hammered by repeated
+    // quick launches either — the window backs off the same as a success.
+    meta.last_checked_unix = Some(unix_now());
     save_meta(cfg, &meta)?;
     if !cache_complete(cfg) {
         bail!(
@@ -369,6 +419,36 @@ mod tests {
         assert_eq!(m.tokenizer.as_deref(), Some("lindera-ipadic"));
         assert_eq!(m.files["q_and_a_data.json"].hash, "aa");
         assert_eq!(m.files["embeddings.json"].size, Some(5720000));
+    }
+
+    #[test]
+    fn skip_check_within_window() {
+        // checked 100s ago, window is 900s → skip
+        assert!(should_skip_check(Some(1_000), 1_100, 900));
+    }
+
+    #[test]
+    fn skip_check_expired_window() {
+        // checked 1000s ago, window is 900s → don't skip
+        assert!(!should_skip_check(Some(1_000), 2_000, 900));
+    }
+
+    #[test]
+    fn skip_check_never_checked_before() {
+        assert!(!should_skip_check(None, 1_000, 900));
+    }
+
+    #[test]
+    fn skip_check_zero_interval_always_checks() {
+        // refresh_interval_secs == 0 means "check every launch" (old behavior),
+        // even if we just checked a moment ago.
+        assert!(!should_skip_check(Some(1_000), 1_000, 0));
+    }
+
+    #[test]
+    fn skip_check_boundary_is_inclusive_of_expiry() {
+        // exactly at the window edge: age == interval, no longer "within" it
+        assert!(!should_skip_check(Some(1_000), 1_900, 900));
     }
 
     #[test]
