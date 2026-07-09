@@ -616,7 +616,7 @@ def run_cycle(ctx: Ctx, cycle: int) -> dict:
         existing = [p["q"] for p in ctx.paraphrases.get(rid, [])]
         news = gen_paraphrases(ctx.llm, rec, existing, args.paraphrases, args.temperature)
         ctx.paraphrases.setdefault(rid, []).extend(
-            {"q": q, "cycle": cycle} for q in news
+            {"q": q, "cycle": cycle, "model": args.model} for q in news
         )
         if (i + 1) % 10 == 0:
             ctx.checkpoint()
@@ -639,12 +639,24 @@ def run_cycle(ctx: Ctx, cycle: int) -> dict:
             fails_by_rid.setdefault(r["target"], []).append(r)
     accepted_state = ctx.state.setdefault("accepted", {})
     cooldowns = ctx.state.setdefault("cooldown_until", {})
+
+    # 1サイクルで同時に編集するレコード数を上限で区切る。失敗レコードが多い
+    # ほど、まとめて適用したときに編集していないレコードへ波及効果（BM25の
+    # IDFはコーパス全体で共有）が出やすく、全体ガード（後述）で全滅しやすい。
+    # 悪化が大きい（失敗ケース数が多い）レコードから優先して処理する。
+    all_fail_rids = sorted(fails_by_rid, key=lambda rid: -len(fails_by_rid[rid]))
+    target_rids = all_fail_rids[: args.max_fails_per_cycle]
+    if len(all_fail_rids) > len(target_rids):
+        log(f"cycle {cycle}: 失敗レコード {len(all_fail_rids)} 件中 "
+            f"上位 {len(target_rids)} 件のみ今サイクルで処理（--max-fails-per-cycle）")
+
     # 提案は「terms（keywords/synonyms）」と「questions（言い換えの登録）」の
     # 2パートに分け、まず別々に適用して効果を測る。まとめて試すと、効いて
     # いない語（LLM の幻覚など）が同じレコードの良い編集に相乗りして混入する。
     proposals: dict[str, dict] = {}  # rid -> {"terms": edit|None, "questions": edit|None}
-    log(f"cycle {cycle}: 改善提案（失敗レコード {len(fails_by_rid)} 件）")
-    for rid, fails in fails_by_rid.items():
+    log(f"cycle {cycle}: 改善提案（対象 {len(target_rids)} / 失敗 {len(fails_by_rid)} 件）")
+    for rid in target_rids:
+        fails = fails_by_rid[rid]
         ctx.check_deadline()
         if cooldowns.get(rid, 0) > cycle:
             continue  # 直せなかったレコードはしばらく休ませる
@@ -755,8 +767,13 @@ def run_cycle(ctx: Ctx, cycle: int) -> dict:
             final_sum = summarize(final_results)
             final_rec = per_record(final_results)
 
-            # 6. 全体ガード: 全体指標の悪化、または編集していないレコードの
-            #    悪化があればこのサイクルの編集を全て破棄（夜間の暴走防止）
+            # 6. 全体ガード: 全体指標が悪化した場合、または編集していないレコードへの
+            #    巻き添え悪化が許容件数を超えた場合にこのサイクルの編集を全て破棄
+            #    （夜間の暴走防止）。BM25のIDFはコーパス全体で共有されるため、
+            #    多数のレコードを同時編集すると無関係なレコードに軽微な波及効果が
+            #    出るのはある程度避けられない — 「1件でもあれば全滅」だと大量の
+            #    失敗レコードを抱えるほど毎サイクル全滅しやすくなるので、
+            #    --max-side-effects 件までは許容し、全体指標のみで判断する。
             side_effect = [
                 rid for rid, b in base_rec.items()
                 if rid not in accepted and final_rec.get(rid, b)["top1"] < b["top1"]
@@ -766,8 +783,13 @@ def run_cycle(ctx: Ctx, cycle: int) -> dict:
                 or (final_sum["hybrid"]["top1"] == base_sum["hybrid"]["top1"]
                     and final_sum["hybrid"]["mrr"] < base_sum["hybrid"]["mrr"] - 1e-9)
             )
-            if accepted and (side_effect or globally_worse):
-                reason = f"副作用レコード {side_effect}" if side_effect else "全体指標の悪化"
+            side_effect_excess = len(side_effect) > args.max_side_effects
+            if accepted and (side_effect_excess or globally_worse):
+                if globally_worse:
+                    reason = "全体指標の悪化"
+                else:
+                    reason = (f"副作用レコード {len(side_effect)} 件が上限"
+                             f"（{args.max_side_effects}）超過: {side_effect}")
                 log(f"cycle {cycle}: {reason} のため全編集を破棄")
                 save_json(ctx.dataset_path, baseline_data)
                 regen_search_text(ctx)
@@ -807,11 +829,11 @@ def run_cycle(ctx: Ctx, cycle: int) -> dict:
     for rid in list(attempts):
         if rid not in final_fails:
             del attempts[rid]  # 直ったのでリセット
-    for rid in fails_by_rid:
+    for rid in target_rids:
         if rid not in final_fails or rid in accepted:
             continue  # 直った / 改善が進んでいる間はカウントしない
         if cooldowns.get(rid, 0) > cycle:
-            continue  # このサイクルでは修正を試みていない
+            continue  # このサイクルでは修正を試みていない（対象外だった）
         attempts[rid] = attempts.get(rid, 0) + 1
         if attempts[rid] < 3:
             continue
@@ -974,6 +996,29 @@ def write_report(ctx: Ctx) -> None:
     ctx.report_path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def recompute_accepted_state(dataset_path: Path, pristine_path: Path) -> dict:
+    """作業コピーと本番オリジナルを実際に比較して accepted_state を作り直す。
+
+    accepted_state（1レコードあたりの追加済み keywords/synonyms/questions の
+    帳簿、kw_room 等の予算計算に使う）はチェックポイントに保存されるが、作業
+    コピー自体が消えて再作成される事故（ディスク逼迫時の中断など）が起きると
+    「帳簿は編集済みと記憶しているのに実データには無い」というズレが生じる。
+    起動のたびにこの関数で実データから作り直すことで、そのズレを自己修復する
+    （信頼できるのは常に実データの差分であって、保存された帳簿ではない）。
+    """
+    current = {r["id"]: r for r in load_json(dataset_path)}
+    pristine = {r["id"]: r for r in load_json(pristine_path)}
+    out: dict[str, dict] = {}
+    for rid, cur in current.items():
+        orig = pristine.get(rid, {})
+        extra_kw = [k for k in (cur.get("keywords") or []) if k not in (orig.get("keywords") or [])]
+        extra_syn = [s for s in (cur.get("synonyms") or []) if s not in (orig.get("synonyms") or [])]
+        extra_q = [q for q in (cur.get("questions") or []) if q not in (orig.get("questions") or [])]
+        if extra_kw or extra_syn or extra_q:
+            out[rid] = {"keywords": extra_kw, "synonyms": extra_syn, "questions": extra_q}
+    return out
+
+
 # ── 反映 ────────────────────────────────────────────────────
 def apply_to_repo(ctx: Ctx) -> None:
     if not ctx.dataset_path.exists():
@@ -1003,6 +1048,13 @@ def parse_args():
     ap.add_argument("--max-new-keywords", type=int, default=8, help="1レコードの追加keywords上限")
     ap.add_argument("--max-new-synonyms", type=int, default=8, help="1レコードの追加synonyms上限")
     ap.add_argument("--max-new-questions", type=int, default=4, help="1レコードの追加questions上限")
+    ap.add_argument("--max-fails-per-cycle", type=int, default=30,
+                    help="1サイクルで改善提案を出す失敗レコード数の上限（失敗ケース数が"
+                         "多い順に優先）。大きすぎると同時編集の波及効果で全体ガードに"
+                         "毎回引っかかりやすくなる")
+    ap.add_argument("--max-side-effects", type=int, default=5,
+                    help="編集していないレコードへの巻き添え悪化を何件まで許容するか"
+                         "（超えたら全体指標に関わらずそのサイクルの編集を全て破棄）")
     ap.add_argument("--cycles", type=int, help="サイクル数上限（省略時: --hours まで、両方省略なら1）")
     ap.add_argument("--hours", type=float, help="実行時間の上限（例: 一晩=8）")
     ap.add_argument("--records", type=int, help="先頭Nレコードだけ対象にする（動作確認用）")
@@ -1076,6 +1128,13 @@ def main() -> None:
     regen_search_text(ctx)  # search_text を最新化（通常は no-op）
     check_disk_space(ctx.workdir, args.eval_model)
 
+    # 帳簿(accepted_state)を実データとの差分から作り直す（自己修復、§recompute_accepted_state）
+    recomputed = recompute_accepted_state(ctx.dataset_path, REPO / DATASET_NAME)
+    if resumed and ctx.state.get("accepted") not in (None, recomputed):
+        log(f"accepted_state を実データとの差分から再計算しました "
+            f"({len(ctx.state.get('accepted', {}))} → {len(recomputed)} レコード)")
+    ctx.state["accepted"] = recomputed
+
     def _sigterm(*_):
         raise KeyboardInterrupt
 
@@ -1102,8 +1161,13 @@ def main() -> None:
 
         for cycle in range(start_cycle, start_cycle + max_cycles):
             ctx.check_deadline()
-            ctx.state["cycle"] = cycle
+            # サイクル番号は run_cycle() が完走してから進める（呼ぶ前ではない）。
+            # 途中でCtrl+C/TimeUpされた場合、次回起動時に同じ番号でリトライされ、
+            # 既に一部生成済みの言い換え分だけ対象が減った状態で再開できる —
+            # 呼ぶ前に進めてしまうと、中断のたびに新しいサイクル番号で言い換え
+            # 生成からやり直しになり、評価・改善提案まで辿り着けなくなる。
             stats = run_cycle(ctx, cycle)
+            ctx.state["cycle"] = cycle
             ctx.state["history_rows"].append(stats)
             ctx.checkpoint()
             write_report(ctx)
