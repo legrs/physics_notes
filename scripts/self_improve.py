@@ -901,7 +901,12 @@ def tune_weights(ctx: Ctx) -> dict | None:
     log(f"重みチューニング開始（{len(cases)} ケース、座標降下 2 パス）")
 
     grid = [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0]
-    best = [1.0, 2.0, 2.0]
+    # 基準は physq が実際に使っている既定重み（ready 行の weights —
+    # config.rs の RRF_WEIGHT_* に追従する）。ハードコードすると physq 側の
+    # 再チューニング（例: 1,2,2 → 0.5,2,3）とズレたまま比較・リセットしてしまう。
+    dw = ctx.server.ready.get("weights") or {}
+    default_w = [dw.get("bm25", 1.0), dw.get("small", 2.0), dw.get("large", 2.0)]
+    best = list(default_w)
 
     def score(w):
         ctx.server.set_weights(*w)
@@ -909,7 +914,7 @@ def tune_weights(ctx: Ctx) -> dict | None:
         return (s["top1"], s["mrr"])
 
     best_score = score(best)
-    log(f"  既定 (1,2,2): top1={best_score[0]}, MRR={best_score[1]:.4f}")
+    log(f"  既定 {tuple(default_w)}: top1={best_score[0]}, MRR={best_score[1]:.4f}")
     for _pass in range(2):
         for axis in range(3):
             for v in grid:
@@ -922,7 +927,7 @@ def tune_weights(ctx: Ctx) -> dict | None:
                 if s > best_score:
                     best, best_score = w, s
                     log(f"  改善: {tuple(best)} → top1={s[0]}, MRR={s[1]:.4f}")
-    ctx.server.set_weights(1.0, 2.0, 2.0)  # 後続評価のため既定へ戻す
+    ctx.server.set_weights(*default_w)  # 後続評価のため既定へ戻す
     result = {
         "weights": {"bm25": best[0], "small": best[1], "large": best[2]},
         "top1": best_score[0], "mrr": best_score[1], "cases": len(cases),
@@ -997,7 +1002,7 @@ def write_report(ctx: Ctx) -> None:
             "",
             f"- 最良: bm25={w['bm25']}, small={w['small']}, large={w['large']} "
             f"(top1={tw['top1']}, MRR={tw['mrr']:.4f}, {tw['cases']} ケース)",
-            "- 既定 (1, 2, 2) から変える場合は physq `--debug` の custom モードで検証のうえ、",
+            "- 既定（physq config.rs の RRF_WEIGHT_*）から変える場合は physq `--debug` の custom モードで検証のうえ、",
             "  `physq/src/config.rs` の定数と `search.html` 側をどうするか判断すること。",
         ]
     lines += [

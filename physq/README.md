@@ -334,7 +334,8 @@ physq --model max eval --serve --data work.json --embeddings ../embeddings.json
 `--data` / `--embeddings` evaluate local working copies (e.g. a dataset with
 candidate edits) instead of the fetched cache — the BM25 index is built in
 memory and never written to the cache. `--weights "<bm25>,<small>,<large>"`
-overrides the RRF weights (default `1,2,2`, the shipped hybrid).
+overrides the RRF weights (default: the shipped hybrid constants
+`RRF_WEIGHT_BM25`/`SMALL`/`LARGE` in `src/config.rs`).
 `--model` picks the methods measured: `max` measures BM25 + both e5 models,
 `none` is BM25-only (no model download needed).
 

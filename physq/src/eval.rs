@@ -103,8 +103,10 @@ pub fn run(cfg: Config, args: EvalArgs) -> Result<()> {
     }
 }
 
-/// `"1,2,2"` → weights. Default (no flag) matches the shipped hybrid: BM25 1,
-/// each semantic list `RRF_SEMANTIC_WEIGHT` (see `rank::rrf_merge_hybrid`).
+/// `"<bm25>,<small>,<large>"` → weights. Default (no flag) is
+/// `CustomWeights::default()`, i.e. the shipped hybrid constants
+/// (`RRF_WEIGHT_BM25` / `RRF_WEIGHT_SMALL` / `RRF_WEIGHT_LARGE`) — identical
+/// to what `rank::rrf_merge_hybrid` fuses with.
 fn parse_weights(s: &str) -> Result<CustomWeights> {
     let parts: Vec<f64> = s
         .split(',')

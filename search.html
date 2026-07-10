@@ -31,6 +31,10 @@
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
     integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8"
     crossorigin="anonymous"></script>
+  <!-- DOMPurify (HTMLサニタイズ) — バージョン固定 + SRI -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"
+    integrity="sha384-JEyTNhjM6R1ElGoJns4U2Ln4ofPcqzSsynQkmEc/KGy6336qAZl70tDLufbkla+3"
+    crossorigin="anonymous"></script>
 
   <!-- ── セキュリティユーティリティ ──────────────────────────── -->
   <!-- escHtml: 全スクリプトブロックから参照できるよう最初に定義 -->
@@ -2162,19 +2166,36 @@
   <!-- ══ Modal + Search Logic ══════════════════════════════════════ -->
   <script>
     /* ── marked.js セキュリティ設定 ─────────────────────────────────
-       <script> タグと on* イベントハンドラのみエスケープ。
-       KaTeX が生成する HTML（math-block / math-inline 等）は通す。 */
+       生HTMLトークンは marked では素通しし、最終出力全体を DOMPurify で
+       サニタイズする（mdToSafeHtml）。旧実装の「<script> と on*= だけ
+       エスケープ」は <iframe srcdoc>・javascript: URL 等で回避可能だった。
+       DOMPurify が未ロードの場合は生HTMLを全てエスケープするフェイル
+       クローズ（その場合 KaTeX も未ロードのはずで数式HTMLは存在しない）。 */
     (function configureMark() {
       if (typeof marked === 'undefined') return;
       const renderer = new marked.Renderer();
       renderer.html = function (token) {
         const raw = typeof token === 'string' ? token : (token.text || token.raw || '');
-        // script タグまたは on* イベントハンドラがあればエスケープ
-        if (/<script/i.test(raw) || /\bon\w+\s*=/i.test(raw)) return escHtml(raw);
+        if (typeof DOMPurify === 'undefined') return escHtml(raw);
         return raw;
       };
       marked.use({ renderer });
     })();
+
+    /* 最終HTMLのサニタイズ。KaTeX が生成する HTML/MathML/SVG は許可しつつ、
+       script / iframe / イベントハンドラ / javascript: URL 等を除去する。 */
+    function sanitizeHtml(html) {
+      if (typeof DOMPurify === 'undefined') return html; // renderer 側で全HTMLエスケープ済み
+      return DOMPurify.sanitize(html, {
+        USE_PROFILES: { html: true, svg: true, svgFilters: true, mathMl: true },
+      });
+    }
+
+    /* Markdown + 数式 → 安全なHTML。innerHTML への代入は必ずこれを通すこと。 */
+    function mdToSafeHtml(text) {
+      if (typeof marked === 'undefined') return '<p>' + escHtml(text || '') + '</p>';
+      return sanitizeHtml(marked.parse(formatMath(text || '')));
+    }
 
     /* ── 数式変換（KaTeX） ── $$...$$ ブロック → $...$ インライン の順に処理 */
     function formatMath(text) {
@@ -2386,7 +2407,7 @@
       isStreaming = true;
 
       if (_animMode === 'instant') {
-        modalContent.innerHTML = marked.parse(formatMath(fullText));
+        modalContent.innerHTML = mdToSafeHtml(fullText);
         isStreaming = false;
         if (onComplete) onComplete();
         return;
@@ -2398,13 +2419,13 @@
         function nextLine() {
           if (!isStreaming) return;
           if (lineIdx >= lines.length) {
-            modalContent.innerHTML = marked.parse(formatMath(fullText));
+            modalContent.innerHTML = mdToSafeHtml(fullText);
             isStreaming = false;
             if (onComplete) onComplete();
             return;
           }
           buf += (lineIdx > 0 ? '\n' : '') + lines[lineIdx++];
-          modalContent.innerHTML = marked.parse(formatMath(buf)) + '<span class="cursor-blink"></span>';
+          modalContent.innerHTML = mdToSafeHtml(buf) + '<span class="cursor-blink"></span>';
           if (!isUserScrolling) modalBody.scrollTop = modalBody.scrollHeight;
           streamTimer = setTimeout(nextLine, 60);
         }
@@ -2420,11 +2441,11 @@
           const chunk = Math.floor(Math.random() * 3) + 1;
           buf += fullText.slice(idx, idx + chunk);
           idx += chunk;
-          modalContent.innerHTML = marked.parse(formatMath(buf)) + '<span class="cursor-blink"></span>';
+          modalContent.innerHTML = mdToSafeHtml(buf) + '<span class="cursor-blink"></span>';
           if (!isUserScrolling) modalBody.scrollTop = modalBody.scrollHeight;
           streamTimer = setTimeout(tick, Math.random() * 20 + 8);
         } else {
-          modalContent.innerHTML = marked.parse(formatMath(fullText));
+          modalContent.innerHTML = mdToSafeHtml(fullText);
           isStreaming = false;
           if (onComplete) onComplete();
         }
@@ -2643,6 +2664,9 @@
     const EMBEDDINGS_URL = 'embeddings.json';
     // embeddings.json をブラウザに永続キャッシュするための Cache API 名
     const EMBEDDINGS_CACHE = 'physics-notes-embeddings-v1';
+    // キャッシュ済み embeddings.json が version.json のどのハッシュ時点の
+    // ものかを覚えておく localStorage キー（上流更新の検知に使う）
+    const EMBEDDINGS_HASH_KEY = 'embeddings_manifest_hash';
 
     // embKey ('small'|'large') → ロード済みパイプライン。
     // max モードは両方を同時に保持する。
@@ -2736,7 +2760,8 @@
         statusEl.classList.remove('visible');
         return true;
       } catch (e) {
-        statusEl.classList.remove('visible');
+        // バナーは表示したまま失敗を伝える（remove してからテキストを
+        // 入れると誰にも見えない）。検索自体は BM25 のみで続行される。
         statusTxt.textContent = `⚠️ モデルの読み込みに失敗しました: ${e.message}`;
         console.error(e);
         return false;
@@ -2758,6 +2783,20 @@
         try {
           if (typeof caches !== 'undefined') cache = await caches.open(EMBEDDINGS_CACHE);
         } catch (_) { cache = null; }
+
+        // version.json（小さい・no-cache）のハッシュと前回保存時の記録を
+        // 突き合わせ、上流で embeddings.json が更新されていたらキャッシュを
+        // 破棄して再取得する。version.json が取れない（オフライン等）場合は
+        // キャッシュをそのまま使う（オフライン耐性優先）。
+        let upstreamHash = null;
+        try {
+          const vr = await fetch('version.json', { cache: 'no-cache' });
+          if (vr.ok) upstreamHash = (await vr.json())?.files?.['embeddings.json']?.hash || null;
+        } catch (_) { /* オフライン等 — キャッシュを使い続ける */ }
+        if (cache && upstreamHash &&
+          localStorage.getItem(EMBEDDINGS_HASH_KEY) !== upstreamHash) {
+          try { await cache.delete(EMBEDDINGS_URL); } catch (_) { }
+        }
 
         if (cache) {
           const hit = await cache.match(EMBEDDINGS_URL);
@@ -2804,6 +2843,10 @@
               }));
             } catch (_) { /* 容量超過等は無視 */ }
           }
+          // どの version.json ハッシュ時点のキャッシュかを記録（不明なら記録を
+          // 消し、次回オンライン時に再取得させる）
+          if (upstreamHash) localStorage.setItem(EMBEDDINGS_HASH_KEY, upstreamHash);
+          else localStorage.removeItem(EMBEDDINGS_HASH_KEY);
 
           _embeddingsData = normalizeEmbeddings(JSON.parse(new TextDecoder().decode(buf)));
         }
@@ -2811,7 +2854,7 @@
         statusEl.classList.remove('visible');
         return true;
       } catch (e) {
-        statusEl.classList.remove('visible');
+        // バナーは表示したまま失敗を伝える（検索は BM25 のみで続行）
         statusTxt.textContent = `⚠️ Embeddingデータの読み込みに失敗しました: ${e.message}`;
         console.error(e);
         return false;
@@ -2885,8 +2928,10 @@
         : _reduced ? 'line'
           : 'char';
 
-      const rawParam = (location.search.match(/[?&]q=([^&]*)/) || ['', ''])[1];
-      const query = decodeURIComponent(rawParam).toLowerCase();
+      // URLSearchParams は不正なパーセントエンコーディング（?q=% 等）でも
+      // 例外を投げない。decodeURIComponent 直呼びは URIError でこの関数全体
+      // （検索結果の描画）が落ちるため使わない。
+      const query = (new URLSearchParams(location.search).get('q') || '').toLowerCase();
       _chatContextQuery = query;
 
       const input = document.getElementById('search');
@@ -3066,13 +3111,16 @@
       });
 
       function highlight(text, words) {
-        // まず HTML エスケープしてから <mark> を挿入（XSS防止）
-        let r = escHtml(text);
-        words.forEach(w => {
-          const safe = escHtml(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          r = r.replace(new RegExp(`(${safe})`, 'gi'), '<mark>$1</mark>');
-        });
-        return r;
+        // まず HTML エスケープしてから <mark> を挿入（XSS防止）。
+        // 単語ごとに逐次 replace すると、後の単語が挿入済みの <mark> タグ
+        // 自体（"mark" や 1〜2 文字の英字クエリ等）にマッチして HTML が
+        // 壊れるため、1 パスの交替正規表現でまとめて置換する。
+        const escaped = escHtml(text);
+        const parts = [...new Set(
+          words.filter(Boolean).map(w => escHtml(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        )].sort((a, b) => b.length - a.length); // 長い語を優先してマッチ
+        if (!parts.length) return escaped;
+        return escaped.replace(new RegExp(`(${parts.join('|')})`, 'gi'), '<mark>$1</mark>');
       }
 
       let cachedBM25 = null;
@@ -3232,7 +3280,7 @@
         function aiTick() {
           if (_animMode === 'instant') {
             // 即時表示
-            aiProse.innerHTML = marked.parse(formatMath(fullText));
+            aiProse.innerHTML = mdToSafeHtml(fullText);
             checkOverflow();
           } else if (_animMode === 'line') {
             // 行単位：改行ごとに一括表示
@@ -3240,12 +3288,12 @@
             let lineIdx = 0;
             function nextLine() {
               if (lineIdx >= lines.length) {
-                aiProse.innerHTML = marked.parse(formatMath(fullText));
+                aiProse.innerHTML = mdToSafeHtml(fullText);
                 checkOverflow();
                 return;
               }
               aiBuf += (lineIdx > 0 ? '\n' : '') + lines[lineIdx++];
-              aiProse.innerHTML = marked.parse(formatMath(aiBuf)) + '<span class="cursor-blink"></span>';
+              aiProse.innerHTML = mdToSafeHtml(aiBuf) + '<span class="cursor-blink"></span>';
               checkOverflow();
               aiStreamTimer = setTimeout(nextLine, 60);
             }
@@ -3256,11 +3304,11 @@
               const chunk = Math.floor(Math.random() * 3) + 1;
               aiBuf += fullText.slice(aiIdx, aiIdx + chunk);
               aiIdx += chunk;
-              aiProse.innerHTML = marked.parse(formatMath(aiBuf)) + '<span class="cursor-blink"></span>';
+              aiProse.innerHTML = mdToSafeHtml(aiBuf) + '<span class="cursor-blink"></span>';
               checkOverflow();
               aiStreamTimer = setTimeout(aiTick, Math.random() * 20 + 8);
             } else {
-              aiProse.innerHTML = marked.parse(formatMath(fullText));
+              aiProse.innerHTML = mdToSafeHtml(fullText);
               checkOverflow();
             }
           }
@@ -3553,9 +3601,9 @@
       }
 
       // ── Markdown rendering ────────────────────────────────────────────
+      // グローバルの mdToSafeHtml（marked + KaTeX + DOMPurify）に委譲する
       function safeMarkdown(text) {
-        if (typeof marked === 'undefined') return '<p>' + text.replace(/</g, '&lt;') + '</p>';
-        return marked.parse(formatMath(text || ''));
+        return mdToSafeHtml(text);
       }
 
       function renderMarkdown(el, text) {

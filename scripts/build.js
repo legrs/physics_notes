@@ -223,7 +223,9 @@ async function main() {
   // 1. search_text 生成
   if (!SKIP_TEXT) {
     await new Promise((resolve, reject) => {
-      kuromoji.builder({ dicPath: 'node_modules/kuromoji/dict' }).build((err, tokenizer) => {
+      // CWD 依存にしない（リポジトリ外から `node scripts/build.js --data …` を
+      // 実行しても辞書を見つけられるように __dirname 基準で解決する）
+      kuromoji.builder({ dicPath: path.join(__dirname, '..', 'node_modules', 'kuromoji', 'dict') }).build((err, tokenizer) => {
         if (err) { reject(err); return; }
         let changed = 0;
         for (const item of data) {

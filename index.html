@@ -240,9 +240,13 @@
         }
 
         // ===== モード選択 =====
+        // search.html と同じ許可リストで検証（URL や localStorage 由来の
+        // 任意文字列をそのまま保存・URL 連結しない）
+        const VALID_MODES = new Set(['auto', 'fast', 'pro', 'ultra', 'max']);
         const modeBtns = document.querySelectorAll('.mode-btn');
         const modeParam = new URLSearchParams(location.search).get('mode');
-        let currentMode = modeParam || localStorage.getItem('search_mode') || 'auto';
+        let currentMode =
+            [modeParam, localStorage.getItem('search_mode')].find(m => VALID_MODES.has(m)) || 'auto';
 
         function applyMode(mode) {
             currentMode = mode;

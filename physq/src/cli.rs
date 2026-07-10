@@ -132,8 +132,8 @@ enum Cmd {
         /// Local embeddings.json to pair with --data (default: fetched cache)
         #[arg(long, value_name = "FILE")]
         embeddings: Option<PathBuf>,
-        /// RRF weight overrides "<bm25>,<small>,<large>" (default "1,2,2",
-        /// the shipped hybrid)
+        /// RRF weight overrides "<bm25>,<small>,<large>". Default: the shipped
+        /// hybrid weights (config.rs RRF_WEIGHT_BM25/SMALL/LARGE)
         #[arg(long, value_name = "B,S,L")]
         weights: Option<String>,
         /// Top hybrid result ids to include per case

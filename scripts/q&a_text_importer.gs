@@ -171,12 +171,15 @@ function _populateSheet(data) {
       } else if (col === 'related' && Array.isArray(val)) {
         val = val.map(_normalizeId);
       }
+      // 先頭が = / + の値は Sheets が数式として解釈・実行してしまう
+      // （数式インジェクション）ため、' と同様に ' を前置してテキスト化する。
+      // Sheets は先頭の ' を書式マーカーとして取り除くので、エクスポート時の
+      // getValues() では元の文字列がそのまま返り、往復しても値は変わらない。
+      const _quoteIfNeeded = s => (/^[='+]/.test(s) ? "'" + s : s);
       if (Array.isArray(val)) {
-        const joined = val.join(SEP);
-        return joined.startsWith("'") ? "'" + joined : joined;
+        return _quoteIfNeeded(val.join(SEP));
       }
-      const str = String(val ?? '');
-      return str.startsWith("'") ? "'" + str : str;
+      return _quoteIfNeeded(String(val ?? ''));
     })
   );
 
