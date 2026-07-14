@@ -41,7 +41,7 @@ pub const RRF_WEIGHT_BM25: f64 = 0.5;
 /// RRF weight for the e5-small semantic list: used whenever `Single(Small)`
 /// is active, and for small's slot in the `Max` ensemble. Starting value for
 /// `Custom`'s `weights.small`. Keep `search.html`'s `RRF_WEIGHTS.small` synced.
-pub const RRF_WEIGHT_SMALL: f64 = 2.0;
+pub const RRF_WEIGHT_SMALL: f64 = 1.5;
 /// RRF weight for the e5-large semantic list: used whenever `Single(Large)`
 /// is active, and for large's slot in the `Max` ensemble. Starting value for
 /// `Custom`'s `weights.large`. Keep `search.html`'s `RRF_WEIGHTS.large` synced.

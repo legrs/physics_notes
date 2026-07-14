@@ -2655,7 +2655,7 @@
     // RRF_WEIGHT_BM25 / RRF_WEIGHT_SMALL / RRF_WEIGHT_LARGE と対応 — 変える場合は
     // 両方揃えないと web と physq でランキングがずれる。CLAUDE.md §6 parity）。
     const RRF_WEIGHT_BM25 = 0.5;
-    const RRF_WEIGHT_SMALL = 2.0;
+    const RRF_WEIGHT_SMALL = 1.5;
     const RRF_WEIGHT_LARGE = 3.0;
     // embKey ('small'|'large') → その重み（config.rs の ModelSize::rrf_weight() と対応）。
     function _rrfWeightForKey(embKey) {
