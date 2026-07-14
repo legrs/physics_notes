@@ -66,7 +66,12 @@ const MODELS = {
 // tokenizer が変わったら physq 側の BM25 インデックスキャッシュが再構築される。
 const VERSION_SCHEMA = 3;
 const TOKENIZER_TAG = 'lindera-ipadic';
-const EMBEDDING_MODEL_TAG = 'multilingual-e5-small';
+const EMBEDDING_MODEL_TAG = 'multilingual-e5-small'; // 既定モデル（後方互換のため維持）
+// embeddings.json の実際のキー（"small"/"large"）ごとのモデル名。MODELS から導出し、
+// 二重管理を避ける。
+const EMBEDDING_MODEL_TAGS = Object.fromEntries(
+  Object.entries(MODELS).map(([key, m]) => [key, m.id.replace(/^Xenova\//, '')])
+);
 
 // ── ID 正規化 ───────────────────────────────────────────────
 // search.html / q&a_text_importer.gs と同じ規則。
@@ -206,6 +211,7 @@ function generateVersionManifest() {
     schema_version: VERSION_SCHEMA,
     tokenizer: TOKENIZER_TAG,
     embedding_model: EMBEDDING_MODEL_TAG,
+    embedding_models: EMBEDDING_MODEL_TAGS,
     files: {
       'q_and_a_data.json': fileManifest(JSON_PATH),
       'embeddings.json': fileManifest(EMBEDDINGS_PATH),
