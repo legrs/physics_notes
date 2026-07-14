@@ -33,14 +33,10 @@ pub struct Manifest {
     pub schema_version: Option<u32>,
     #[serde(default)]
     pub tokenizer: Option<String>,
-    #[serde(default)]
-    pub embedding_model: Option<String>,
     /// Per-key model name (`"small"`/`"large"`, matching `embeddings.json`'s
-    /// top-level keys — §7.1) added alongside `embedding_model` for the
-    /// primary/default model; both are populated, `embedding_model` stays for
-    /// older clients that only know the singular field.
+    /// top-level keys — §7.1).
     #[serde(default)]
-    pub embedding_models: Option<HashMap<String, String>>,
+    pub embedding_model: Option<HashMap<String, String>>,
     #[serde(default)]
     pub files: HashMap<String, ManifestFile>,
 }
@@ -415,8 +411,7 @@ mod tests {
             "generated_at": "2026-06-30T12:00:00Z",
             "schema_version": 3,
             "tokenizer": "lindera-ipadic",
-            "embedding_model": "multilingual-e5-small",
-            "embedding_models": { "small": "multilingual-e5-small", "large": "multilingual-e5-large" },
+            "embedding_model": { "small": "multilingual-e5-small", "large": "multilingual-e5-large" },
             "files": {
                 "q_and_a_data.json": { "hash": "aa", "size": 584110 },
                 "embeddings.json":   { "hash": "bb", "size": 5720000 }
@@ -425,7 +420,7 @@ mod tests {
         let m: Manifest = serde_json::from_str(json).unwrap();
         assert_eq!(m.tokenizer.as_deref(), Some("lindera-ipadic"));
         assert_eq!(
-            m.embedding_models.as_ref().unwrap()["large"],
+            m.embedding_model.as_ref().unwrap()["large"],
             "multilingual-e5-large"
         );
         assert_eq!(m.files["q_and_a_data.json"].hash, "aa");
