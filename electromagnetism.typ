@@ -2393,6 +2393,101 @@ $bb(f) = (q n S bb(v)) times bb(B) dot l / ( n S l )\
 quad = q dot bb(v) times bb(B)
 $
 
+#align(center,box(width:15cm, height:5cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      ortho(x:-70deg, y:-00deg,z:-20deg,{
+        //let AXIS_LENGTH = 2.5
+        //line((0, 0, 0), (AXIS_LENGTH, 0, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "x-axis")
+        //line((0, 0, 0), (0, AXIS_LENGTH, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "y-axis")
+        //line((0, 0, 0), (0, 0, AXIS_LENGTH), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "z-axis")
+        //content("x-axis.end", [$x$], anchor: "west")
+        //content("y-axis.end", [$y$], anchor: "south")
+        //content("z-axis.end", [$z$], anchor: "north-east")
+
+        line((0,0,-2),(0,0,2),mark:(end:">",fill:blue),stroke:(paint:blue, thickness:0.1))
+
+        content((-0.3,0,0.0),text(fill:blue)[$bb(B)$])
+        circle((0,0,0),radius:4)
+
+        line((4,0,0),(4,-4,0),mark:(end:">",fill:red),stroke:(paint:red,thickness:0.05))
+
+        line((4,0,0),(2,0,0),mark:(end:">",fill:black),stroke:(paint:black,thickness:0.05))
+
+      })
+      circle((3.8,-0.4),radius:0.2,fill:white)
+      content((3.8,-0.4),$+$)
+      content((3.8,-0.8),$bold(q)$)
+      content((3,-1.5),text(fill:red)[$bb(v)$])
+      content((3,0.0),text(fill:black)[$bb(f)$])
+    })
+  ]
+])
+
+In uniform magnetic field $bb(B)$, charged particles show a circlar motion.
+
+$omega = q / m B quad <=> quad T =( 2 pi m )/( q  B)$
+
+$R = v /B m / q$ 
+
+
+=== Hall effect
+
+#align(center,box(width:15cm, height:6cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      rect((-3,-2),(3,2))
+      line((-2,2.5),(2,2.5),mark:(end:">",fill:red),stroke:(paint:red,thickness:0.1))
+      content((0,3),text(fill:red)[$bold(I)$])
+
+      circle((-2,2.5),radius:0.2,fill:white,stroke:(paint:blue,thickness:0.1))
+      circle((-2,2.5),radius:0.1,fill:white,stroke:(paint:blue,thickness:0.05))
+      content((-2,3),text(fill:blue)[$bold(B)$])
+
+      circle((-1.5,0),radius:0.2,fill:white)
+      content((-1.5,0.03),$+$)
+      line((-1.5,0),(-1.5,-1),mark:(end:">",fill:black))
+      content((-1.2,-0.5),$f$)
+      line((-1.5,0),(-1.5 + 1,0),mark:(end:">",fill:red),stroke:(paint:red))
+      content((-1.5 + 0.5,0.3),text(fill:red)[$v$])
+
+      content((1.5,1.8),$-$)
+      content((1.5,-1.7),$+$)
+
+      circle((-2.5,0),radius:0.2,fill:white)
+      content((-2.5,0.03),$+$)
+
+      circle((0,0 -0.2),radius:0.2,fill:white)
+      content((0,0.03 -0.2),$+$)
+
+      circle((1.5,-0.5),radius:0.2,fill:white)
+      content((1.5,0.03 -0.5),$+$)
+
+      circle((2.5,-0.5),radius:0.2,fill:white)
+      content((2.5,0.03 -0.5),$+$)
+
+      line((1.5,-0.5),(1.5,-1 -0.5),mark:(end:">",fill:black))
+      content((1.2,-0.5 -0.5),$f$)
+      line((1.5,-0.5),(1.5,1 -0.5),mark:(end:">",fill:black))
+      content((1.2,0.4 -0.5),$f$)
+      line((1.5,-0.5),(1.5 + 1,-0.5),mark:(end:">",fill:red),stroke:(paint:red))
+      content((1.5 + 0.5,0.3 -0.5),text(fill:red)[$v$])
+
+      line((2.7,-0.5),(3.9,-0.5))
+      content((5,-0.5),"steady")
+
+      content((0,-2.5),"semiconductor")
+    })
+  ]
+])
+
+
+In uniform magnetic field, when 
+
 
 
 //類似性＝アナロジー // 2026-06-29の名言
