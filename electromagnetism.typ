@@ -2506,6 +2506,10 @@ The voltage in this state called *Hall Voltage*.
     #cetz.canvas({
       import cetz.draw: *
 
+      circle((-4,4),radius:0.2,fill:white,stroke:(paint:blue,thickness:0.05))
+      circle((-4,4),radius:0.1,fill:blue,stroke:(paint:blue,thickness:0))
+      content((-4,3.5),text(fill:blue)[$bold(B)$])
+
       arc((0.3,-4),radius:4cm, start:-90deg, stop:90deg)
       arc((-0.3,4),radius:4cm, start:90deg, stop:270deg)
       line((-0.3,4),(-0.3,-4))
