@@ -27,6 +27,8 @@
 mod command;
 mod vim;
 
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::mpsc as std_mpsc;
 use std::time::{Duration, Instant};
 
@@ -1653,13 +1655,11 @@ pub fn run(cfg: Config) -> Result<()> {
     // here and draw through our own FrameSink-backed terminal below, so a
     // slow terminal can never block this thread — see `spawn_terminal_writer`.
     let _ = ratatui::init();
-    let frame_tx = spawn_terminal_writer();
-    let mut terminal = ratatui::Terminal::new(ratatui::backend::CrosstermBackend::new(
-        FrameSink::new(frame_tx),
-    ))
-    .context("failed to create terminal")?;
+    let (sink, committer) = frame_channel(spawn_terminal_writer());
+    let mut terminal = ratatui::Terminal::new(ratatui::backend::CrosstermBackend::new(sink))
+        .context("failed to create terminal")?;
     let _ = execute!(std::io::stdout(), EnableMouseCapture);
-    let result = run_loop(&mut terminal, &mut app, rx, tx);
+    let result = run_loop(&mut terminal, &mut app, rx, tx, &committer);
 
     // Teardown still writes straight to real (blocking) stdout — unlike the
     // interactive loop's draws, it isn't routed through `FrameSink`, since
@@ -1751,50 +1751,71 @@ fn full_repaint(terminal: &mut AppTerminal, app: &mut App) -> Result<()> {
 }
 
 /// A `Write` sink that never touches the real terminal: it just accumulates
-/// bytes in memory and, on `flush()` (called once per `terminal.draw()` /
-/// per explicit `execute!` — see `full_repaint`), hands the accumulated
-/// frame off to a background thread that owns the real stdout (see
-/// `spawn_terminal_writer`).
+/// bytes in memory. `flush()` is a deliberate no-op — see `FrameCommitter`.
 ///
-/// This is what actually fixes the "Ctrl-C takes 20-30s" / "typed characters
-/// never appear" bug, *and* avoids a flicker regression a non-blocking-fd
-/// attempt at the same fix introduced (tried and reverted — see git
-/// history): setting stdout non-blocking to bound a stuck write turned out
-/// to make **stdin** non-blocking too, since a real terminal session
-/// typically has fd 0/1/2 share one open file description, and crossterm's
-/// reader doesn't tolerate that — it silently stopped seeing *any* input,
-/// confirmed with a synthetic pty (`event::poll` never returned true again
-/// once the fd flags changed). Bounded-retry writes on top of that had the
-/// same problem, plus abandoning a write mid-frame on timeout still tore a
-/// frame. Moving the actual (blocking, ordinary) write to its own thread
-/// sidesteps all of it: stdin/stdout never change blocking mode, so
-/// crossterm's reader is untouched, and each frame is sent to the writer
-/// thread as one atomic chunk — either the whole thing gets through or (if
-/// the writer thread is still busy with a previous frame, i.e. the terminal
-/// is stalled) this one is dropped outright, never partially written.
+/// This (together with `FrameCommitter` and `spawn_terminal_writer`) is what
+/// actually fixes the "Ctrl-C takes 20-30s" / "typed characters never
+/// appear" bug, *and* avoids two regressions two earlier attempts at the
+/// same fix introduced (tried and reverted — see git history):
+///
+/// 1. Setting stdout non-blocking to bound a stuck write turned out to make
+///    **stdin** non-blocking too, since a real terminal session typically
+///    has fd 0/1/2 share one open file description, and crossterm's reader
+///    doesn't tolerate that — it silently stopped seeing *any* input,
+///    confirmed with a synthetic pty (`event::poll` never returned true
+///    again once the fd flags changed). Moving the actual (blocking,
+///    ordinary) write to its own thread sidesteps this: stdin/stdout never
+///    change blocking mode, so crossterm's reader is untouched.
+/// 2. Dispatching a frame on every `Backend::flush()` call (rather than once
+///    per full draw pass) tore frames apart: `Terminal::draw` flushes
+///    *separately* for cell content vs. cursor repositioning
+///    (`show_cursor`/`set_cursor_position` each call `execute!`, which
+///    flushes immediately). Treating each as its own droppable unit meant
+///    the cell-content frame could go through while the cursor-move frame
+///    right after it got dropped (writer thread still busy) — leaving the
+///    cursor wherever the last redrawn cell put it, i.e. near the bottom of
+///    the screen after a full repaint, instead of at the input box. Making
+///    `flush()` a no-op and only committing explicitly (`FrameCommitter`,
+///    called once per `terminal.draw()` / `full_repaint()` from `run_loop`)
+///    bundles an entire draw pass — cell diffs, show/hide cursor, cursor
+///    repositioning, and (for `full_repaint`) the Begin/EndSynchronizedUpdate
+///    bracket — into one atomic frame no matter how many times ratatui
+///    flushes internally while producing it.
+///
+/// Either way, each committed frame is sent to the writer thread as one
+/// atomic chunk — the whole thing goes through, or (if the writer thread is
+/// still busy with a previous frame, i.e. the terminal is stalled) this one
+/// is dropped outright, never partially written.
 struct FrameSink {
-    buf: Vec<u8>,
-    tx: std_mpsc::SyncSender<Vec<u8>>,
-}
-
-impl FrameSink {
-    fn new(tx: std_mpsc::SyncSender<Vec<u8>>) -> Self {
-        Self {
-            buf: Vec::new(),
-            tx,
-        }
-    }
+    buf: Rc<RefCell<Vec<u8>>>,
 }
 
 impl std::io::Write for FrameSink {
     fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
-        self.buf.extend_from_slice(data);
+        self.buf.borrow_mut().extend_from_slice(data);
         Ok(data.len())
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        if !self.buf.is_empty() {
-            let frame = std::mem::take(&mut self.buf);
+        Ok(())
+    }
+}
+
+/// Dispatches whatever the paired `FrameSink` accumulated since the last
+/// commit, as one atomic frame, to the background terminal-writer thread
+/// (see `spawn_terminal_writer`). See `FrameSink`'s doc comment for why this
+/// has to be a separate, explicit, once-per-draw-pass step rather than
+/// happening on every `Write::flush()`.
+struct FrameCommitter {
+    buf: Rc<RefCell<Vec<u8>>>,
+    tx: std_mpsc::SyncSender<Vec<u8>>,
+}
+
+impl FrameCommitter {
+    fn commit(&self) {
+        let mut buf = self.buf.borrow_mut();
+        if !buf.is_empty() {
+            let frame = std::mem::take(&mut *buf);
             // Bounded channel (capacity 1) + try_send: if the writer thread
             // is still blocked flushing a previous frame to a stalled
             // terminal, drop this one rather than block the render loop or
@@ -1802,8 +1823,20 @@ impl std::io::Write for FrameSink {
             // heal retry, or the next HEAL_INTERVAL) supersedes it anyway.
             let _ = self.tx.try_send(frame);
         }
-        Ok(())
     }
+}
+
+/// Builds a `FrameSink`/`FrameCommitter` pair sharing one accumulation
+/// buffer: draws write into the sink (via the backend), `run_loop` commits
+/// through the committer once each draw pass is complete.
+fn frame_channel(tx: std_mpsc::SyncSender<Vec<u8>>) -> (FrameSink, FrameCommitter) {
+    let buf = Rc::new(RefCell::new(Vec::new()));
+    (
+        FrameSink {
+            buf: Rc::clone(&buf),
+        },
+        FrameCommitter { buf, tx },
+    )
 }
 
 /// Owns the real stdout on its own thread and performs the actual
@@ -1832,6 +1865,7 @@ fn run_loop(
     app: &mut App,
     rx: std_mpsc::Receiver<AppMsg>,
     tx: std_mpsc::Sender<AppMsg>,
+    committer: &FrameCommitter,
 ) -> Result<()> {
     let mut cursor_shape = CursorShape::Default;
     let mut last_heal = Instant::now();
@@ -1872,6 +1906,9 @@ fn run_loop(
         } else {
             terminal.draw(|frame| draw(frame, app))?;
         }
+        // One atomic dispatch per draw pass, however many times ratatui
+        // flushed internally while producing it — see `FrameSink`.
+        committer.commit();
 
         if event::poll(Duration::from_millis(spinner::FRAME_MS))? {
             // Drain the whole burst before redrawing: an IME commit (or a
