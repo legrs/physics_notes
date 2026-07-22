@@ -5658,7 +5658,7 @@
         "questions": [
             "第一章で我々が勉強したことは？"
         ],
-        "answer": "動かない電荷、静電気現象。\n\n$$ F=qE $$",
+        "answer": "動かない電荷、つまり静電気現象。\n\n$$ F=qE $$",
         "description": "",
         "keywords": [],
         "synonyms": [],
