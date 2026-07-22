@@ -2212,14 +2212,13 @@ dependencies = [
 
 [[package]]
 name = "physq"
-version = "0.1.7-rc2"
+version = "0.1.7-rc3"
 dependencies = [
  "anyhow",
  "bincode",
  "clap",
  "dirs",
  "fastembed",
- "libc",
  "lindera",
  "ratatui",
  "reqwest 0.12.28",

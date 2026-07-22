@@ -1648,17 +1648,40 @@ pub fn run(cfg: Config) -> Result<()> {
     }
 
     let mut app = App::new(cfg);
-    let mut terminal = ratatui::init();
-    set_stdout_nonblocking();
+    // ratatui::init()'s returned terminal writes straight to (blocking)
+    // stdout; we only want its side effects (raw mode + alternate screen)
+    // here and draw through our own FrameSink-backed terminal below, so a
+    // slow terminal can never block this thread — see `spawn_terminal_writer`.
+    let _ = ratatui::init();
+    let frame_tx = spawn_terminal_writer();
+    let mut terminal = ratatui::Terminal::new(ratatui::backend::CrosstermBackend::new(
+        FrameSink::new(frame_tx),
+    ))
+    .context("failed to create terminal")?;
     let _ = execute!(std::io::stdout(), EnableMouseCapture);
     let result = run_loop(&mut terminal, &mut app, rx, tx);
-    set_stdout_blocking();
-    let _ = execute!(
-        std::io::stdout(),
-        DisableMouseCapture,
-        SetCursorStyle::DefaultUserShape
-    );
-    ratatui::restore();
+
+    // Teardown still writes straight to real (blocking) stdout — unlike the
+    // interactive loop's draws, it isn't routed through `FrameSink`, since
+    // `ratatui::restore()` owns that write internally. On a terminal that's
+    // still not draining at all, that write can block same as it always
+    // could; bound the wait so the process still exits promptly rather than
+    // hanging on this one last (small, one-time) write. A timeout here just
+    // means the alternate screen / raw mode may not get cleanly left — a
+    // cosmetic problem the next terminal reset fixes — instead of a process
+    // that won't quit.
+    let (done_tx, done_rx) = std_mpsc::channel::<()>();
+    std::thread::spawn(move || {
+        let _ = execute!(
+            std::io::stdout(),
+            DisableMouseCapture,
+            SetCursorStyle::DefaultUserShape
+        );
+        ratatui::restore();
+        let _ = done_tx.send(());
+    });
+    let _ = done_rx.recv_timeout(Duration::from_secs(2));
+
     result
 }
 
@@ -1711,8 +1734,15 @@ impl CursorShape {
 /// terminal with no 2026 support the begin/end markers are just ignored
 /// (unknown CSI private-mode sequences are a documented no-op), so this is
 /// safe everywhere and not only a fix for the terminals that need it.
-fn full_repaint(terminal: &mut ratatui::DefaultTerminal, app: &mut App) -> Result<()> {
-    execute!(terminal.backend_mut(), BeginSynchronizedUpdate)?;
+///
+/// `BeginSynchronizedUpdate` is `queue!`'d, not `execute!`'d, so it lands in
+/// the *same* `FrameSink` frame as the clear + redrawn cells (they all go
+/// out together on `terminal.draw()`'s own internal flush): a dropped frame
+/// (see `FrameSink`) drops the whole bundle, never leaving unwrapped content
+/// for a synchronized-update-aware terminal to render mid-transmission,
+/// which would defeat the point of bracketing it at all.
+fn full_repaint(terminal: &mut AppTerminal, app: &mut App) -> Result<()> {
+    queue!(terminal.backend_mut(), BeginSynchronizedUpdate)?;
     queue!(terminal.backend_mut(), Clear(ClearType::All))?;
     terminal.swap_buffers();
     terminal.draw(|frame| draw(frame, app))?;
@@ -1720,67 +1750,85 @@ fn full_repaint(terminal: &mut ratatui::DefaultTerminal, app: &mut App) -> Resul
     Ok(())
 }
 
-/// Put stdout in non-blocking mode so a terminal that's slow to drain the pty
-/// (macOS Terminal.app churning on an IME candidate popup — see
-/// `HEAL_INTERVAL`) can never turn our writes into an indefinite block.
+/// A `Write` sink that never touches the real terminal: it just accumulates
+/// bytes in memory and, on `flush()` (called once per `terminal.draw()` /
+/// per explicit `execute!` — see `full_repaint`), hands the accumulated
+/// frame off to a background thread that owns the real stdout (see
+/// `spawn_terminal_writer`).
 ///
-/// Without this, every `write`/`flush` to the terminal — including the ones
-/// inside `ratatui::restore()` on the way out — blocks until the terminal
-/// catches up. That's the actual cause of the "Ctrl-C takes 20-30s to quit"
-/// symptom during an IME glitch: the keypress is read fine (crossterm's
-/// reader isn't affected), but this single-threaded loop can't get back
-/// around to noticing `should_quit` — or even finish tearing down the
-/// terminal — while stuck inside a blocking write. Made non-blocking, a
-/// backed-up terminal just yields `WouldBlock` immediately, which run_loop
-/// treats as "retry next tick" instead of "hang" (see the HEAL_INTERVAL loop
-/// below); `ratatui::restore()` already tolerates write errors on its own.
-#[cfg(unix)]
-fn set_stdout_nonblocking() {
-    use std::os::fd::AsRawFd;
-    let fd = std::io::stdout().as_raw_fd();
-    // SAFETY: fd is our own stdout; F_GETFL/F_SETFL with a valid fd and
-    // well-formed flags cannot cause memory unsafety.
-    unsafe {
-        let flags = libc::fcntl(fd, libc::F_GETFL);
-        if flags >= 0 {
-            libc::fcntl(fd, libc::F_SETFL, flags | libc::O_NONBLOCK);
+/// This is what actually fixes the "Ctrl-C takes 20-30s" / "typed characters
+/// never appear" bug, *and* avoids a flicker regression a non-blocking-fd
+/// attempt at the same fix introduced (tried and reverted — see git
+/// history): setting stdout non-blocking to bound a stuck write turned out
+/// to make **stdin** non-blocking too, since a real terminal session
+/// typically has fd 0/1/2 share one open file description, and crossterm's
+/// reader doesn't tolerate that — it silently stopped seeing *any* input,
+/// confirmed with a synthetic pty (`event::poll` never returned true again
+/// once the fd flags changed). Bounded-retry writes on top of that had the
+/// same problem, plus abandoning a write mid-frame on timeout still tore a
+/// frame. Moving the actual (blocking, ordinary) write to its own thread
+/// sidesteps all of it: stdin/stdout never change blocking mode, so
+/// crossterm's reader is untouched, and each frame is sent to the writer
+/// thread as one atomic chunk — either the whole thing gets through or (if
+/// the writer thread is still busy with a previous frame, i.e. the terminal
+/// is stalled) this one is dropped outright, never partially written.
+struct FrameSink {
+    buf: Vec<u8>,
+    tx: std_mpsc::SyncSender<Vec<u8>>,
+}
+
+impl FrameSink {
+    fn new(tx: std_mpsc::SyncSender<Vec<u8>>) -> Self {
+        Self {
+            buf: Vec::new(),
+            tx,
         }
     }
 }
 
-#[cfg(not(unix))]
-fn set_stdout_nonblocking() {}
+impl std::io::Write for FrameSink {
+    fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
+        self.buf.extend_from_slice(data);
+        Ok(data.len())
+    }
 
-/// Undo `set_stdout_nonblocking` before teardown. `ratatui::restore()` (and
-/// our own mouse-capture/cursor-style cleanup) report write failures via
-/// `eprintln!`, which itself **panics** if that write fails too — on a
-/// still-non-blocking, still-backed-up stdout that turns a graceful "print
-/// the error and move on" into a double-panic abort. Teardown is a handful
-/// of bytes (not a repeating full-screen repaint), so blocking here briefly
-/// is fine — it only pays the wait once, on the way out.
-#[cfg(unix)]
-fn set_stdout_blocking() {
-    use std::os::fd::AsRawFd;
-    let fd = std::io::stdout().as_raw_fd();
-    // SAFETY: same fd/flags reasoning as `set_stdout_nonblocking`.
-    unsafe {
-        let flags = libc::fcntl(fd, libc::F_GETFL);
-        if flags >= 0 {
-            libc::fcntl(fd, libc::F_SETFL, flags & !libc::O_NONBLOCK);
+    fn flush(&mut self) -> std::io::Result<()> {
+        if !self.buf.is_empty() {
+            let frame = std::mem::take(&mut self.buf);
+            // Bounded channel (capacity 1) + try_send: if the writer thread
+            // is still blocked flushing a previous frame to a stalled
+            // terminal, drop this one rather than block the render loop or
+            // let frames pile up — the next successful frame (this tick's
+            // heal retry, or the next HEAL_INTERVAL) supersedes it anyway.
+            let _ = self.tx.try_send(frame);
         }
+        Ok(())
     }
 }
 
-#[cfg(not(unix))]
-fn set_stdout_blocking() {}
-
-fn is_would_block(err: &anyhow::Error) -> bool {
-    err.downcast_ref::<std::io::Error>()
-        .is_some_and(|e| e.kind() == std::io::ErrorKind::WouldBlock)
+/// Owns the real stdout on its own thread and performs the actual
+/// (ordinary, blocking) terminal writes there — see `FrameSink`. A stalled
+/// terminal blocks this thread for as long as it takes, which is fine: nothing
+/// else waits on it, so the render loop and Ctrl-C handling stay responsive.
+fn spawn_terminal_writer() -> std_mpsc::SyncSender<Vec<u8>> {
+    use std::io::Write as _;
+    let (tx, rx) = std_mpsc::sync_channel::<Vec<u8>>(1);
+    std::thread::spawn(move || {
+        let mut stdout = std::io::stdout();
+        while let Ok(frame) = rx.recv() {
+            let _ = stdout.write_all(&frame);
+            let _ = stdout.flush();
+        }
+    });
+    tx
 }
+
+/// The TUI's terminal type: `DefaultTerminal` (`CrosstermBackend<Stdout>`)
+/// with real stdout swapped for the in-memory `FrameSink` (see there).
+type AppTerminal = ratatui::Terminal<ratatui::backend::CrosstermBackend<FrameSink>>;
 
 fn run_loop(
-    terminal: &mut ratatui::DefaultTerminal,
+    terminal: &mut AppTerminal,
     app: &mut App,
     rx: std_mpsc::Receiver<AppMsg>,
     tx: std_mpsc::Sender<AppMsg>,
@@ -1819,19 +1867,10 @@ fn run_loop(
             app.force_redraw = true;
         }
         if std::mem::take(&mut app.force_redraw) {
-            // A backed-up terminal (see `set_stdout_nonblocking`) yields
-            // WouldBlock instead of hanging; leave `last_heal` alone so the
-            // very next tick retries the heal, rather than waiting out a
-            // full HEAL_INTERVAL again on top of an already-stalled write.
-            match full_repaint(terminal, app) {
-                Ok(()) => last_heal = Instant::now(),
-                Err(e) if is_would_block(&e) => {}
-                Err(e) => return Err(e),
-            }
-        } else if let Err(e) = terminal.draw(|frame| draw(frame, app))
-            && e.kind() != std::io::ErrorKind::WouldBlock
-        {
-            return Err(e.into());
+            full_repaint(terminal, app)?;
+            last_heal = Instant::now();
+        } else {
+            terminal.draw(|frame| draw(frame, app))?;
         }
 
         if event::poll(Duration::from_millis(spinner::FRAME_MS))? {
