@@ -37,7 +37,9 @@ use ratatui::crossterm::event::{
     self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyEventKind,
     KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
 };
-use ratatui::crossterm::terminal::{Clear, ClearType};
+use ratatui::crossterm::terminal::{
+    BeginSynchronizedUpdate, Clear, ClearType, EndSynchronizedUpdate,
+};
 use ratatui::crossterm::{execute, queue};
 use ratatui::layout::{Constraint, Layout, Position, Rect};
 use ratatui::style::{Color, Modifier, Style};
@@ -1693,18 +1695,26 @@ impl CursorShape {
 /// Clear the whole screen and redraw every cell — used to recover from a screen
 /// the terminal shifted/overwrote behind ratatui's back (see `HEAL_INTERVAL`).
 ///
-/// Done **flash-free**, even on terminals with no synchronized-output (DECSET
-/// 2026) support like macOS Terminal.app: the `Clear(All)` is `queue!`'d into
-/// the backend's own buffered writer (not `execute!`'d, which would flush it on
-/// its own and risk the terminal drawing a blank frame before the cells land),
-/// and `swap_buffers()` blanks ratatui's "previous" buffer so the following
-/// `draw` rewrites every content cell. The clear and all cells then leave in a
-/// single `Backend::flush` at the end of `draw`, so the terminal only ever sees
-/// clear-then-repaint as one atomic update.
+/// Done **flash-free** by bracketing the whole thing in DECSET/DECRST 2026
+/// (`BeginSynchronizedUpdate` / `EndSynchronizedUpdate`): a terminal that
+/// supports it defers any visual repaint until the end marker arrives, so a
+/// clear-then-redraw never shows as a blank frame no matter how the writes
+/// land on the wire. That matters because a single `Backend::flush` is *not*
+/// enough on its own — `queue!`'d content this size (a full screen of cells)
+/// routinely exceeds one write(2)/pty-buffer's worth of bytes, so the flush
+/// can leave the terminal mid-parse of a partially-applied clear. macOS
+/// Terminal.app happens to swallow that without a visible flash; VTE-based
+/// terminals (GNOME Terminal, xfce4-terminal — the Linux Mint default) do
+/// not and show it as a flicker every `HEAL_INTERVAL`, hence this. On a
+/// terminal with no 2026 support the begin/end markers are just ignored
+/// (unknown CSI private-mode sequences are a documented no-op), so this is
+/// safe everywhere and not only a fix for the terminals that need it.
 fn full_repaint(terminal: &mut ratatui::DefaultTerminal, app: &mut App) -> Result<()> {
+    execute!(terminal.backend_mut(), BeginSynchronizedUpdate)?;
     queue!(terminal.backend_mut(), Clear(ClearType::All))?;
     terminal.swap_buffers();
     terminal.draw(|frame| draw(frame, app))?;
+    execute!(terminal.backend_mut(), EndSynchronizedUpdate)?;
     Ok(())
 }
 
