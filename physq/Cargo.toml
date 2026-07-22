@@ -1,6 +1,6 @@
 [package]
 name = "physq"
-version = "0.1.7-rc1"
+version = "0.1.7-rc2"
 edition = "2024"
 description = "Local hybrid search (BM25 + e5 semantic, RRF-fused) for the Physics Notes Q&A corpus"
 license = "Apache-2.0"
@@ -14,6 +14,7 @@ fastembed = { version = "5.17", default-features = false, features = [
     "hf-hub-rustls-tls",
     "ort-download-binaries-rustls-tls",
 ] }
+libc = "0.2"
 lindera = { version = "4.0", features = ["embed-ipadic"] }
 ratatui = { version = "0.30", features = ["unstable-rendered-line-info"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "blocking"] }

@@ -1649,8 +1649,10 @@ pub fn run(cfg: Config) -> Result<()> {
 
     let mut app = App::new(cfg);
     let mut terminal = ratatui::init();
+    set_stdout_nonblocking();
     let _ = execute!(std::io::stdout(), EnableMouseCapture);
     let result = run_loop(&mut terminal, &mut app, rx, tx);
+    set_stdout_blocking();
     let _ = execute!(
         std::io::stdout(),
         DisableMouseCapture,
@@ -1718,6 +1720,65 @@ fn full_repaint(terminal: &mut ratatui::DefaultTerminal, app: &mut App) -> Resul
     Ok(())
 }
 
+/// Put stdout in non-blocking mode so a terminal that's slow to drain the pty
+/// (macOS Terminal.app churning on an IME candidate popup — see
+/// `HEAL_INTERVAL`) can never turn our writes into an indefinite block.
+///
+/// Without this, every `write`/`flush` to the terminal — including the ones
+/// inside `ratatui::restore()` on the way out — blocks until the terminal
+/// catches up. That's the actual cause of the "Ctrl-C takes 20-30s to quit"
+/// symptom during an IME glitch: the keypress is read fine (crossterm's
+/// reader isn't affected), but this single-threaded loop can't get back
+/// around to noticing `should_quit` — or even finish tearing down the
+/// terminal — while stuck inside a blocking write. Made non-blocking, a
+/// backed-up terminal just yields `WouldBlock` immediately, which run_loop
+/// treats as "retry next tick" instead of "hang" (see the HEAL_INTERVAL loop
+/// below); `ratatui::restore()` already tolerates write errors on its own.
+#[cfg(unix)]
+fn set_stdout_nonblocking() {
+    use std::os::fd::AsRawFd;
+    let fd = std::io::stdout().as_raw_fd();
+    // SAFETY: fd is our own stdout; F_GETFL/F_SETFL with a valid fd and
+    // well-formed flags cannot cause memory unsafety.
+    unsafe {
+        let flags = libc::fcntl(fd, libc::F_GETFL);
+        if flags >= 0 {
+            libc::fcntl(fd, libc::F_SETFL, flags | libc::O_NONBLOCK);
+        }
+    }
+}
+
+#[cfg(not(unix))]
+fn set_stdout_nonblocking() {}
+
+/// Undo `set_stdout_nonblocking` before teardown. `ratatui::restore()` (and
+/// our own mouse-capture/cursor-style cleanup) report write failures via
+/// `eprintln!`, which itself **panics** if that write fails too — on a
+/// still-non-blocking, still-backed-up stdout that turns a graceful "print
+/// the error and move on" into a double-panic abort. Teardown is a handful
+/// of bytes (not a repeating full-screen repaint), so blocking here briefly
+/// is fine — it only pays the wait once, on the way out.
+#[cfg(unix)]
+fn set_stdout_blocking() {
+    use std::os::fd::AsRawFd;
+    let fd = std::io::stdout().as_raw_fd();
+    // SAFETY: same fd/flags reasoning as `set_stdout_nonblocking`.
+    unsafe {
+        let flags = libc::fcntl(fd, libc::F_GETFL);
+        if flags >= 0 {
+            libc::fcntl(fd, libc::F_SETFL, flags & !libc::O_NONBLOCK);
+        }
+    }
+}
+
+#[cfg(not(unix))]
+fn set_stdout_blocking() {}
+
+fn is_would_block(err: &anyhow::Error) -> bool {
+    err.downcast_ref::<std::io::Error>()
+        .is_some_and(|e| e.kind() == std::io::ErrorKind::WouldBlock)
+}
+
 fn run_loop(
     terminal: &mut ratatui::DefaultTerminal,
     app: &mut App,
@@ -1758,10 +1819,19 @@ fn run_loop(
             app.force_redraw = true;
         }
         if std::mem::take(&mut app.force_redraw) {
-            full_repaint(terminal, app)?;
-            last_heal = Instant::now();
-        } else {
-            terminal.draw(|frame| draw(frame, app))?;
+            // A backed-up terminal (see `set_stdout_nonblocking`) yields
+            // WouldBlock instead of hanging; leave `last_heal` alone so the
+            // very next tick retries the heal, rather than waiting out a
+            // full HEAL_INTERVAL again on top of an already-stalled write.
+            match full_repaint(terminal, app) {
+                Ok(()) => last_heal = Instant::now(),
+                Err(e) if is_would_block(&e) => {}
+                Err(e) => return Err(e),
+            }
+        } else if let Err(e) = terminal.draw(|frame| draw(frame, app))
+            && e.kind() != std::io::ErrorKind::WouldBlock
+        {
+            return Err(e.into());
         }
 
         if event::poll(Duration::from_millis(spinner::FRAME_MS))? {
