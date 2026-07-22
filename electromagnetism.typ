@@ -1406,7 +1406,7 @@ $
 
 - *Electrical Power*$[upright(M L T^(-3))]$(電力) - work per unit time
 
-#text(size:10pt)[ 教員：電力量という訳はうれしくない。日本語はscienceに向かない。　　←それ]
+#text(size:10pt)[ 教員：電力量という訳はうれしくない。日本語はscienceに向かない。　　←ワイトもそう思います]
 
 $
   bold(P"(power)" = I V = I^2 R)
@@ -2444,8 +2444,8 @@ $R = v /B m / q$
       line((-2,2.5),(2,2.5),mark:(end:">",fill:red),stroke:(paint:red,thickness:0.1))
       content((0,3),text(fill:red)[$bold(I)$])
 
-      circle((-2,2.5),radius:0.2,fill:white,stroke:(paint:blue,thickness:0.1))
-      circle((-2,2.5),radius:0.1,fill:white,stroke:(paint:blue,thickness:0.05))
+      circle((-2,2.5),radius:0.2,fill:white,stroke:(paint:blue,thickness:0.05))
+      circle((-2,2.5),radius:0.1,fill:blue,stroke:(paint:blue,thickness:0))
       content((-2,3),text(fill:blue)[$bold(B)$])
 
       circle((-1.5,0),radius:0.2,fill:white)
@@ -2455,8 +2455,14 @@ $R = v /B m / q$
       line((-1.5,0),(-1.5 + 1,0),mark:(end:">",fill:red),stroke:(paint:red))
       content((-1.5 + 0.5,0.3),text(fill:red)[$v$])
 
+      content((0,1.5),$-$)
+      content((0,-1.5),$+$)
+
       content((1.5,1.8),$-$)
       content((1.5,-1.7),$+$)
+
+      content((2.5,1.8),$-$)
+      content((2.5,-1.7),$+$)
 
       circle((-2.5,0),radius:0.2,fill:white)
       content((-2.5,0.03),$+$)
@@ -2486,7 +2492,70 @@ $R = v /B m / q$
 ])
 
 
-In uniform magnetic field, when 
+In uniform magnetic field, when carriers of semiconductor move,
+the particles experience Lorentz force and move, creating electric field.
+
+Eventually, they get steady state.
+The voltage in this state called *Hall Voltage*.
+
+#pagebreak()
+
+=== Cyclotron
+#align(center,box(width:15cm, height:12cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      arc((0.3,-4),radius:4cm, start:-90deg, stop:90deg)
+      arc((-0.3,4),radius:4cm, start:90deg, stop:270deg)
+      line((-0.3,4),(-0.3,-4))
+      line((0.3,4),(0.3,-4))
+
+      let r = 0.5
+      let dr = 0.3
+
+      line((-0.3,r),(0.3,r), stroke:(paint:orange))
+      for i in range(5){
+        arc((0.3,r),radius:r, start:90deg, stop:-90deg, stroke:(paint:orange))
+        line((0.3,-r),(-0.3,-r), stroke:(paint:orange))
+        r += dr
+        arc((-0.3,-r + dr),radius:r, start:270deg, stop:90deg, stroke:(paint:orange))
+        line((-0.3,r + dr),(0.3,r + dr), stroke:(paint:orange))
+        r += dr
+      }
+      arc((0.3,r),radius:r, start:90deg, stop:0deg, stroke:(paint:orange))
+      line((r +dr,0),(r +dr,-5), mark:(end:">"), stroke:(paint:orange))
+
+      circle((0,-5),radius:0.3,stroke:(thickness:0.08))
+      content((0,-5),text(size:30pt)[\~])
+      content((0,-5.9),text(fill:black)[$bold(T = (2 pi m)/(q B) = "const.")$])
+
+      line((-0.3,-5),(-1,-5))
+      line((-1,-5),(-1,-3.9))
+      line((0.3,-5),(1,-5))
+      line((1,-5),(1,-3.9))
+
+      content((4.3,-4),text(fill:orange)[$bold(v)$])
+
+      line((0,0),(3.8,0),mark:(start:">",end:">", fill:black))
+      content((2.1,-0.5),text(fill:black)[$bold(r = (m v)/(q B))$])
+    })
+  ]
+])
+*cyclotron* is a type of accelarator.
+
+The particle receive energy from electric field which created by A.C. power source 
+and accelarated .
+This system is simple because period of A.C. $T = "const."$
+
+There are also $r = "const."$ accelarator which is called *synchrotron*.
+
+#text(size:10pt)[( ナノテラスってすごいらしい．普通に歩いて回れる半径だったけどすごいのか)]
+
+
+
+
+
 
 
 
