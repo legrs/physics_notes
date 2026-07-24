@@ -212,7 +212,7 @@ Total amount of charge is conserved.
   In bacum, $k approx  num("9.0e9") unit("N  m^2/C^2")$
 
 
-== Electrostatic Indcuction
+== Electrostatic Induction
 
 - *Conductor* - Substances which can conduct electricity.\
   ex) metal, carbon
@@ -223,7 +223,7 @@ Total amount of charge is conserved.
 
 \
 
-- *indcuction*
+- *induction*
 
 #align(center,box(width:15cm, height:4cm, clip:true)[
   #place(horizon)[
@@ -1938,7 +1938,7 @@ When a capacitor is connetced with a battery, charge of capacitor is proportiona
 
 #pagebreak()
 
-= Semiconductor
+== Semiconductor
 
 - *Intrinsic Semiconductor*真性半導体 - Simple substance of *$"Si"$* or *$"Ge"$*. In low templature, they cannot conduct electron. In high templature, They can conduct electron.
 - *Extrinsic Semiconductor*不純物半導体 - Substance which have trace amount of *$"P"$* or *$"Al"$* in *$"Si"$* or *$"Ge"$*.
@@ -1956,7 +1956,7 @@ $=>$ They have hole of electrons ( positive hole ).
 #text(size:10pt)[( なんでこれ共有結合できるの？の？？オクテッドソクみたさないじょん)]
 
 
-== P-N Junction / Diode
+=== P-N Junction / Diode
 #align(center,box(width:15cm, height:6cm, clip:true)[
   #place(center + horizon)[
     #cetz.canvas({
@@ -2112,7 +2112,7 @@ $=>$ They have hole of electrons ( positive hole ).
 
 #pagebreak() // ここから別単元。2学期中間考査はここから。
 
-= Electric Current and Magnetic Field
+= _Electric Current and Magnetic Field_
 
 == Magnetic Field
 
@@ -2252,14 +2252,14 @@ Thus, $"[N/Wb]"$ = $"[A/m]"$
 $
   bold(H = I / (2 r))
 $
-#text(size:10pt)[( さすがにこの相互作用の説明はされないのか…)]
+#text(size:10pt)[( さすがにこの説明はされないのか…)]
 
 #align(center,box(width:15cm, height:5cm, clip:true)[
   #place(center + horizon)[
     #cetz.canvas({
       import cetz.draw: *
 
-      ortho(x:30deg, y:150deg,{
+      ortho(x:20deg, y:130deg,{
         let AXIS_LENGTH = 2.5
         //line((0, 0, 0), (AXIS_LENGTH, 0, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "x-axis")
         //line((0, 0, 0), (0, AXIS_LENGTH, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "y-axis")
@@ -2268,29 +2268,62 @@ $
         //content("y-axis.end", [$y$], anchor: "south")
         //content("z-axis.end", [$z$], anchor: "north-east")
 
-        drawc((0,0,0),2,(0,180deg,0),red,0.1)
-        let angl = 60deg
-        drawc((0,2,0),0.2,(angl,90deg,0),blue,0.04)
-        drawc((0,2,0),0.4,(angl,90deg,0),blue,0.04)
-        drawc((0,2,0),1.0,(angl,90deg,0),blue,0.04)
-        for i in range(3){
-          angl += 90deg
-          drawc((0,2,0),0.2,(angl,90deg,0),blue,0.04)
-          drawc((0,2,0),0.4,(angl,90deg,0),blue,0.04)
-          drawc((0,2,0),1.0,(angl,90deg,0),blue,0.04)
+        let v_x = 0.15
+        let r = 1.5
+        let dtheta = 0.1
+
+        for i in range(3) {
+          let theta = 0
+          line((r * calc.cos(theta), r * calc.sin(theta),v_x * (theta + 2*i*calc.pi)),(r * calc.cos(theta+dtheta), r * calc.sin(theta+dtheta), v_x * (theta+dtheta+2*i*calc.pi)),mark:(end:">",fill:red),stroke:(paint:red,thickness:0.1))
+          while (theta < 2*calc.pi) {
+            line((r * calc.cos(theta), r * calc.sin(theta),v_x * (theta + 2*i*calc.pi)),(r * calc.cos(theta+dtheta), r * calc.sin(theta+dtheta),v_x * (theta+dtheta+2*i*calc.pi)),stroke:(paint:red,thickness:0.1))
+            theta += dtheta
+          }
         }
 
-        line((0,0,-3),(0,0,3),mark:(end:">",fill:blue),stroke:(paint:blue,thickness:0.1))
-        content((0,2.5,0),text(fill:red)[$bold(I)$])
+        let ofs = 3*2*calc.pi*v_x
+        for i in range(1) {
+          let theta = 0
+          line((r * calc.cos(theta), r * calc.sin(theta),ofs + v_x * (theta + 2*i*calc.pi)),(r * calc.cos(theta+dtheta), r * calc.sin(theta+dtheta),ofs + v_x * (theta+dtheta+2*i*calc.pi)),mark:(end:">",fill:red),stroke:(paint:red,thickness:0.1))
+          while (theta < 2*calc.pi) {
+            line((r * calc.cos(theta), r * calc.sin(theta),ofs + v_x * (theta + 2*i*calc.pi)),(r * calc.cos(theta+dtheta), r * calc.sin(theta+dtheta),ofs + v_x * (theta+dtheta+2*i*calc.pi)),stroke:(paint:red,thickness:0.1, dash:"dotted"))
+            theta += dtheta
+          }
+        }
 
-        line((-2,0,0),(0,0,0),mark:(start:">",end:">",fill:black))
-        content((-1,0.3,0),$bold(r)$)
-        content((-0.2,0.2,1),text(fill:blue)[$bold(H)$])
+        let ofs = 4*2*calc.pi*v_x
+        for i in range(1) {
+          let theta = 0
+          line((r * calc.cos(theta), r * calc.sin(theta),ofs + v_x * (theta + 2*i*calc.pi)),(r * calc.cos(theta+dtheta), r * calc.sin(theta+dtheta),ofs + v_x * (theta+dtheta+2*i*calc.pi)),mark:(end:">",fill:red),stroke:(paint:red,thickness:0.1))
+          while (theta < 2*calc.pi) {
+            line((r * calc.cos(theta), r * calc.sin(theta),ofs + v_x * (theta + 2*i*calc.pi)),(r * calc.cos(theta+dtheta), r * calc.sin(theta+dtheta),ofs + v_x * (theta+dtheta+2*i*calc.pi)),stroke:(paint:red,thickness:0.1))
+            theta += dtheta
+          }
+          line((r * calc.cos(theta), r * calc.sin(theta),ofs + v_x * (theta + 2*i*calc.pi)),(r * calc.cos(theta+dtheta), r * calc.sin(theta+dtheta),ofs + v_x * (theta+dtheta+2*i*calc.pi)),mark:(end:">",fill:red),stroke:(paint:red,thickness:0.1))
+        }
 
+        content((-r,r,0),text(fill:red)[$bold(1)$])
+        content((-r,r,1*2*calc.pi*v_x),text(fill:red)[$bold(2)$])
+        content((-r,r,2*2*calc.pi*v_x),text(fill:red)[$bold(3)$])
+        content((-r,r,3*2*calc.pi*v_x -0.3),text(fill:red)[・])
+        content((-r,r,3*2*calc.pi*v_x+0.0),text(fill:red)[・])
+        content((-r,r,3*2*calc.pi*v_x+0.3),text(fill:red)[・])
+        content((-r,r,4*2*calc.pi*v_x),text(fill:red,weight:900)[$bold(n)$])
+
+
+        line((0,0,-1.5),(0,0,7),mark:(end:">",fill:blue),stroke:(paint:blue,thickness:0.1))
+
+        content((r + 0.5,0,5*2*calc.pi*v_x),text(fill:red)[$bold(I)$])
+
+        content((-0.2,0.2,-2),text(fill:blue)[$bold(H)$])
       })
     })
   ]
 ])
+This is called *solenoid*.
+$
+  bold(H = n I)
+$
 
 === Force generated by Electric and Magnetic field
 
@@ -2557,9 +2590,19 @@ There are also $r = "const."$ accelarator which is called *synchrotron*.
 #text(size:10pt)[( ナノテラスってすごいらしい．普通に歩いて回れる半径だったけどすごいのか)]
 
 
+//教員さん「場を用いないと説明できない現象がある」おっしゃってるっけど，真なのか…？場がcoulomb力から導出できるなら，その現象もcoulomb力だけで説明できないとおかしくない
+
+#pagebreak()
+= _Electromagnetic Induction and Electromagnetic Wave_
+
+== Electromagnetic Induction
 
 
 
+
+
+
+//
 
 
 

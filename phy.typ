@@ -45,3 +45,15 @@
   cetz.draw.line((r,-0.1,0),(r,0.1,0),mark:(end:">",fill:c),stroke:(paint:c,thickness:t))
   cetz.draw.line((-r,0.1,0),(-r,-0.1,0),mark:(end:">",fill:c),stroke:(paint:c,thickness:t))
 }
+#let spiral(n,r,lpn,ofs)={
+  let v_x = lpn/(2*calc.pi)
+  for i in range(1) {
+    let theta = 0
+    line((r * calc.cos(theta), r * calc.sin(theta),ofs + v_x * (theta + 2*i*calc.pi)),(r * calc.cos(theta+dtheta), r * calc.sin(theta+dtheta),ofs + v_x * (theta+dtheta+2*i*calc.pi)),mark:(end:">",fill:red),stroke:(paint:red,thickness:0.1))
+    while (theta < 2*calc.pi) {
+      line((r * calc.cos(theta), r * calc.sin(theta),ofs + v_x * (theta + 2*i*calc.pi)),(r * calc.cos(theta+dtheta), r * calc.sin(theta+dtheta),ofs + v_x * (theta+dtheta+2*i*calc.pi)),stroke:(paint:red,thickness:0.1))
+      theta += dtheta
+    }
+    line((r * calc.cos(theta), r * calc.sin(theta),ofs + v_x * (theta + 2*i*calc.pi)),(r * calc.cos(theta+dtheta), r * calc.sin(theta+dtheta),ofs + v_x * (theta+dtheta+2*i*calc.pi)),mark:(end:">",fill:red),stroke:(paint:red,thickness:0.1))
+  }
+}
