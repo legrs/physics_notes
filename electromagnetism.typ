@@ -2589,7 +2589,7 @@ There are also $r = "const."$ accelarator which is called *synchrotron*.
 #text(size:10pt)[( ナノテラスってすごいらしい．普通に歩いて回れる半径だったけどすごいのか)]
 
 
-//教員さん「場を用いないと説明できない現象がある」おっしゃってるっけど，真なのか…？場がcoulomb力から導出できるなら，その現象もcoulomb力だけで説明できないとおかしくない
+//教員さん「場を用いないと説明できない現象がある」おっしゃってるっけど，真なのか…？場がcoulomb力から導出できるなら，その現象もcoulomb力だけで説明できないとおかしくない -> id b79031a3-4ad8-4404-afa3-4b8c4bc69e65
 
 #pagebreak()
 = _Electromagnetic Induction and Electromagnetic Wave_
