@@ -17,7 +17,7 @@
 #import "@preview/physica:0.9.5": *
 #import "@preview/unify:0.7.1": *
 #import "@preview/cetz:0.4.2"
-#import "phy.typ": drawc_t, drawc
+#import "phy.typ": *
 
 #set page(
   paper: "a4",
@@ -2252,7 +2252,6 @@ Thus, $"[N/Wb]"$ = $"[A/m]"$
 $
   bold(H = I / (2 r))
 $
-#text(size:10pt)[( さすがにこの説明はされないのか…)]
 
 #align(center,box(width:15cm, height:5cm, clip:true)[
   #place(center + horizon)[
@@ -2597,12 +2596,34 @@ There are also $r = "const."$ accelarator which is called *synchrotron*.
 
 == Electromagnetic Induction
 
+#align(center,box(width:15cm, height:5cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      ortho(x:20deg, y:130deg,{
+        let AXIS_LENGTH = 2.5
+        //line((0, 0, 0), (AXIS_LENGTH, 0, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "x-axis")
+        //line((0, 0, 0), (0, AXIS_LENGTH, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "y-axis")
+        //line((0, 0, 0), (0, 0, AXIS_LENGTH), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "z-axis")
+        //content("x-axis.end", [$x$], anchor: "west")
+        //content("y-axis.end", [$y$], anchor: "south")
+        //content("z-axis.end", [$z$], anchor: "north-east")
+
+        let v_x = 0.15
+        let r = 1.5
+        let dtheta = 0.1
+
+        spiral((0,0,0),11,2,1,black,0.1,false)
+
+      })
+    })
+  ]
+])
 
 
 
 
-
-//
 
 
 
