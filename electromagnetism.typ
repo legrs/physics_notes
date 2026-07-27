@@ -2601,25 +2601,45 @@ There are also $r = "const."$ accelarator which is called *synchrotron*.
     #cetz.canvas({
       import cetz.draw: *
 
-      ortho(x:20deg, y:130deg,{
-        let AXIS_LENGTH = 2.5
-        //line((0, 0, 0), (AXIS_LENGTH, 0, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "x-axis")
-        //line((0, 0, 0), (0, AXIS_LENGTH, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "y-axis")
-        //line((0, 0, 0), (0, 0, AXIS_LENGTH), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "z-axis")
-        //content("x-axis.end", [$x$], anchor: "west")
-        //content("y-axis.end", [$y$], anchor: "south")
-        //content("z-axis.end", [$z$], anchor: "north-east")
+      ortho(x:15deg, y:100deg,{
+        //axis(2.5)
 
         let v_x = 0.15
         let r = 1.5
         let dtheta = 0.1
 
-        spiral((0,0,0),11,2,1,black,0.1,false)
+        spiral((0,0,0),(0,0,0.5),(-calc.pi/2,0,0),5,1,black,0.05,false)
+
+        line((0,2,0),(0,0,0),mark:(end:">",fill:blue),stroke:(paint:blue,thickness:0.1))
 
       })
+      translate((5,0))
+      line((-3.5,1.2),(-1.5,1.2),mark:(end:">",fill:black),stroke:(paint:black,thickness:0.1))
+      content(((-3.5 - 1.5) / 2,0.7),[$bold(Delta t)$])
+      content(((-3.5 - 1.5) / 2,0.2),text(fill:blue)[$bold(Delta Phi)$])
+      ortho(x:15deg, y:100deg,{
+        //axis(2.5)
+
+        let v_x = 0.15
+        let r = 1.5
+        let dtheta = 0.1
+
+        spiral((0,0,0),(0,0,0.5),(-calc.pi/2,0,0),5,1,red,0.1,true)
+
+        line((0,3,0),(0,-1,0),mark:(end:">",fill:blue),stroke:(paint:blue,thickness:0.1))
+
+      })
+      content((1,-0.4),text(fill:red)[$bold(I)$])
     })
   ]
 ])
+$
+  I  = (Delta Phi)/(Delta t)
+$
+($Phi = S dot B$)
+
+
+
 
 
 
