@@ -2628,15 +2628,101 @@ There are also $r = "const."$ accelarator which is called *synchrotron*.
 
         line((0,3,0),(0,-1,0),mark:(end:">",fill:blue),stroke:(paint:blue,thickness:0.1))
 
+        line((1,0,0),(1,0,-2))
+        line((1,2.5,0),(1,2.5,-2))
+        line((1,0,-1.8),(1,2.5,-1.8),mark:(start:">" ,end:">",fill:black))
+        content((1,2.5/2 ,-2.2),$bold(V)$)
       })
-      content((1,-0.4),text(fill:red)[$bold(I)$])
+      content((-1,-0.4),text(fill:red)[$bold(I)$])
     })
   ]
 ])
+#h(1em)
+*Faraday's law of induction*
 $
-  I  = (Delta Phi)/(Delta t)
+  bold(V  = N dot (Delta Phi)/(Delta t))
 $
 ($Phi = S dot B$)
+
+#align(center,box(width:17cm, height:7cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      circle((-3,3),radius:0.2,fill:white,stroke:(paint:blue,thickness:0.05))
+      circle((-3,3),radius:0.1,fill:blue,stroke:(paint:blue,thickness:0))
+      content((-2.5,2.3),text(fill:blue)[$bold(B)"(uniform)"$])
+
+      rect((-0.5,3),(0.5,-3))
+      line((0,0),(0,-2),mark:(end:">",fill:black),stroke:(paint:black,thickness:0.1))
+      line((-0.5,0),(-2,0),mark:(end:">",fill:red),stroke:(paint:red,thickness:0.1))
+      content((-1.5,-0.5),text(fill:red)[$bold(v)$])
+      content((0.25,-1),text(fill:black)[$bold(f)$])
+      circle((0,0),radius:0.2,fill:white)
+      content((0,0.05),$-$)
+
+      circle((0,-3.5),radius:0.3,fill:white)
+      content((0,-3.5),[1])
+
+
+        translate((5,0))
+      line((-2.5,0),(-2,0),mark:(end:">",fill:black),stroke:(paint:black,thickness:0.2))
+
+      rect((-0.5,3),(0.5,-3))
+      line((0,-1),(0,-1.8 -1),mark:(end:">",fill:black),stroke:(paint:black,thickness:0.1))
+      line((0,-1),(0,1 -1),mark:(end:">",fill:black),stroke:(paint:black,thickness:0.1))
+      line((-0.5,-1),(-1.8,-1),mark:(end:">",fill:red),stroke:(paint:red,thickness:0.1))
+      content((-1.5,-0.5 -1),text(fill:red)[$bold(v)$])
+      content((0.25,-1 -1),text(fill:black)[$bold(f)$])
+      circle((0,-1),radius:0.2,fill:white)
+      content((0,-1 + 0.05),$-$)
+      content((0,-2.8),$bold(-)$)
+      content((0,2.8),$bold(+)$)
+
+      circle((0,-3.5),radius:0.3,fill:white)
+      content((0,-3.5),[2])
+
+        translate((5,0))
+      line((-2.5,0),(-2,0),mark:(end:">",fill:black),stroke:(paint:black,thickness:0.2))
+
+      rect((-0.5,3),(0.5,-3))
+      line((0,-1),(0,-1.5 -1.3),mark:(end:">",fill:black),stroke:(paint:black,thickness:0.1))
+      line((0,-1),(0,1.5 -1.3),mark:(end:">",fill:black),stroke:(paint:black,thickness:0.1))
+      line((-0.5,-1.3),(-1.5,-1.3),mark:(end:">",fill:red),stroke:(paint:red,thickness:0.1))
+      content((-1.5,-0.5 -1.3),text(fill:red)[$bold(v)$])
+      content((0.25,-1 -1),text(fill:black)[$bold(f)$])
+      circle((0,-1.3),radius:0.2,fill:white)
+      content((0,-1.3 + 0.05),$-$)
+      content((0,-2.8),$bold(-)$)
+      content((0,2.8),$bold(+)$)
+      line((0.5,3),(1,3))
+      line((0.8,3),(0.8,-3),mark:(start:">" ,end:">",fill:black))
+      content((1.2,0),$bold(V)$)
+      line((0.5,-3),(1,-3))
+
+      circle((0,-3.5),radius:0.3,fill:white)
+      content((0,-3.5),[3])
+    })
+  ]
+])
+When wire move($bold(v)$) in uniform magnetic field $bold(B)$, 
+electrons in wire receive Lorentz force $bold(f= e v B)$.
+This vertical force changes the direction of $bold(v)$.
+Then, and Voltage($bold(V)$) generated. (3)
+
+(In this state, coulomb force $=$ lorentz force, thus, $e V / l = e v B$)
+$
+  bold(V = v B l)
+$
+
+
+
+
+
+
+
+
+
 
 
 
