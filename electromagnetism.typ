@@ -1435,57 +1435,6 @@ work which done by field $ W = e dot V/l dot v t  dot n S l = e n v S dot V dot 
     #cetz.canvas({
       import cetz.draw: *
 
-      let resistor(l,p,q)={
-        let (x1,y1) = p
-        let (x2,y2) = q
-        let d1 = x2 -x1
-        let d2 = y2 -y1
-        let d_a = calc.sqrt(d1*d1 + d2*d2)
-        let d_e1 = d1/d_a
-        let d_e2 = d2/d_a
-
-        let d_a7 = d_a/7
-
-        let rot(a,b)={
-          let (a1,a2) = a
-          let (b1,b2) = b
-          let x_ = b1*d_e1 - b2*d_e2
-          let y_ = b1*d_e2 + b2*d_e1
-          let a_2 = (a1+x_,a2+y_)
-          return a_2
-        }
-
-
-        let pre = (x1,y1)
-        let dif = (d_a7,-l)
-        let a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,-2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,-2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,-l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-      }
 
       line((0,4),(0,3))
       resistor(0.5,(0,3),(0,1))
@@ -1529,57 +1478,6 @@ work which done by field $ W = e dot V/l dot v t  dot n S l = e n v S dot V dot 
     #cetz.canvas({
       import cetz.draw: *
 
-      let resistor(l,p,q)={
-        let (x1,y1) = p
-        let (x2,y2) = q
-        let d1 = x2 -x1
-        let d2 = y2 -y1
-        let d_a = calc.sqrt(d1*d1 + d2*d2)
-        let d_e1 = d1/d_a
-        let d_e2 = d2/d_a
-
-        let d_a7 = d_a/7
-
-        let rot(a,b)={
-          let (a1,a2) = a
-          let (b1,b2) = b
-          let x_ = b1*d_e1 - b2*d_e2
-          let y_ = b1*d_e2 + b2*d_e1
-          let a_2 = (a1+x_,a2+y_)
-          return a_2
-        }
-
-
-        let pre = (x1,y1)
-        let dif = (d_a7,-l)
-        let a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,-2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,-2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,-l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-      }
 
       line((-0.1,-0.5),(-0.1,-1.5))
       line((0.1,-0.7),(0.1,-1.3))
@@ -1623,57 +1521,6 @@ work which done by field $ W = e dot V/l dot v t  dot n S l = e n v S dot V dot 
     #cetz.canvas({
       import cetz.draw: *
 
-      let resistor(l,p,q)={
-        let (x1,y1) = p
-        let (x2,y2) = q
-        let d1 = x2 -x1
-        let d2 = y2 -y1
-        let d_a = calc.sqrt(d1*d1 + d2*d2)
-        let d_e1 = d1/d_a
-        let d_e2 = d2/d_a
-
-        let d_a7 = d_a/7
-
-        let rot(a,b)={
-          let (a1,a2) = a
-          let (b1,b2) = b
-          let x_ = b1*d_e1 - b2*d_e2
-          let y_ = b1*d_e2 + b2*d_e1
-          let a_2 = (a1+x_,a2+y_)
-          return a_2
-        }
-
-
-        let pre = (x1,y1)
-        let dif = (d_a7,-l)
-        let a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,-2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,-2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,-l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-      }
 
       line((-0.1,-0.5),(-0.1,-1.5))
       line((0.1,-0.7),(0.1,-1.3))
@@ -1728,57 +1575,6 @@ work which done by field $ W = e dot V/l dot v t  dot n S l = e n v S dot V dot 
     #cetz.canvas({
       import cetz.draw: *
 
-      let resistor(l,p,q)={
-        let (x1,y1) = p
-        let (x2,y2) = q
-        let d1 = x2 -x1
-        let d2 = y2 -y1
-        let d_a = calc.sqrt(d1*d1 + d2*d2)
-        let d_e1 = d1/d_a
-        let d_e2 = d2/d_a
-
-        let d_a7 = d_a/7
-
-        let rot(a,b)={
-          let (a1,a2) = a
-          let (b1,b2) = b
-          let x_ = b1*d_e1 - b2*d_e2
-          let y_ = b1*d_e2 + b2*d_e1
-          let a_2 = (a1+x_,a2+y_)
-          return a_2
-        }
-
-
-        let pre = (x1,y1)
-        let dif = (d_a7,-l)
-        let a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,-2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,-2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,-l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-      }
 
 
 
@@ -1831,57 +1627,6 @@ Observing multiple $(V,I)$ points, we can determine $E$ and $I$.
     #cetz.canvas({
       import cetz.draw: *
 
-      let resistor(l,p,q)={
-        let (x1,y1) = p
-        let (x2,y2) = q
-        let d1 = x2 -x1
-        let d2 = y2 -y1
-        let d_a = calc.sqrt(d1*d1 + d2*d2)
-        let d_e1 = d1/d_a
-        let d_e2 = d2/d_a
-
-        let d_a7 = d_a/7
-
-        let rot(a,b)={
-          let (a1,a2) = a
-          let (b1,b2) = b
-          let x_ = b1*d_e1 - b2*d_e2
-          let y_ = b1*d_e2 + b2*d_e1
-          let a_2 = (a1+x_,a2+y_)
-          return a_2
-        }
-
-
-        let pre = (x1,y1)
-        let dif = (d_a7,-l)
-        let a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,-2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,-2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,2*l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-          dif = (d_a7,-l)
-        a = rot(pre,dif)
-        line(pre,a)
-        pre = a
-      }
 
 
       line((-0.1,-0.5),(-0.1,-1.5))
@@ -2710,22 +2455,103 @@ electrons in wire receive Lorentz force $bold(f= e v B)$.
 This vertical force changes the direction of $bold(v)$.
 Then, and Voltage($bold(V)$) generated. (3)
 
-(In this state, coulomb force $=$ lorentz force, thus, $e V / l = e v B$)
+(In this steady state, coulomb force $=$ lorentz force, thus, $e V / l = e v B$)
 $
   bold(V = v B l)
 $
+(We can obtain this from Faraday's law of induction)
 
 
+#align(center,box(width:15cm, height:5cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      ortho(x:30deg, y:120deg,{
+        //axis(2.5)
+
+        line((2,0,0),(1.1,0,0))
+        line((1.1,0,0.2),(1.1,0,-0.2))
+        line((0.8,0,0.5),(0.8,0,-0.5))
+        line((0.8,0,0),(0,0,0))
+        resistor(0.3,(0,1.5),(0,0),r:(calc.pi/2,-calc.pi/2,0))
+        line((-1.5,0,0),(-2,0,0))
+
+        line((-2,0,0),(-2,0,-5))
+        line((2,0,0),(2,0,-5))
+
+        line((2.5,0,-3),(-2.5,0,-3),stroke:(paint:gray,thickness:0.1))
+        line((0,0,-3),(0,0,-5),mark:(end:">",fill:black),stroke:(paint:black,thickness:0.05))
+        line((0,0,-3),(0,0,-1),mark:(end:">",fill:black),stroke:(paint:black,thickness:0.05))
+        line((0,0,-3),(0,2,-3),mark:(end:">",fill:blue),stroke:(paint:blue,thickness:0.05))
+        line((2.5,0,-2.8),(2.5,0,-1),mark:(end:">",fill:red),stroke:(paint:red,thickness:0.05))
+        line((-2.5,0,-3),(-2.5,0,-2),mark:(end:">",fill:black),stroke:(paint:black,thickness:0.05))
+
+        content((-3.8,0,-3),$bold(v = "const.")$)
 
 
+        content((-1,0,1),$bold(R)$)
+        content((-0.7,0,-3.5),$bold(F)$)
+        content((-0.7,0,-1.8),$bold(I B l)$)
+        content((-0.7,2,-3.0),text(fill:blue)[$bold(B)$])
+        content((3.2,0,-2),text(fill:red)[$bold(I)$])
 
+        //line((0,0,-3),(0,0,-3),mark:(end:">",fill:blue),stroke:(paint:blue,thickness:0.05))
 
+      })
 
+    })
+  ]
+])
+$I V_0 t = v t I B l + I^2 R t$
 
+#text(size:10pt)[(わざわざ描くものでもなかったが練習になったのでよし)]
 
+== Self-induction of coil
 
+#align(center,box(width:15cm, height:5cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
 
+      ortho(x:15deg, y:100deg,{
+        //axis(2.5)
 
+        let v_x = 0.15
+        let r = 1.5
+        let dtheta = 0.1
+
+        spiral((0,0,0),(0,0,0.5),(-calc.pi/2,0,0),5,1,red,0.1,true)
+
+        line((0,2,0),(0,0,0),mark:(end:">",fill:blue),stroke:(paint:blue,thickness:0.1))
+
+      })
+      content((-1,-0.4),text(fill:red)[$bold(I)$])
+
+      translate((5,0))
+      line((-3.5,1.2),(-1.5,1.2),mark:(end:">",fill:black),stroke:(paint:black,thickness:0.1))
+      content(((-3.5 - 1.5) / 2,0.7),[$bold(Delta t)$])
+      content(((-3.5 - 1.5) / 2,0.2),text(fill:red)[$bold(Delta I)$])
+      ortho(x:15deg, y:100deg,{
+        //axis(2.5)
+
+        let v_x = 0.15
+        let r = 1.5
+        let dtheta = 0.1
+
+        spiral((0,0,0),(0,0,0.5),(-calc.pi/2,0,0),5,1,red,0.1,true)
+
+        line((0,3,0),(0,-1,0),mark:(end:">",fill:blue),stroke:(paint:blue,thickness:0.1))
+
+        line((1,0,0),(1,0,-2))
+        line((1,2.5,0),(1,2.5,-2))
+        line((1,0,-1.8),(1,2.5,-1.8),mark:(start:">" ,end:">",fill:black))
+        content((1,2.5/2 ,-2.2),$bold(V)$)
+      })
+      content((-1,-1.4),text(fill:red)[$bold(I + Delta I)$])
+    })
+  ]
+])
 
 
 
@@ -2737,12 +2563,10 @@ $
 //物理においては、同じ式は同じような扱い方ができる。 // id ce63c80b-db29-4d48-a21a-d900ac79b7ed
 
 
-// typstのcetzで，3次元で，circleを描くときに，面を傾けるのはどうすればいいのでしょう
-
 // 陽イオンの振動→高い温度→熱が高いところ(導線)から低いところ(空気)へ伝わる→うわあっつ!! -> id 7b191f20-ba90-454f-9cb7-78cf2c32d381
 
 // IDE「電位差があることと電場が生まれることの間にはどのような関係があるか？」 -> id 45e72069-e833-4182-b569-9a4d41c3eb48
-// how is this:電位は単位電荷の持つpotential energyなので，電位が位置によって違うということは，そこには力の場が存在する必要があるから
+// how about this:電位は単位電荷の持つpotential energyなので，電位が位置によって違うということは，そこには力の場が存在する必要があるから
 
 
 // spacing in equation  :  thin med thick quad wide

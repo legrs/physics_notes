@@ -24,6 +24,66 @@
 //  draw.line(p1, p1 + p2, ..style)
 //}
 
+#let resistor(l,p,q,r:(0,0,0))={
+  import cetz.draw: *
+
+
+  let (x1,y1) = p
+  let (x2,y2) = q
+  let (r1,r2,r3) = r
+  let d1 = x2 -x1
+  let d2 = y2 -y1
+  let d_a = calc.sqrt(d1*d1 + d2*d2)
+  let d_e1 = d1/d_a
+  let d_e2 = d2/d_a
+
+  let d_a7 = d_a/7
+
+  let rot(a,b)={
+    let (a1,a2) = a
+    let (b1,b2) = b
+    let x_ = b1*d_e1 - b2*d_e2
+    let y_ = b1*d_e2 + b2*d_e1
+    let a_2 = (a1+x_,a2+y_)
+    return a_2
+  }
+
+
+    let pre = (x1,y1)
+    let dif = (d_a7,-l)
+    let a = rot(pre,dif)
+  group({
+    rotate(x:r1,y:r2,z:r3)
+
+    line(pre,a)
+    pre = a
+      dif = (d_a7,2*l)
+    a = rot(pre,dif)
+    line(pre,a)
+    pre = a
+      dif = (d_a7,-2*l)
+    a = rot(pre,dif)
+    line(pre,a)
+    pre = a
+      dif = (d_a7,2*l)
+    a = rot(pre,dif)
+    line(pre,a)
+    pre = a
+      dif = (d_a7,-2*l)
+    a = rot(pre,dif)
+    line(pre,a)
+    pre = a
+      dif = (d_a7,2*l)
+    a = rot(pre,dif)
+    line(pre,a)
+    pre = a
+      dif = (d_a7,-l)
+    a = rot(pre,dif)
+    line(pre,a)
+    pre = a
+  })
+}
+
 #let drawc(p,r,q,c,t)={
       import cetz.draw: *
   group({
