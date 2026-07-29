@@ -65,6 +65,7 @@
       --math-block-bg: #f8fafc;
       --ok: #16a34a;
       --error: #dc2626;
+      --diff: #b45309;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -89,6 +90,7 @@
         --math-block-bg: #0d0d0d;
         --ok: #4ade80;
         --error: #f87171;
+        --diff: #fbbf24;
       }
 
       body {
@@ -364,6 +366,23 @@
     .qa-item.selected {
       border-color: var(--accent);
       background: var(--accent-soft);
+    }
+
+    /* リモートと差分がある項目（search_text を含む）の色付け */
+    .qa-item.changed .qa-item-id {
+      color: var(--diff);
+      font-weight: 700;
+    }
+
+    .qa-item-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--diff);
+      margin-right: 5px;
+      vertical-align: middle;
+      flex-shrink: 0;
     }
 
     .qa-item-main {
@@ -849,6 +868,11 @@
       .right-panel {
         width: 100%;
         border: none;
+        /* #layout が縦積み（flex-direction:column）になるため、主軸(高さ)方向に
+           明示的に flex:1 を与えないと内容量に応じた高さになってしまい、
+           内部の overflow-y:auto（一覧・タブ内容）がスクロールできなくなる。 */
+        flex: 1;
+        min-height: 0;
       }
 
       body:not([data-mobile-view="list"]) .sidebar {
@@ -1081,6 +1105,15 @@
       return DIFF_FIELDS.every(f => jsonEq(item[f], remote[f]));
     }
 
+    // search_text を含む全フィールドでリモートと差分があるか（サイドバーの色付け用）。
+    // リモート未取得（remoteData が空）の状態では判定材料がないため差分なし扱いにする。
+    function itemDiffersFromRemoteAny(item) {
+      if (remoteData.size === 0) return false;
+      const remote = remoteData.get(item.id);
+      if (!remote) return true;
+      return FIELD_ORDER.some(f => !jsonEq(item[f], remote[f]));
+    }
+
     function markDirty() {
       dirty = true;
       clearTimeout(saveTimer);
@@ -1169,11 +1202,13 @@
           item.search_text = remote.search_text;
           updated++;
         });
+        // search_text 更新の有無にかかわらず、取得したリモートの内容で
+        // 差分判定用スナップショットを更新する（サイドバーの差分件数・色分けに反映）。
         remoteData = freshRemote;
-        if (updated > 0) persistState();
+        persistState();
         renderSidebar();
         renderCode();
-        setStatus(`search_text を ${updated} 件更新しました`, 'ok');
+        setStatus(`search_text を ${updated} 件更新しました（リモートとの差分情報も更新しました）`, 'ok');
       } catch (e) {
         console.error(e);
         setStatus('search_text の取得に失敗しました: ' + e.message, 'error');
@@ -1239,8 +1274,11 @@
       }
 
       filtered.forEach(item => {
+        const differs = itemDiffersFromRemoteAny(item);
         const el = document.createElement('div');
-        el.className = 'qa-item' + (item.id === selectedId ? ' selected' : '');
+        el.className = 'qa-item'
+          + (item.id === selectedId ? ' selected' : '')
+          + (differs ? ' changed' : '');
         el.tabIndex = 0;
         el.setAttribute('role', 'button');
 
@@ -1248,7 +1286,13 @@
         main.className = 'qa-item-main';
         const idEl = document.createElement('div');
         idEl.className = 'qa-item-id';
-        idEl.textContent = item.id || '(ID未設定)';
+        if (differs) {
+          const dot = document.createElement('span');
+          dot.className = 'qa-item-dot';
+          dot.title = 'リモートと差分があります（search_textを含む）';
+          idEl.appendChild(dot);
+        }
+        idEl.appendChild(document.createTextNode(item.id || '(ID未設定)'));
         const qEl = document.createElement('div');
         qEl.className = 'qa-item-q';
         qEl.textContent = (item.questions && item.questions[0]) || '(質問未設定)';
