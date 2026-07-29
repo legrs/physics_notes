@@ -102,6 +102,90 @@ function importFromURL() {
 }
 
 /* ================================================================
+   search_text のみをリモートと同期
+
+   search_text は node scripts/build.js が自動生成するフィールドのため、
+   シート側で手入力・編集する必要はない。ビルド後のリモート
+   （q_and_a_data.json）から search_text だけを取得してシートへ反映する
+   （qa_editor.html の「search_text同期」ボタンと同じ考え方）。
+
+   - 行位置ではなく id（正規化済み・UUID想定）で対応付けるため、
+     シートとリモートで質問の並び順が違っていても問題ない。
+   - シートとリモートの「両方」に id が存在する行のみを更新対象とする。
+     シートのみに存在する行（ローカルで追加済みだが未反映の新規項目）や、
+     リモートのみに存在する id は対象外（変更しない）。
+   - search_text 以外の列には一切触れない。
+================================================================ */
+function syncSearchTextFromRemote() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    ui.alert(`"${SHEET_NAME}" シートが見つかりません。`);
+    return;
+  }
+
+  const idCol = COLUMNS.indexOf('id') + 1;
+  const stCol = COLUMNS.indexOf('search_text') + 1;
+  const lastRow = sheet.getLastRow();
+  if (idCol <= 0 || stCol <= 0 || lastRow < 2) {
+    ui.alert('対象となる行がありません。');
+    return;
+  }
+
+  // ── リモート取得。id（正規化済み） → search_text の対応表を作る ──
+  let remoteData;
+  try {
+    const res = UrlFetchApp.fetch(JSON_URL);
+    remoteData = JSON.parse(res.getContentText());
+  } catch (e) {
+    ui.alert('リモートの取得に失敗しました。\n\n' + e.message);
+    return;
+  }
+  if (!Array.isArray(remoteData)) {
+    ui.alert('リモートのデータ形式が不正です（配列ではありません）。');
+    return;
+  }
+  const remoteSearchTextById = {};
+  remoteData.forEach(item => {
+    const norm = _normalizeId(item.id);
+    if (norm !== '') {
+      remoteSearchTextById[norm] = item.search_text != null ? String(item.search_text) : '';
+    }
+  });
+
+  // ── シートの id 列・search_text 列を id で照合しながら更新対象を集める ──
+  const n = lastRow - 1;
+  const idValues = sheet.getRange(2, idCol, n, 1).getValues();
+  const stValues = sheet.getRange(2, stCol, n, 1).getValues();
+
+  let matched = 0, updated = 0;
+  for (let i = 0; i < n; i++) {
+    const norm = _normalizeId(idValues[i][0]);
+    if (norm === '' || !Object.prototype.hasOwnProperty.call(remoteSearchTextById, norm)) {
+      continue; // シートのみ／リモートのみに存在する行は対象外
+    }
+    matched++;
+    const remoteText = remoteSearchTextById[norm];
+    const currentText = String(stValues[i][0] ?? '');
+    if (currentText !== remoteText) {
+      stValues[i][0] = remoteText;
+      updated++;
+    }
+  }
+
+  if (updated > 0) {
+    sheet.getRange(2, stCol, n, 1).setValues(stValues);
+  }
+
+  ui.alert(
+    `✅ search_text を ${updated} 件更新しました` +
+    `（シートとリモート両方に存在する ${matched} 件中）。\n\n` +
+    'search_text 以外の列は変更していません。'
+  );
+}
+
+/* ================================================================
    インポート（"json_input" シートの A 列から取得）
 
    エクスポート（exportToSheet）は JSON を改行ごとに 1 行 1 セルへ
@@ -489,6 +573,8 @@ function onOpen() {
     .createMenu('📋 Physics Notes')
     .addItem('🔽 インポート（URL から）',         'importFromURL')
     .addItem('🔽 インポート（貼り付けから）',      'importFromPaste')
+    .addSeparator()
+    .addItem('🔤 search_text のみリモートと同期', 'syncSearchTextFromRemote')
     .addSeparator()
     .addItem('🔼 エクスポート → シートに書き出し', 'exportToSheet')
     .addItem('🔼 エクスポート → Drive に保存',     'exportToDrive')
