@@ -1245,16 +1245,38 @@
 
     // ── データ取得（GitHub Pages ではなく raw リンクから） ──────
     async function fetchData() {
-      if (dirty) {
-        const ok = confirm('未反映の編集内容があります。取得すると上書きされます。続行しますか？');
-        if (!ok) return;
-      }
       setStatus('取得中…', 'loading');
       document.getElementById('fetch-btn').disabled = true;
       try {
         const json = await fetchRemoteArray();
+        const freshRemote = new Map(json.map(normalizeItem).map(item => [item.id, item]));
+
+        // dirty フラグ（「前回の取得以降に何か編集した」という粗いフラグ）ではなく、
+        // 今取得した最新のリモートの内容とローカルを実際に比較する。search_text同期
+        // 等で既に内容が一致しているのに古い dirty フラグのせいで警告が出る、という
+        // ズレを防ぐため（全フィールド・search_text を含めて比較する。取得は
+        // search_text も含めて丸ごと置き換えるため）。
+        const same = allData.length === freshRemote.size && allData.every(item => {
+          const remote = freshRemote.get(item.id);
+          return remote && FIELD_ORDER.every(f => jsonEq(item[f], remote[f]));
+        });
+
+        if (!same) {
+          const ok = confirm('取得したリモートの内容が現在の編集内容と異なります。取得すると上書きされます。続行しますか？');
+          if (!ok) {
+            // 上書きはしないが、比較のために取得したリモートの内容で
+            // 差分件数・色分けは最新化しておく。
+            remoteData = freshRemote;
+            persistState();
+            renderSidebar();
+            renderCode();
+            setStatus('取得をキャンセルしました（リモートとの差分情報は更新しました）', '');
+            return;
+          }
+        }
+
         allData = json.map(normalizeItem);
-        remoteData = new Map(json.map(normalizeItem).map(item => [item.id, item]));
+        remoteData = freshRemote;
         newIds.clear();
         dirty = false;
         selectedId = allData.length ? allData[0].id : null;
