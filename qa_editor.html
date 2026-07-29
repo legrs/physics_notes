@@ -743,6 +743,75 @@
       margin: 1.5em 0;
     }
 
+    .prose h4,
+    .prose h5,
+    .prose h6 {
+      font-weight: 700;
+      margin: 1.2em 0 0.5em;
+      color: var(--text-primary);
+    }
+
+    .prose h4 {
+      font-size: 1.05em;
+    }
+
+    .prose h5,
+    .prose h6 {
+      font-size: 1em;
+      color: var(--text-secondary);
+    }
+
+    .prose del {
+      color: var(--text-muted);
+    }
+
+    .prose img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      display: block;
+      margin: 1em auto;
+    }
+
+    .prose table {
+      display: block;
+      overflow-x: auto;
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1em 0;
+      font-size: 0.92em;
+    }
+
+    .prose th,
+    .prose td {
+      border: 1px solid var(--border-mid);
+      padding: 6px 12px;
+      text-align: left;
+    }
+
+    .prose th {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      font-weight: 700;
+    }
+
+    .prose tbody tr:nth-child(even) {
+      background: var(--bg-surface);
+    }
+
+    /* タスクリスト（- [ ] / - [x]）: 通常の箇条書きマーカーを消し、
+       チェックボックスに揃える */
+    .prose li:has(> input[type="checkbox"]) {
+      list-style: none;
+      margin-left: -1.4em;
+    }
+
+    .prose input[type="checkbox"] {
+      margin-right: 0.5em;
+      vertical-align: middle;
+      accent-color: var(--accent);
+    }
+
     .math-inline {
       background: var(--math-bg);
       border: 1px solid var(--math-border);
@@ -1015,6 +1084,24 @@
       text = text.replace(
         /(\*\*[^*\n]*?[!-\/:-@\[-`{-~\uFF01-\uFF60\u3000-\u303F])\*\*(?=[\u3040-\u30FF\u4E00-\u9FFF])/g,
         '$1** '
+      );
+      // 同じ問題は __太字__ / *斜体* / _斜体_ でも起こる（** に限った話ではなく、
+      // 閉じ側の強調記号の直前が記号で直後が日本語の場合に発生する）。
+      // 長い記号列から先に処理する（** の後に * を処理しないと、** の外側
+      // 1文字だけを * として誤認識するおそれがあるため）。「記号」の判定からは
+      // 対象の記号自身（* または _）を除外し、**a**b**c** のように強調が
+      // 連続する場合に内側の記号を誤って「直前の記号」と認識しないようにする。
+      text = text.replace(
+        /(__[^_\n]*?[!-/:-@[-\^`{-~\u3000-\u303F\uFF01-\uFF60])__(?=[\u3040-\u30FF\u4E00-\u9FFF])/g,
+        '$1__ '
+      );
+      text = text.replace(
+        /(\*[^*\n]*?[!-)+-/:-@[-`{-~\u3000-\u303F\uFF01-\uFF60])\*(?=[\u3040-\u30FF\u4E00-\u9FFF])/g,
+        '$1* '
+      );
+      text = text.replace(
+        /(_[^_\n]*?[!-/:-@[-\^`{-~\u3000-\u303F\uFF01-\uFF60])_(?=[\u3040-\u30FF\u4E00-\u9FFF])/g,
+        '$1_ '
       );
       text = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, expr) => {
         try {
