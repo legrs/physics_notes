@@ -296,6 +296,32 @@
       min-width: 0;
     }
 
+    .sidebar-diffbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 0 12px 10px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-diffbar .field-hint {
+      margin: 0;
+      min-width: 0;
+    }
+
+    .btn-toggle {
+      flex-shrink: 0;
+      font-size: 11.5px;
+      padding: 5px 10px;
+    }
+
+    .btn-toggle.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--accent-fg);
+    }
+
     .sidebar-count {
       padding: 0 14px 8px;
       font-size: 11.5px;
@@ -726,18 +752,46 @@
     /* ── コードタブ ──────────────────────────────────────────── */
     .code-toolbar {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
+      flex-direction: column;
+      gap: 8px;
       padding: 10px 14px;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
 
+    .code-mode-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .code-mode-toggle {
+      display: flex;
+      gap: 3px;
+      background: var(--bg-elevated);
+      border-radius: 8px;
+      padding: 3px;
+    }
+
+    .code-mode-btn {
+      border: none;
+      background: none;
+      cursor: pointer;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .code-mode-btn.active {
+      background: var(--bg-card);
+      color: var(--accent);
+    }
+
     .code-toolbar .field-hint {
       margin: 0;
-      flex: 1;
-      min-width: 0;
     }
 
     .code-block {
@@ -822,6 +876,8 @@
       </div>
       <div class="topbar-right">
         <span id="status-text" class="status"></span>
+        <button id="sync-searchtext-btn" class="btn" type="button"
+          title="他の全フィールドがリモートと完全に一致する項目についてのみ、search_textをリモートの最新値に更新します">↻ search_text同期</button>
         <button id="fetch-btn" class="btn btn-primary" type="button">⭳ 取得</button>
       </div>
     </header>
@@ -837,6 +893,10 @@
         <div class="sidebar-toolbar">
           <input type="search" id="sidebar-filter" placeholder="ID・質問で検索…">
           <button id="new-item-btn" class="btn" type="button" title="新規項目を追加">＋ 新規</button>
+        </div>
+        <div class="sidebar-diffbar">
+          <span id="diff-count-text" class="field-hint"></span>
+          <button id="diff-filter-btn" class="btn btn-toggle" type="button" disabled>差分のみ表示</button>
         </div>
         <div class="sidebar-count" id="sidebar-count"></div>
         <div class="sidebar-list" id="sidebar-list"></div>
@@ -868,8 +928,14 @@
 
         <div class="tab-content" id="tab-code" hidden>
           <div class="code-toolbar">
-            <span id="code-hint" class="field-hint"></span>
-            <button id="copy-code-btn" class="btn" type="button">コピー</button>
+            <div class="code-mode-row">
+              <div class="code-mode-toggle" role="tablist">
+                <button class="code-mode-btn active" data-mode="item" type="button">選択項目</button>
+                <button class="code-mode-btn" data-mode="all" type="button">全件</button>
+              </div>
+              <button id="copy-code-btn" class="btn" type="button">コピー</button>
+            </div>
+            <div id="code-hint" class="field-hint"></div>
           </div>
           <pre class="code-block"><code id="code-output"></code></pre>
         </div>
@@ -954,6 +1020,10 @@
       'priority', 'related', 'updated_at', 'search_text', '_note',
     ];
 
+    // search_text は node scripts/build.js が自動生成するため、リモートとの
+    // 差分判定・「差分のみ表示」フィルタの対象からは除外する。
+    const DIFF_FIELDS = FIELD_ORDER.filter(f => f !== 'search_text');
+
     let allData = [];
     let selectedId = null;
     let dirty = false;
@@ -961,6 +1031,9 @@
     let newIds = new Set(); // ローカルで新規追加した項目の id（コードタブの案内文用）
     let saveTimer = null;
     let renderScheduled = false;
+    let remoteData = new Map(); // 直近に取得したリモートの内容（id → 正規化済みアイテム）。差分判定用のスナップショットで、allData とは別オブジェクト。
+    let showOnlyDiffing = false; // サイドバーの「差分のみ表示」フィルタ
+    let codeMode = 'item'; // コードタブの表示モード: 'item'（選択項目）| 'all'（全件）
 
     function todayStr() {
       return new Date().toISOString().slice(0, 10);
@@ -991,6 +1064,23 @@
       return allData.find(d => d.id === selectedId) || null;
     }
 
+    function jsonEq(a, b) {
+      return JSON.stringify(a) === JSON.stringify(b);
+    }
+
+    // リモートに存在しない（＝ローカルで新規追加した）項目は無条件で「差分あり」とする。
+    function itemDiffersFromRemote(item) {
+      const remote = remoteData.get(item.id);
+      if (!remote) return true;
+      return DIFF_FIELDS.some(f => !jsonEq(item[f], remote[f]));
+    }
+
+    // search_text 以外の全フィールドがリモートと完全一致しているか
+    // （＝ search_text だけが異なる、または完全に一致している状態）
+    function itemMatchesRemoteExceptSearchText(item, remote) {
+      return DIFF_FIELDS.every(f => jsonEq(item[f], remote[f]));
+    }
+
     function markDirty() {
       dirty = true;
       clearTimeout(saveTimer);
@@ -1002,6 +1092,7 @@
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
           allData, selectedId, newIds: [...newIds],
+          remoteData: [...remoteData.values()],
         }));
       } catch (e) { /* localStorage 不可時は無視 */ }
     }
@@ -1015,8 +1106,18 @@
         allData = parsed.allData.map(normalizeItem);
         selectedId = parsed.selectedId || allData[0].id;
         newIds = new Set(parsed.newIds || []);
+        remoteData = new Map((parsed.remoteData || []).map(normalizeItem).map(item => [item.id, item]));
         return true;
       } catch (e) { return false; }
+    }
+
+    // raw リンクから配列を取得するだけの共通処理（fetchData / syncSearchText で共有）
+    async function fetchRemoteArray() {
+      const res = await fetch(RAW_URL, { cache: 'no-cache' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (!Array.isArray(json)) throw new Error('データ形式が不正です（配列ではありません）');
+      return json;
     }
 
     // ── データ取得（GitHub Pages ではなく raw リンクから） ──────
@@ -1028,11 +1129,9 @@
       setStatus('取得中…', 'loading');
       document.getElementById('fetch-btn').disabled = true;
       try {
-        const res = await fetch(RAW_URL, { cache: 'no-cache' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        if (!Array.isArray(json)) throw new Error('データ形式が不正です（配列ではありません）');
+        const json = await fetchRemoteArray();
         allData = json.map(normalizeItem);
+        remoteData = new Map(json.map(normalizeItem).map(item => [item.id, item]));
         newIds.clear();
         dirty = false;
         selectedId = allData.length ? allData[0].id : null;
@@ -1048,6 +1147,41 @@
       }
     }
 
+    // search_text 以外は既にリモートと一致している項目についてのみ、
+    // search_text をリモートの最新値に同期する（非破壊: 他フィールドには触れない）。
+    async function syncSearchTextOnly() {
+      if (!allData.length) {
+        setStatus('先に「取得」でデータを読み込んでください', 'error');
+        return;
+      }
+      setStatus('search_text を確認中…', 'loading');
+      const btn = document.getElementById('sync-searchtext-btn');
+      btn.disabled = true;
+      try {
+        const json = await fetchRemoteArray();
+        const freshRemote = new Map(json.map(normalizeItem).map(item => [item.id, item]));
+        let updated = 0;
+        allData.forEach(item => {
+          const remote = freshRemote.get(item.id);
+          if (!remote) return; // ローカルのみの新規項目は対象外
+          if (item.search_text === remote.search_text) return;
+          if (!itemMatchesRemoteExceptSearchText(item, remote)) return;
+          item.search_text = remote.search_text;
+          updated++;
+        });
+        remoteData = freshRemote;
+        if (updated > 0) persistState();
+        renderSidebar();
+        renderCode();
+        setStatus(`search_text を ${updated} 件更新しました`, 'ok');
+      } catch (e) {
+        console.error(e);
+        setStatus('search_text の取得に失敗しました: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
     function setStatus(msg, kind) {
       const el = document.getElementById('status-text');
       el.textContent = msg;
@@ -1059,14 +1193,32 @@
       return document.getElementById('sidebar-filter').value;
     }
 
+    // リモート未反映件数の表示と「差分のみ表示」トグルの有効/無効を更新
+    function updateDiffUI() {
+      const diffText = document.getElementById('diff-count-text');
+      const diffBtn = document.getElementById('diff-filter-btn');
+      if (remoteData.size === 0) {
+        diffText.textContent = '「取得」の後に未反映件数が表示されます';
+        diffBtn.disabled = true;
+        diffBtn.classList.remove('active');
+        return;
+      }
+      const diffCount = allData.filter(itemDiffersFromRemote).length;
+      diffText.textContent = `リモート未反映: ${diffCount}件（search_text除く）`;
+      diffBtn.disabled = false;
+      diffBtn.classList.toggle('active', showOnlyDiffing);
+    }
+
     function renderSidebar(filter) {
+      updateDiffUI();
       if (filter === undefined) filter = currentFilterValue();
       const list = document.getElementById('sidebar-list');
       const q = filter.trim().toLowerCase();
-      const filtered = !q ? allData : allData.filter(item => {
+      let filtered = !q ? allData : allData.filter(item => {
         const hay = (item.id + ' ' + (item.questions || []).join(' ')).toLowerCase();
         return hay.includes(q);
       });
+      if (showOnlyDiffing) filtered = filtered.filter(itemDiffersFromRemote);
 
       document.getElementById('sidebar-count').textContent =
         allData.length ? `${filtered.length} / ${allData.length} 件` : '';
@@ -1075,9 +1227,13 @@
       if (!filtered.length) {
         const hint = document.createElement('p');
         hint.className = 'empty-hint';
-        hint.textContent = allData.length
-          ? '該当する項目がありません'
-          : '「取得」を押してデータを読み込むか、「＋ 新規」で項目を作成してください';
+        if (!allData.length) {
+          hint.textContent = '「取得」を押してデータを読み込むか、「＋ 新規」で項目を作成してください';
+        } else if (showOnlyDiffing) {
+          hint.textContent = 'リモートと差分のある項目はありません';
+        } else {
+          hint.textContent = '該当する項目がありません';
+        }
         list.appendChild(hint);
         return;
       }
@@ -1117,11 +1273,17 @@
       });
     }
 
+    function scrollSelectedIntoView() {
+      const el = document.querySelector('.qa-item.selected');
+      if (el) el.scrollIntoView({ block: 'nearest' });
+    }
+
     function selectItem(id) {
       selectedId = id;
       renderSidebar();
       renderEditorForSelected();
       setMobileView('editor');
+      scrollSelectedIntoView();
     }
 
     function addNewItem() {
@@ -1131,14 +1293,16 @@
         priority: 2,
         updated_at: todayStr(),
       });
-      allData.unshift(item);
+      allData.push(item); // 一覧の一番下に追加
       newIds.add(item.id);
       selectedId = item.id;
+      document.getElementById('sidebar-filter').value = ''; // フィルタで隠れないようにクリア
       markDirty();
       renderSidebar();
       renderEditorForSelected();
       setMobileView('editor');
       setRightTab('detail');
+      scrollSelectedIntoView();
     }
 
     function removeItem(id) {
@@ -1208,18 +1372,31 @@
         : '<p class="empty-hint">回答を入力するとプレビューが表示されます</p>';
     }
 
+    function orderFields(item) {
+      const ordered = {};
+      FIELD_ORDER.forEach(k => { ordered[k] = item[k]; });
+      return ordered;
+    }
+
     function renderCode() {
-      const item = getSelectedItem();
       const codeOut = document.getElementById('code-output');
       const hint = document.getElementById('code-hint');
+
+      if (codeMode === 'all') {
+        codeOut.textContent = JSON.stringify(allData.map(orderFields), null, 4);
+        hint.textContent = allData.length
+          ? `全 ${allData.length} 件。q_and_a_data.json をこの内容でそのまま置き換えられます`
+          : 'データがありません';
+        return;
+      }
+
+      const item = getSelectedItem();
       if (!item) {
         codeOut.textContent = '';
         hint.textContent = '';
         return;
       }
-      const ordered = {};
-      FIELD_ORDER.forEach(k => { ordered[k] = item[k]; });
-      codeOut.textContent = JSON.stringify(ordered, null, 4);
+      codeOut.textContent = JSON.stringify(orderFields(item), null, 4);
       hint.textContent = newIds.has(item.id)
         ? '新規項目: q_and_a_data.json 配列の末尾に貼り付けてください'
         : '既存項目: 同じ id を持つオブジェクトを置き換えてください';
@@ -1505,6 +1682,15 @@
       if (tab === 'code') renderCode();
     }
 
+    // ── コード表示モード（選択項目 / 全件） ─────────────────
+    document.querySelectorAll('.code-mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        codeMode = btn.dataset.mode;
+        document.querySelectorAll('.code-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === codeMode));
+        renderCode();
+      });
+    });
+
     // ── コードのコピー ──────────────────────────────────────
     document.getElementById('copy-code-btn').addEventListener('click', async () => {
       const codeOut = document.getElementById('code-output');
@@ -1538,10 +1724,15 @@
 
     // ── フィルタ ────────────────────────────────────────────
     document.getElementById('sidebar-filter').addEventListener('input', () => renderSidebar());
+    document.getElementById('diff-filter-btn').addEventListener('click', () => {
+      showOnlyDiffing = !showOnlyDiffing;
+      renderSidebar();
+    });
 
     // ── ボタン ──────────────────────────────────────────────
     document.getElementById('fetch-btn').addEventListener('click', fetchData);
     document.getElementById('new-item-btn').addEventListener('click', addNewItem);
+    document.getElementById('sync-searchtext-btn').addEventListener('click', syncSearchTextOnly);
 
     // ── 離脱時に未反映の編集があれば警告 ───────────────────────
     window.addEventListener('beforeunload', e => {
