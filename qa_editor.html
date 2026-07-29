@@ -21,9 +21,12 @@
   <title>Q&amp;A Editor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Marked.js (Markdown) — search.html と同じバージョン固定 + SRI -->
-  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"
-    integrity="sha384-948ahk4ZmxYVYOc+rxN1H2gM1EJ2Duhp7uHtZ4WSLkV4Vtx5MUqnV+l7u9B+jFv+"
+  <!-- Marked.js (Markdown) — search.html と同じバージョン固定 + SRI
+       v16 以降、ブラウザ用ビルドはルート直下の marked.min.js ではなく
+       lib/marked.umd.js に移動している（npm pack で確認済み）。
+       バージョンを上げる際はパッケージの実際の中身を確認すること。 -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@18.0.7/lib/marked.umd.js"
+    integrity="sha384-7njNzKcJUBdezPGfqUrIFizi2QkXJH0M6wF3o1h9GE/nce6X4YdecMwh31B19yTi"
     crossorigin="anonymous"></script>
   <!-- KaTeX (数式) — SRI -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
