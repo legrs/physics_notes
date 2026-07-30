@@ -189,6 +189,17 @@
       gap: 12px;
     }
 
+    .undo-redo-group {
+      display: flex;
+      gap: 4px;
+    }
+
+    .undo-redo-group .btn {
+      padding: 7px 12px;
+      font-size: 15px;
+      line-height: 1;
+    }
+
     .status {
       font-size: 12px;
       color: var(--text-muted);
@@ -604,21 +615,21 @@
 
     .chip {
       display: inline-flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 3px;
       max-width: 100%;
       background: var(--bg-elevated);
       border: 1px solid var(--border-mid);
-      border-radius: 999px;
-      padding: 3px 4px 3px 10px;
+      border-radius: 10px;
+      padding: 5px 4px 5px 10px;
       font-size: 12px;
     }
 
+    /* 長い質問文なども省略せず折り返して全文を確認できるようにする */
     .chip-text {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      max-width: 320px;
+      overflow-wrap: break-word;
+      white-space: pre-wrap;
+      padding-top: 1px;
     }
 
     .chip-remove {
@@ -640,12 +651,23 @@
 
     .chip-input-row {
       display: flex;
+      align-items: flex-end;
       gap: 8px;
     }
 
     .chip-input-row .field-input {
       flex: 1;
       min-width: 0;
+    }
+
+    /* 質問など長文向けの自動拡張テキストエリア。高さはJSで内容に合わせて
+       調整するため、ユーザーによる手動リサイズは無効にする。 */
+    .chip-input-textarea {
+      resize: none;
+      overflow: hidden;
+      max-height: 240px;
+      overflow-y: auto;
+      line-height: 1.5;
     }
 
     .chip-add-btn {
@@ -979,6 +1001,10 @@
         <a class="topbar-back" href="index.html">← 検索ページへ</a>
       </div>
       <div class="topbar-right">
+        <div class="undo-redo-group">
+          <button id="undo-btn" class="btn" type="button" title="元に戻す (Ctrl/Cmd+Z)" disabled>↶</button>
+          <button id="redo-btn" class="btn" type="button" title="やり直す (Ctrl/Cmd+Shift+Z)" disabled>↷</button>
+        </div>
         <span id="status-text" class="status"></span>
         <button id="sync-searchtext-btn" class="btn" type="button"
           title="他の全フィールドがリモートと完全に一致する項目についてのみ、search_textをリモートの最新値に更新します">↻ search_text同期</button>
@@ -1212,10 +1238,100 @@
       return FIELD_ORDER.some(f => !jsonEq(item[f], remote[f]));
     }
 
+    // ── 元に戻す/やり直す（Undo/Redo・エディタ全体） ─────────────
+    // history は「各時点での allData/selectedId/newIds のスナップショット」の
+    // 配列で、historyIndex が現在地を指す。新しい編集が入ると、現在地より
+    // 後ろ（やり直し用）の履歴は破棄される。ページを再読み込みすると
+    // 履歴は失われる（localStorage には保存しない）。
+    let history = [];
+    let historyIndex = -1;
+    let isRestoringHistory = false; // Undo/Redo適用中に履歴が二重に積まれるのを防ぐガード
+    const MAX_HISTORY = 40;
+
+    function snapshotState() {
+      return {
+        allData: allData.map(normalizeItem),
+        selectedId,
+        newIds: [...newIds],
+      };
+    }
+
+    // 取得・初期化などで「今の状態を新しい起点にする」タイミングで呼ぶ
+    function resetHistory() {
+      history = [snapshotState()];
+      historyIndex = 0;
+      updateUndoRedoUI();
+    }
+
+    function commitHistoryCheckpoint() {
+      if (isRestoringHistory) return;
+      const snap = snapshotState();
+      const current = history[historyIndex];
+      if (current && jsonEq(current.allData, snap.allData)
+        && current.selectedId === snap.selectedId
+        && jsonEq(current.newIds, snap.newIds)) {
+        return; // 実質的に変化がなければ履歴を増やさない
+      }
+      history = history.slice(0, historyIndex + 1);
+      history.push(snap);
+      if (history.length > MAX_HISTORY) history.shift();
+      historyIndex = history.length - 1;
+      updateUndoRedoUI();
+    }
+
+    function applyHistorySnapshot(snap) {
+      isRestoringHistory = true;
+      allData = snap.allData.map(normalizeItem);
+      newIds = new Set(snap.newIds);
+      selectedId = allData.some(d => d.id === snap.selectedId)
+        ? snap.selectedId
+        : (allData.length ? allData[0].id : null);
+      dirty = true;
+      persistState();
+      renderSidebar();
+      renderEditorForSelected();
+      isRestoringHistory = false;
+      updateUndoRedoUI();
+    }
+
+    function undo() {
+      if (historyIndex <= 0) return;
+      historyIndex--;
+      applyHistorySnapshot(history[historyIndex]);
+      setStatus('元に戻しました', '');
+    }
+
+    function redo() {
+      if (historyIndex >= history.length - 1) return;
+      historyIndex++;
+      applyHistorySnapshot(history[historyIndex]);
+      setStatus('やり直しました', '');
+    }
+
+    function updateUndoRedoUI() {
+      const undoBtn = document.getElementById('undo-btn');
+      const redoBtn = document.getElementById('redo-btn');
+      if (undoBtn) undoBtn.disabled = historyIndex <= 0;
+      if (redoBtn) redoBtn.disabled = historyIndex >= history.length - 1;
+    }
+
+    // 連続入力（テキスト入力欄）向け: 保存・履歴チェックポイントの両方を
+    // デバウンスする。タイピングが一段落したタイミングで1件の履歴になる。
     function markDirty() {
       dirty = true;
       clearTimeout(saveTimer);
-      saveTimer = setTimeout(persistState, 400);
+      saveTimer = setTimeout(() => {
+        persistState();
+        commitHistoryCheckpoint();
+      }, 400);
+    }
+
+    // 追加・削除・チップの追加/削除など、単発の操作向け: 即座に保存・履歴確定する。
+    function markDirtyImmediate() {
+      dirty = true;
+      clearTimeout(saveTimer);
+      persistState();
+      commitHistoryCheckpoint();
     }
 
     // ── ローカル保存（誤って閉じても編集内容を失わないための保険） ──
@@ -1289,6 +1405,7 @@
         dirty = false;
         selectedId = allData.length ? allData[0].id : null;
         persistState();
+        resetHistory(); // 取得は新しい起点。これより前には戻れなくする
         renderSidebar();
         renderEditorForSelected();
         setStatus(`${allData.length}件を取得しました（${new Date().toLocaleString('ja-JP')}）`, 'ok');
@@ -1461,7 +1578,7 @@
       newIds.add(item.id);
       selectedId = item.id;
       document.getElementById('sidebar-filter').value = ''; // フィルタで隠れないようにクリア
-      markDirty();
+      markDirtyImmediate();
       renderSidebar();
       renderEditorForSelected();
       setMobileView('editor');
@@ -1473,11 +1590,11 @@
       const item = allData.find(d => d.id === id);
       if (!item) return;
       const label = (item.questions && item.questions[0]) || item.id || '(無題)';
-      if (!confirm(`「${label}」をリストから削除しますか？\n（この操作はリモートの q_and_a_data.json には影響しません）`)) return;
+      if (!confirm(`「${label}」をリストから削除しますか？\n（この操作はリモートの q_and_a_data.json には影響しません。Undoで復元できます）`)) return;
       allData = allData.filter(d => d.id !== id);
       newIds.delete(id);
       if (selectedId === id) selectedId = allData.length ? allData[0].id : null;
-      markDirty();
+      markDirtyImmediate();
       renderSidebar();
       renderEditorForSelected();
     }
@@ -1638,7 +1755,7 @@
       input.type = 'date';
       input.className = 'field-input';
       input.value = value || '';
-      input.addEventListener('input', () => onChange(input.value));
+      input.addEventListener('input', () => onChange(input.value, false));
       row.appendChild(input);
       const todayBtn = document.createElement('button');
       todayBtn.type = 'button';
@@ -1646,7 +1763,7 @@
       todayBtn.textContent = '今日';
       todayBtn.addEventListener('click', () => {
         input.value = todayStr();
-        onChange(input.value);
+        onChange(input.value, true); // ボタンクリックなので即座に履歴確定
       });
       row.appendChild(todayBtn);
       wrap.appendChild(row);
@@ -1688,9 +1805,16 @@
 
       const inputRow = document.createElement('div');
       inputRow.className = 'chip-input-row';
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'field-input';
+
+      // related（他項目のID）は <datalist> によるネイティブのオートコンプリートが
+      // 必要なため <input> のまま。<textarea> は list 属性に対応していないため。
+      // それ以外（質問文など長くなりうるテキスト）は、入力中の全文を確認しやすい
+      // よう高さが自動で伸びる <textarea> にする。
+      const useTextarea = !datalistOptions;
+      const input = document.createElement(useTextarea ? 'textarea' : 'input');
+      input.className = 'field-input' + (useTextarea ? ' chip-input-textarea' : '');
+      if (useTextarea) input.rows = 1;
+      else input.type = 'text';
       input.placeholder = placeholder || '入力して追加';
 
       if (datalistOptions) {
@@ -1707,6 +1831,12 @@
         inputRow.appendChild(dl);
       }
 
+      function autoGrow() {
+        if (!useTextarea) return;
+        input.style.height = 'auto';
+        input.style.height = input.scrollHeight + 'px';
+      }
+
       function commit() {
         const v = input.value.trim();
         if (!v) return;
@@ -1716,19 +1846,26 @@
           onChange(values);
         }
         input.value = '';
+        autoGrow();
         input.focus();
       }
 
+      // IME（日本語入力）の変換確定用Enterと、チップ追加用Enterが衝突しないよう、
+      // 変換中（isComposing）のEnterは無視する。isComposing だけでは環境によって
+      // 拾いきれない場合があるため、compositionstart/end の手動フラグと
+      // keyCode 229 判定も併用する。
+      let composing = false;
+      input.addEventListener('compositionstart', () => { composing = true; });
+      input.addEventListener('compositionend', () => { composing = false; });
+
       input.addEventListener('keydown', e => {
-        if (e.key === 'Enter' || e.key === ',') {
-          e.preventDefault();
-          commit();
-        } else if (e.key === 'Backspace' && input.value === '' && values.length) {
-          values.pop();
-          renderChips();
-          onChange(values);
-        }
+        if (e.key !== 'Enter') return;
+        if (composing || e.isComposing || e.keyCode === 229) return; // IME変換確定中は何もしない
+        if (useTextarea && e.shiftKey) return; // Shift+Enter は改行を許可
+        e.preventDefault();
+        commit();
       });
+      if (useTextarea) input.addEventListener('input', autoGrow);
       inputRow.appendChild(input);
 
       const addBtn = document.createElement('button');
@@ -1763,7 +1900,7 @@
         label: '質問 (questions)', values: item.questions,
         hint: '同じ意味の言い換えも追加できます。先頭が一覧表示に使われます',
         onChange: () => {
-          markDirty();
+          markDirtyImmediate();
           renderSidebar();
           document.getElementById('editor-qtitle').textContent = item.questions[0] || '(質問未設定)';
           renderCode();
@@ -1778,18 +1915,18 @@
 
       container.appendChild(createArrayEditor({
         label: 'キーワード (keywords)', values: item.keywords,
-        onChange: () => { markDirty(); renderCode(); }
+        onChange: () => { markDirtyImmediate(); renderCode(); }
       }));
 
       container.appendChild(createArrayEditor({
         label: '類義語 (synonyms)', values: item.synonyms,
-        onChange: () => { markDirty(); renderCode(); }
+        onChange: () => { markDirtyImmediate(); renderCode(); }
       }));
 
       container.appendChild(createArrayEditor({
         label: 'カテゴリ (category)', values: item.category,
         hint: '例: 力学 / 電磁気 / 熱力学',
-        onChange: () => { markDirty(); renderCode(); }
+        onChange: () => { markDirtyImmediate(); renderCode(); }
       }));
 
       const row = document.createElement('div');
@@ -1811,12 +1948,16 @@
         datalistOptions: () => allData
           .filter(d => d.id !== item.id)
           .map(d => ({ value: d.id, label: `${d.id} — ${(d.questions && d.questions[0]) || ''}` })),
-        onChange: () => { markDirty(); renderCode(); }
+        onChange: () => { markDirtyImmediate(); renderCode(); }
       }));
 
       container.appendChild(createDateField({
         label: '更新日 (updated_at)', value: item.updated_at,
-        onChange: v => { item.updated_at = v; markDirty(); renderCode(); }
+        onChange: (v, immediate) => {
+          item.updated_at = v;
+          if (immediate) markDirtyImmediate(); else markDirty();
+          renderCode();
+        }
       }));
 
       container.appendChild(createTextAreaField({
@@ -1898,6 +2039,26 @@
     document.getElementById('new-item-btn').addEventListener('click', addNewItem);
     document.getElementById('sync-searchtext-btn').addEventListener('click', syncSearchTextOnly);
 
+    // ── 元に戻す/やり直す（ボタン + キーボードショートカット） ───────
+    document.getElementById('undo-btn').addEventListener('click', undo);
+    document.getElementById('redo-btn').addEventListener('click', redo);
+
+    // フォーカスが input/textarea の中にある間は、ブラウザ標準のテキスト編集
+    // Undo/Redo を優先させる（answer欄などでの Ctrl+Z を横取りしない）。
+    // それ以外の場所（サイドバー選択中など）では、エディタ全体のUndo/Redoとして扱う。
+    window.addEventListener('keydown', e => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      const key = e.key.toLowerCase();
+      const isUndo = key === 'z' && !e.shiftKey;
+      const isRedo = (key === 'z' && e.shiftKey) || key === 'y';
+      if (!isUndo && !isRedo) return;
+      const activeTag = document.activeElement && document.activeElement.tagName;
+      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
+      e.preventDefault();
+      if (isRedo) redo(); else undo();
+    });
+
     // ── 離脱時に未反映の編集があれば警告 ───────────────────────
     window.addEventListener('beforeunload', e => {
       if (dirty) { e.preventDefault(); e.returnValue = ''; }
@@ -1908,10 +2069,12 @@
       setMobileView('list');
       if (restoreState()) {
         dirty = true;
+        resetHistory();
         renderSidebar();
         renderEditorForSelected();
         setStatus(`前回の編集内容を復元しました（${allData.length}件）。最新のデータを使うには「取得」を押してください。`, '');
       } else {
+        resetHistory();
         setStatus('「取得」を押してデータを読み込んでください', '');
         renderSidebar();
         renderEditorForSelected();
