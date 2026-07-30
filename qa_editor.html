@@ -285,6 +285,33 @@
       min-height: 0;
     }
 
+    /* 横幅に余裕があるデスクトップ表示でのみ、サイドバー・右パネルの境界を
+       ドラッグして幅を変更できるようにするハンドル。モバイル表示（縦積み）
+       では非表示にする（下の @media 参照）。 */
+    .resizer {
+      flex-shrink: 0;
+      width: 5px;
+      cursor: col-resize;
+      background: transparent;
+      position: relative;
+    }
+
+    .resizer::before {
+      content: '';
+      position: absolute;
+      inset: 0 -3px;
+    }
+
+    .resizer:hover,
+    .resizer.resizing {
+      background: var(--accent-soft);
+    }
+
+    body.resizing-pane {
+      cursor: col-resize;
+      user-select: none;
+    }
+
     .mobile-tabbar {
       display: none;
     }
@@ -941,6 +968,10 @@
         flex-direction: column;
       }
 
+      .resizer {
+        display: none;
+      }
+
       .mobile-tabbar {
         display: flex;
         border-bottom: 1px solid var(--border);
@@ -968,7 +999,10 @@
       .sidebar,
       .editor-pane,
       .right-panel {
-        width: 100%;
+        /* !important: デスクトップ表示でドラッグリサイズした幅がインライン
+           style として残っていても、モバイル表示では常に幅100%を優先する。
+           インラインstyleはこのクラスセレクタよりも詳細度が高いため。 */
+        width: 100% !important;
         border: none;
         /* #layout が縦積み（flex-direction:column）になるため、主軸(高さ)方向に
            明示的に flex:1 を与えないと内容量に応じた高さになってしまい、
@@ -1032,6 +1066,9 @@
         <div class="sidebar-list" id="sidebar-list"></div>
       </aside>
 
+      <div class="resizer" id="resizer-sidebar" role="separator" aria-orientation="vertical"
+        aria-label="一覧の幅を調整" tabindex="0"></div>
+
       <section class="editor-pane" id="editor-pane">
         <div class="editor-topbar">
           <div class="editor-qtitle" id="editor-qtitle">項目が選択されていません</div>
@@ -1040,6 +1077,9 @@
         <textarea id="answer-input" spellcheck="false" disabled
           placeholder="回答をMarkdownで入力してください（$$…$$ / $…$ でLaTeX数式）"></textarea>
       </section>
+
+      <div class="resizer" id="resizer-panel" role="separator" aria-orientation="vertical"
+        aria-label="パネルの幅を調整" tabindex="0"></div>
 
       <aside class="right-panel" id="right-panel">
         <div class="tabbar" role="tablist">
@@ -2027,6 +2067,89 @@
       document.querySelectorAll('.mobile-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
     }
 
+    // ── サイドバー・右パネルの幅をドラッグで変更（横幅に余裕がある
+    //    デスクトップ表示でのみ意味を持つ。モバイル表示ではハンドル自体を
+    //    CSSで非表示にしている） ─────────────────────────────
+    const LAYOUT_STORAGE_KEY = 'qa_editor_layout_v1';
+    const SIDEBAR_MIN = 220, SIDEBAR_MAX = 560;
+    const PANEL_MIN = 320, PANEL_MAX = 700;
+    const EDITOR_MIN = 320; // .editor-pane の min-width と合わせる
+    const RESIZERS_WIDTH = 10; // 5px のハンドル × 2
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    function maxSidebarWidth() {
+      const total = document.getElementById('layout').getBoundingClientRect().width;
+      const panelWidth = document.getElementById('right-panel').getBoundingClientRect().width;
+      return Math.min(SIDEBAR_MAX, total - panelWidth - RESIZERS_WIDTH - EDITOR_MIN);
+    }
+
+    function maxPanelWidth() {
+      const total = document.getElementById('layout').getBoundingClientRect().width;
+      const sidebarWidth = document.getElementById('sidebar').getBoundingClientRect().width;
+      return Math.min(PANEL_MAX, total - sidebarWidth - RESIZERS_WIDTH - EDITOR_MIN);
+    }
+
+    function persistLayout() {
+      try {
+        localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify({
+          sidebarWidth: document.getElementById('sidebar').getBoundingClientRect().width,
+          panelWidth: document.getElementById('right-panel').getBoundingClientRect().width,
+        }));
+      } catch (e) { /* localStorage 不可時は無視 */ }
+    }
+
+    function restoreLayout() {
+      try {
+        const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
+        if (!raw) return;
+        const { sidebarWidth, panelWidth } = JSON.parse(raw);
+        if (sidebarWidth) document.getElementById('sidebar').style.width = sidebarWidth + 'px';
+        if (panelWidth) document.getElementById('right-panel').style.width = panelWidth + 'px';
+      } catch (e) { /* 無視 */ }
+    }
+
+    function setupResizer(handle, { getStartWidth, apply }) {
+      handle.addEventListener('mousedown', e => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startWidth = getStartWidth();
+        handle.classList.add('resizing');
+        document.body.classList.add('resizing-pane');
+
+        function onMouseMove(ev) {
+          apply(startWidth, ev.clientX - startX);
+        }
+        function onMouseUp() {
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+          handle.classList.remove('resizing');
+          document.body.classList.remove('resizing-pane');
+          persistLayout();
+        }
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+    }
+
+    setupResizer(document.getElementById('resizer-sidebar'), {
+      getStartWidth: () => document.getElementById('sidebar').getBoundingClientRect().width,
+      apply: (startWidth, deltaX) => {
+        const newWidth = clamp(startWidth + deltaX, SIDEBAR_MIN, maxSidebarWidth());
+        document.getElementById('sidebar').style.width = newWidth + 'px';
+      },
+    });
+
+    setupResizer(document.getElementById('resizer-panel'), {
+      getStartWidth: () => document.getElementById('right-panel').getBoundingClientRect().width,
+      apply: (startWidth, deltaX) => {
+        const newWidth = clamp(startWidth - deltaX, PANEL_MIN, maxPanelWidth());
+        document.getElementById('right-panel').style.width = newWidth + 'px';
+      },
+    });
+
     // ── フィルタ ────────────────────────────────────────────
     document.getElementById('sidebar-filter').addEventListener('input', () => renderSidebar());
     document.getElementById('diff-filter-btn').addEventListener('click', () => {
@@ -2067,6 +2190,7 @@
     // ── 初期化 ──────────────────────────────────────────────
     (function init() {
       setMobileView('list');
+      restoreLayout();
       if (restoreState()) {
         dirty = true;
         resetHistory();
