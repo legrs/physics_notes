@@ -6087,10 +6087,10 @@
     {
         "id": "c69fa628-0b49-4c21-b093-c8aeeaedad5c",
         "questions": [
-            "ヘンリーの大きなコイルが欲しい時はどうする？"
+            "ヘンリー$ H $の大きなコイルが欲しい時はどうする？"
         ],
         "answer": "$$ L=Nk $$\n$$ =nl\\cdot\\mu nS $$\n$$ =\\mu n^2lS $$\n断面積$ S $や長さ$ l $を大きくするのではなく、ピッチ$ n $（単位長さあたりの巻数）を増やす。",
-        "description": "",
+        "description": "ヘンリーHの大きなコイルが欲しい時はどうする？",
         "keywords": [],
         "synonyms": [],
         "category": [
@@ -6131,7 +6131,9 @@
         ],
         "answer": "電圧が急激に変化するから。\n\n$$ V=-\\frac{\\Delta I}{\\Delta t} $$\n誘導起電力：$ V $\n\n$ L $が低くなると、\n\n$ \\frac{\\Delta I}{\\Delta t} $が無限大となる。\n\nつまり、不必要な無限大の誘導起電力がバシバシ働いてしまう。",
         "description": "",
-        "keywords": [],
+        "keywords": [
+            "保護回路"
+        ],
         "synonyms": [],
         "category": [
             "電磁気"
@@ -6150,7 +6152,9 @@
         ],
         "answer": "直流だと、コイルはただの導線だが、\n\n急激に電圧が変わるときに、その変化を**和らげる**はたらきをする。",
         "description": "",
-        "keywords": [],
+        "keywords": [
+            "保護回路"
+        ],
         "synonyms": [],
         "category": [
             "電磁気"
