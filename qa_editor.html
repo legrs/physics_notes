@@ -660,6 +660,31 @@
       overflow-wrap: break-word;
       white-space: pre-wrap;
       padding-top: 1px;
+      cursor: text;
+    }
+
+    .chip-text:hover,
+    .chip-text:focus-visible {
+      color: var(--accent);
+      outline: none;
+    }
+
+    .chip-edit-input {
+      flex: 1;
+      min-width: 120px;
+      width: auto;
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      padding: 2px 4px;
+      background: var(--input-bg);
+      color: var(--text-body);
+      font: inherit;
+      line-height: 1.5;
+    }
+
+    textarea.chip-edit-input {
+      resize: none;
+      max-height: 160px;
     }
 
     .chip-remove {
@@ -1417,6 +1442,9 @@
       try {
         const json = await fetchRemoteArray();
         const freshRemote = new Map(json.map(normalizeItem).map(item => [item.id, item]));
+        // 取得で上書きする前に現在の選択を覚えておく。UUID がリモートにも
+        // 残っていれば、更新後も同じ質問を表示し続けるために使う。
+        const previousSelectedId = selectedId;
 
         // dirty フラグ（「前回の取得以降に何か編集した」という粗いフラグ）ではなく、
         // 今取得した最新のリモートの内容とローカルを実際に比較する。search_text同期
@@ -1433,7 +1461,7 @@
           if (!ok) {
             // 上書きはしないが、比較のために取得したリモートの内容で
             // 差分件数・色分けは最新化しておく。
-            remoteData = freshRemote;
+            refreshRemoteDiffState(freshRemote);
             persistState();
             renderSidebar();
             renderCode();
@@ -1443,15 +1471,17 @@
         }
 
         allData = json.map(normalizeItem);
-        remoteData = freshRemote;
+        refreshRemoteDiffState(freshRemote);
         newIds.clear();
         dirty = false;
-        selectedId = allData.length ? allData[0].id : null;
+        selectedId = previousSelectedId && freshRemote.has(previousSelectedId)
+          ? previousSelectedId
+          : (allData.length ? allData[0].id : null);
         persistState();
         resetHistory(); // 取得は新しい起点。これより前には戻れなくする
         renderSidebar();
         renderEditorForSelected();
-        setStatus(`${allData.length}件を取得しました（${new Date().toLocaleString('ja-JP')}）`, 'ok');
+        setStatus(`${allData.length}件を取得しました（リモートとの差分情報も更新しました）`, 'ok');
       } catch (e) {
         console.error(e);
         setStatus('取得に失敗しました: ' + e.message, 'error');
@@ -1484,7 +1514,7 @@
         });
         // search_text 更新の有無にかかわらず、取得したリモートの内容で
         // 差分判定用スナップショットを更新する（サイドバーの差分件数・色分けに反映）。
-        remoteData = freshRemote;
+        refreshRemoteDiffState(freshRemote);
         persistState();
         renderSidebar();
         renderCode();
@@ -1501,6 +1531,13 @@
       const el = document.getElementById('status-text');
       el.textContent = msg;
       el.className = 'status' + (kind ? ' ' + kind : '');
+    }
+
+    // リモートの最新スナップショットに置き換え、未反映件数を直ちに再計算する。
+    // renderSidebar で個々の項目の色分けも同じスナップショットから再描画される。
+    function refreshRemoteDiffState(freshRemote) {
+      remoteData = freshRemote;
+      updateDiffUI();
     }
 
     // ── サイドバー ──────────────────────────────────────────
@@ -1827,18 +1864,89 @@
           const txt = document.createElement('span');
           txt.className = 'chip-text';
           txt.textContent = v;
-          txt.title = v;
+          txt.title = `${v}\nクリックして編集`;
+          txt.tabIndex = 0;
+          txt.setAttribute('role', 'button');
+          txt.setAttribute('aria-label', `${v} を編集`);
+
+          function startEditing() {
+            const editor = document.createElement(datalistOptions ? 'input' : 'textarea');
+            editor.className = 'chip-edit-input';
+            if (editor.tagName === 'TEXTAREA') editor.rows = 1;
+            else editor.type = 'text';
+            editor.value = v;
+            editor.setAttribute('aria-label', `${v} を編集`);
+
+            let finished = false;
+            let composing = false;
+            function finish(save) {
+              if (finished) return;
+              finished = true;
+              const next = editor.value.trim();
+              // 空欄・重複は既存値を残す。削除は隣の × ボタンで明示的に行う。
+              if (save && next && (next === v || !values.some((value, index) => index !== i && value === next))) {
+                if (next !== v) {
+                  values[i] = next;
+                  onChange(values);
+                }
+              }
+              renderChips();
+            }
+
+            editor.addEventListener('compositionstart', () => { composing = true; });
+            editor.addEventListener('compositionend', () => { composing = false; });
+            editor.addEventListener('keydown', event => {
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                finish(false);
+                return;
+              }
+              if (event.key !== 'Enter' || composing || event.isComposing || event.keyCode === 229) return;
+              if (editor.tagName === 'TEXTAREA' && event.shiftKey) return;
+              event.preventDefault();
+              finish(true);
+            });
+            editor.addEventListener('blur', () => finish(true));
+            if (editor.tagName === 'TEXTAREA') {
+              const autoGrow = () => {
+                editor.style.height = 'auto';
+                editor.style.height = editor.scrollHeight + 'px';
+              };
+              editor.addEventListener('input', autoGrow);
+              requestAnimationFrame(autoGrow);
+            }
+            chip.replaceChild(editor, txt);
+            editor.focus();
+            editor.select();
+          }
+
+          txt.addEventListener('click', startEditing);
+          txt.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              startEditing();
+            }
+          });
           chip.appendChild(txt);
           const rm = document.createElement('button');
           rm.type = 'button';
           rm.className = 'chip-remove';
           rm.textContent = '×';
           rm.setAttribute('aria-label', `${v} を削除`);
-          rm.addEventListener('click', () => {
+          let removalHandled = false;
+          function removeChip(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (removalHandled) return;
+            removalHandled = true;
             values.splice(i, 1);
             renderChips();
             onChange(values);
-          });
+          }
+          // 編集欄が開いているときも、先に削除を処理して blur による
+          // 編集確定と競合しないようにする。click はキーボード操作用。
+          rm.addEventListener('pointerdown', removeChip);
+          rm.addEventListener('click', removeChip);
           chip.appendChild(rm);
           chipRow.appendChild(chip);
         });
