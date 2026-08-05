@@ -3,7 +3,8 @@
 # x86_64 macOS release — ONNX Runtime >= 1.24 no longer ships x86_64 macOS
 # binaries, and ort-sys's own prebuilts never covered x86_64-apple-darwin)
 # and installs it into "$RUNNER_TEMP/onnxruntime" (or /tmp outside CI).
-# Prints the library directory, which callers use to set ORT_LIB_LOCATION.
+# Prints the $LIB_DIR directory, which callers use to set ORT_LIB_LOCATION
+# (and copy the dylib into the release bundle).
 #
 # The dylib is version-pinned here; physq/src/update.rs's INTEL_ORT_DYLIB_ASSET
 # and the release workflow's bundling must match this VERSION.
@@ -22,8 +23,12 @@ if [ ! -f "$LIB_DIR/libonnxruntime.${VERSION}.dylib" ]; then
   mkdir -p "$DEST"
   curl -fsSL -o "$DEST.tgz" "$URL"
   echo "$SHA256  $DEST.tgz" | shasum -a 256 -c - >/dev/null
-  tar xzf "$DEST.tgz" -C "$DEST" --strip-components=1
-  rm -f "$DEST.tgz"
+  # The archive has a single top-level directory. bsdtar (macOS) doesn't
+  # support GNU tar's --strip-components, so extract and hoist manually.
+  EXTRACT="$(mktemp -d "$DEST.extract.XXXXXX")"
+  tar xzf "$DEST.tgz" -C "$EXTRACT"
+  mv "$EXTRACT"/onnxruntime-osx-x86_64-${VERSION}/* "$DEST"/
+  rm -rf "$EXTRACT" "$DEST.tgz"
 fi
 
 echo "$LIB_DIR"
