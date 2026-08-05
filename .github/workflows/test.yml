@@ -1,0 +1,141 @@
+# Full test suite — runs on EVERY push (build.yml とは独立。生成物のコミットはしない)
+#
+# ジョブ構成（全て並列実行）:
+#   html-data — HTML の構文/SRI/必須ID チェック、search.html の実スコア関数に
+#               対するストレステスト（極端な入力の大量実行含む）、JSON 生成物の
+#               整合性チェック、web↔physq の parity チェック
+#   physq     — matrix で各プラットフォーム（下記）ごとにビルド → cargo test/
+#               clippy/fmt → 実バイナリでの検索ストレステスト（実データ、BM25のみ）
+#
+# トリガー: 毎回の push。master だけに限定したい場合は
+#   on:
+#     push:
+#       branches: [master]
+# と書き換える（workflow_dispatch は手動実行用）。
+name: Test Suite
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  html-data:
+    name: HTML + data tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: HTML syntax / SRI / required-id checks
+        run: node scripts/tests/html_syntax.js
+      - name: HTML stress — real scoring functions, extreme inputs, hybrid RRF
+        run: node scripts/tests/html_stress.js
+      - name: Data artifacts — schema, embeddings coverage, version.json hashes,
+              search_text determinism
+        run: node scripts/tests/data_check.js
+      - name: Web ↔ physq ranking parity
+        run: node physq/scripts/parity_check.js
+
+  physq:
+    name: physq (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # ───────────────────────────────────────────────────────────────
+        # プラットフォームの追加・削除はこの include リストを編集する。
+        # エントリの意味:
+        #   target    — cargo build --target に渡す Rust ターゲット三重項
+        #   os        — GitHub ランナー。target と同一アーキテクチャの
+        #               native ランナーを選ぶこと（クロスビルドは不要）。
+        #               aarch64 系は arm ランナー（ubuntu-24.04-arm）を。
+        #   rustflags — ビルド時に使う RUSTFLAGS（Linux は lld リンク推奨）
+        #
+        # 既知の制約（.github/workflows/physq-release.yml に詳細）:
+        #   - Intel Mac (x86_64-apple-darwin) は ort crate 非対応のため対象外
+        #   - Linux バイナリは実行時に glibc >= 2.38 が必要（Ubuntu 24.04+）
+        # ───────────────────────────────────────────────────────────────
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-26
+            rustflags: ""
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-24.04
+            rustflags: "-C link-arg=-fuse-ld=lld"
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-24.04-arm
+            rustflags: "-C link-arg=-fuse-ld=lld"
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            rustflags: ""
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: physq
+      - name: Install lld (Linux only)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y lld
+      - name: Build (debug)
+        working-directory: physq
+        env:
+          RUSTFLAGS: ${{ matrix.rustflags }}
+        run: cargo build --target ${{ matrix.target }}
+      - name: cargo test
+        working-directory: physq
+        run: cargo test --target ${{ matrix.target }}
+      - name: cargo clippy
+        working-directory: physq
+        run: cargo clippy --target ${{ matrix.target }}
+      - name: cargo fmt --check
+        working-directory: physq
+        run: cargo fmt --check
+      - name: Binary smoke — version / cache path / unknown flag
+        working-directory: physq
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          exe=physq; [[ "$TARGET" == *windows* ]] && exe=physq.exe
+          BIN="target/$TARGET/debug/$exe"
+          "$BIN" --version
+          "$BIN" cache path
+          if "$BIN" --no-such-flag >/dev/null 2>&1; then
+            echo "unknown flag must exit non-zero"; exit 1
+          fi
+      - name: Stress — real searches on the local corpus (BM25-only, no model download)
+        working-directory: physq
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          exe=physq; [[ "$TARGET" == *windows* ]] && exe=physq.exe
+          BIN="target/$TARGET/debug/$exe"
+          ncases=$(wc -l < ../scripts/tests/physq_stress_cases.jsonl)
+          "$BIN" --model none eval --data ../q_and_a_data.json \
+            --cases ../scripts/tests/physq_stress_cases.jsonl > /tmp/physq-stress.jsonl
+          lines=$(wc -l < /tmp/physq-stress.jsonl)
+          [ "$lines" -eq $((ncases + 1)) ] || { echo "expected $((ncases + 1)) output lines, got $lines"; exit 1; }
+          grep -q '"type":"summary"' /tmp/physq-stress.jsonl || { echo "no summary line"; exit 1; }
+          ! grep -q 'panicked' /tmp/physq-stress.jsonl || { echo "Rust panic detected"; exit 1; }
+          printf 'not json\n' > /tmp/physq-bad.jsonl
+          "$BIN" --model none eval --data ../q_and_a_data.json \
+            --cases /tmp/physq-bad.jsonl 2>/dev/null | grep -q '"type":"summary"' \
+            || { echo "malformed cases file must degrade to a soft error"; exit 1; }

@@ -9,6 +9,80 @@
 Physics Notes CLI（ターミナルから検索できるツール `physq`）：\
 [physq/README.md](physq/README.md) | [最新リリース / Latest release](https://github.com/legrs/physics_notes/releases/)
 
+## Project Structure
+
+```
+physics_notes/
+├── fast/                              # 軽量モード（mode=fast）入口。本編へリダイレクトするだけ
+│   ├── index.html                     #  → ../index.html?mode=fast
+│   └── search.html                    #  → ../search.html?mode=fast へ q パラメータも引き継ぐ
+├── img/
+│   └── ai-icon.svg                    # サイトのアイコン（AI ロゴ）
+├── physq/                             # 同じコーパスをターミナルで検索する Rust CLI（詳細は physq/README.md）
+│   ├── scripts/
+│   │   └── parity_check.js            # search.html の実スコア関数と Rust 版のランキング一致を検証
+│   ├── src/
+│   │   ├── bm25/                      # BM25 索引（kuromoji/lindera による語彙検索）
+│   │   ├── data/                      # データ取得とキャッシュ（version.json のハッシュ照合）
+│   │   ├── query/                     # クエリのトークナイズと同義語展開
+│   │   ├── rank/                      # RRF 融合（BM25 と意味検索のスコア統合）
+│   │   ├── semantic/                  # e5 意味検索（ONNX でクエリ埋め込みのみ計算）
+│   │   ├── tui/                       # 対話型 TUI（command.rs: スラッシュコマンド / vim.rs: Vim 風キー）
+│   │   ├── cli.rs                     # clap の CLI 定義（TUI / search / cache / update / eval）
+│   │   ├── config.rs                  # 設定：データホストURL・キャッシュ配置・モデル選択
+│   │   ├── engine.rs                  # UI 非依存の検索エンジンのファサード
+│   │   ├── eval.rs                    # `physq eval`：自己改善ループ用のランキング評価
+│   │   ├── model.rs                   # コーパスレコード定義と id 正規化（build.js と同期）
+│   │   ├── real_data_tests.rs         # 実データを使ったランキングの parity テスト
+│   │   ├── spinner.rs                 # ローディング表示（braille スピナー）
+│   │   ├── update.rs                  # GitHub Releases からの自己更新
+│   │   ├── lib.rs / main.rs           # crate のエントリポイント
+│   │   └── (その他 tui/ 配下に command.rs・vim.rs 等)
+│   ├── Cargo.toml / Cargo.lock        # Rust の依存マニフェスト
+│   └── README.md                      # physq の仕様兼ユーザーガイド
+├── scripts/                           # データパイプラインと自動改善ツール
+│   ├── build.js                       # search_text と embeddings.json を自動生成するビルド
+│   ├── model_bakeoff.py               # 自己改善用 LLM を lms ls で比較選定するスクリプト
+│   ├── q&a_text_importer.gs           # Google Sheets ↔ q_and_a_data.json の変換（Apps Script）
+│   └── self_improve.py                # LLM で検索データを自動改善する夜間ループ
+├── debug_search.html                  # 検索ページの検証用コピー（モード比較・デバッグ専用）
+├── dirlens.txt                        # リポジトリ解析ツール（dirlens）の出力（CI 生成物）
+├── electromagnetism.typ / .pdf        # Typst で書かれた物理ノート（PDF を README から公開）
+├── embeddings.json                    # 生成済み e5 埋め込み（search.html と physq が共有）
+├── index.html                         # ランディングページ（検索ページへ誘導）
+├── LICENSE / NOTICE                   # Apache 2.0 ライセンス
+├── package.json / package-lock.json   # ビルド用 JS 依存（kuromoji・transformers.js）
+├── phy.typ                            # 物理ノート用の共通定義（回路記号などの cetz 描画）
+├── q_and_a.txt                        # 先生の質問の模範解答テキスト集
+├── q_and_a_data.json                  # メインの Q&A コーパス（Google Sheets から書き出し・264 件）
+├── q_and_a_data_handcrafted.json      # 手作業で整えたデータセット案（パイプライン未接続）
+├── qa_editor.html                     # Q&A データの編集ツール（<title>Q&A Editor</title>）
+├── search.html                        # 検索 UI 本体（BM25 + e5 + RRF のハイブリッド検索）
+├── template.typ / .pdf                # Typst ノートの共通テンプレート（ページ設定・数式スタイル）
+└── version.json                       # 生成物のハッシュ・埋め込みモデル情報（キャッシュ整合検証用）
+```
+
+## テスト / Tests
+
+push のたびに GitHub Actions（`.github/workflows/test.yml`）が HTML・データ・physq を
+並列で検証します（`build.yml` とは独立。生成物のコミットはしない）。
+
+```sh
+npm install      # 初回のみ（テストに kuromoji が必要）
+npm test         # 全部まとめてローカル実行
+npm run test:html   # HTML 構文 + search.html の実スコア関数ストレステスト
+npm run test:data   # JSON 生成物の整合性 + web↔physq parity
+npm run test:physq  # physq の実バイナリで検索ストレステスト（実データ、モデルDLなし）
+```
+
+- **HTML**: インライン `<script>` の構文チェック、CDN の SRI 固定、必須 ID、`search.html` の
+  実スコア関数（BM25/e5/RRF）を実データ＋極端な入力（空・巨大・XSS・不正ユニコード等）で大量実行。
+- **データ**: スキーマ・`related` 整合性・`embeddings.json` の次元/網羅性・`version.json` の
+  hash 照合・`search_text` が再生成と一致すること（決定性チェック）。
+- **physq**: 各プラットフォーム（matrix。`.github/workflows/test.yml` の include を編集して
+  追加・削除）でビルド → `cargo test`/`clippy`/`fmt` → 実バイナリで `eval` ストレステスト
+  （`--model none`＝BM25のみでモデルDLなし）。
+
 ## 検索の自己改善ループ（scripts/self_improve.py）
 
 LM Studio のローカル LLM と `physq eval` を使って、検索データセット
