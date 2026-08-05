@@ -71,39 +71,51 @@ jobs:
         include:
           - target: aarch64-apple-darwin
             os: macos-latest
+            label: "macOS latest arm64"
             rustflags: ""
           - target: aarch64-apple-darwin
             os: macos-26
+            label: "macOS 26 arm64"
             rustflags: ""
           - target: aarch64-apple-darwin
             os: macos-15
+            label: "macOS 15 arm64"
             rustflags: ""
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
+            label: "Ubuntu latest x64"
             rustflags: "-C link-arg=-fuse-ld=lld"
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-26.04
+            label: "Ubuntu 26.04 x64"
             rustflags: "-C link-arg=-fuse-ld=lld"
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-26.04-arm
+            label: "Ubuntu 26.04 arm64"
             rustflags: "-C link-arg=-fuse-ld=lld"
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-24.04
+            label: "Ubuntu 24.04 x64"
             rustflags: "-C link-arg=-fuse-ld=lld"
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-24.04-arm
+            label: "Ubuntu 24.04 arm64"
             rustflags: "-C link-arg=-fuse-ld=lld"
           - target: x86_64-pc-windows-msvc
             os: windows-latest
+            label: "Windows latest x64"
             rustflags: ""
           - target: x86_64-pc-windows-msvc
             os: windows-2025
+            label: "Windows Server 2025 x64"
             rustflags: ""
           - target: x86_64-pc-windows-msvc
             os: windows-2022
+            label: "Windows Server 2022 x64"
             rustflags: ""
           - target: aarch64-pc-windows-msvc
             os: windows-11-arm
+            label: "Windows 11 arm64"
             rustflags: ""
     defaults:
       run:
