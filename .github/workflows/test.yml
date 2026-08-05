@@ -69,40 +69,40 @@ jobs:
         #   - Linux バイナリは実行時に glibc >= 2.38 が必要（Ubuntu 24.04+）
         # ───────────────────────────────────────────────────────────────
         include:
-          - target: aarch64-apple-darwin (macos-latest)
+          - target: aarch64-apple-darwin_macos-latest
             os: macos-latest
             rustflags: ""
-          - target: aarch64-apple-darwin (macos-26-arm64)
+          - target: aarch64-apple-darwin_macos-26-arm64
             os: macos-26
             rustflags: ""
-          - target: aarch64-apple-darwin (macos-15-arm64)
+          - target: aarch64-apple-darwin_macos-15-arm64
             os: macos-15
             rustflags: ""
-          - target: x86_64-unknown-linux-gnu (ubuntu-latest)
+          - target: x86_64-unknown-linux-gnu_ubuntu-latest
             os: ubuntu-latest
             rustflags: "-C link-arg=-fuse-ld=lld"
-          - target: x86_64-unknown-linux-gnu (ubuntu-26.04-x64)
+          - target: x86_64-unknown-linux-gnu_ubuntu-26.04-x64
             os: ubuntu-26.04
             rustflags: "-C link-arg=-fuse-ld=lld"
-          - target: aarch64-unknown-linux-gnu (ubuntu-26.04-arm64)
+          - target: aarch64-unknown-linux-gnu_ubuntu-26.04-arm64
             os: ubuntu-26.04-arm
             rustflags: "-C link-arg=-fuse-ld=lld"
-          - target: x86_64-unknown-linux-gnu (ubuntu-24.04-x64)
+          - target: x86_64-unknown-linux-gnu_ubuntu-24.04-x64
             os: ubuntu-24.04
             rustflags: "-C link-arg=-fuse-ld=lld"
-          - target: aarch64-unknown-linux-gnu (ubuntu-24.04-arm64)
+          - target: aarch64-unknown-linux-gnu_ubuntu-24.04-arm64
             os: ubuntu-24.04-arm
             rustflags: "-C link-arg=-fuse-ld=lld"
-          - target: x86_64-pc-windows-msvc (windows-latest)
+          - target: x86_64-pc-windows-msvc_windows-latest
             os: windows-latest
             rustflags: ""
-          - target: x86_64-pc-windows-msvc (windows-2025)
+          - target: x86_64-pc-windows-msvc_windows-2025
             os: windows-2025
             rustflags: ""
-          - target: x86_64-pc-windows-msvc (windows-2022)
+          - target: x86_64-pc-windows-msvc_windows-2022
             os: windows-2022
             rustflags: ""
-          - target: aarch64-pc-windows-msvc (windows-11-arm)
+          - target: aarch64-pc-windows-msvc_windows-11-arm
             os: windows-11-arm
             rustflags: ""
     defaults:
