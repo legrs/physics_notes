@@ -25,7 +25,7 @@ latest release is, so they never need updating for a new version — and once in
 
 | Platform | Requirement | Binary |
 | --- | --- | --- |
-| macOS | Apple Silicon (M1+); no Intel build (see below) | `physq-bin-aarch64-apple-darwin` |
+| macOS | Apple Silicon (M1+) or Intel (Intel = BM25-only, no semantic search — see below) | `physq-bin-{aarch64,x86_64}-apple-darwin` |
 | Windows | x86_64 | `physq-bin-x86_64-pc-windows-msvc.exe` |
 | Linux | x86_64 or aarch64; **glibc ≥ 2.38** (Ubuntu 24.04+, Debian 13+, Fedora 39+, …) | `physq-bin-{x86_64,aarch64}-unknown-linux-gnu` |
 
@@ -92,10 +92,15 @@ install the resolved version anyway.
 
 ## Platform support
 
-Prebuilt releases: macOS (Apple Silicon), Windows (x86_64), Linux (x86_64 /
-aarch64). No Intel Mac build — the `ort` crate ships no prebuilt ONNX Runtime
-binary for `x86_64-apple-darwin`; building ONNX Runtime from source would be
-required and isn't done here.
+Prebuilt releases: macOS (Apple Silicon **and** Intel), Windows (x86_64), Linux
+(x86_64 / aarch64).
+
+**Intel Macs are BM25-only.** The `ort` crate (ONNX Runtime) ships no prebuilt
+binary for `x86_64-apple-darwin`, so Intel builds drop the semantic (e5) stage
+and use pure BM25. Search still works the same way — only the hybrid
+semantic ranking is unavailable. The `physq` binary is compiled with
+`--no-default-features` there; if you'd rather have the full smart search,
+build on an Apple Silicon machine (or use the web search).
 
 **Linux requires glibc ≥ 2.38** (Ubuntu 24.04+, Debian 13+, Fedora 39+, …).
 The prebuilt ONNX Runtime `ort` downloads calls ISO C23 libc symbols

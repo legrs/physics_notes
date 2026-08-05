@@ -10,9 +10,12 @@
 
 use std::collections::HashMap;
 use std::path::Path;
+#[cfg(feature = "semantic")]
 use std::sync::Mutex;
+#[cfg(feature = "semantic")]
 use std::time::Duration;
 
+#[cfg(feature = "semantic")]
 use fastembed::{EmbeddingModel, TextEmbedding, TextInitOptions};
 
 use crate::config::ModelSize;
@@ -139,7 +142,9 @@ pub fn model_cached(size: ModelSize, model_cache_dir: &Path) -> bool {
 
 /// Runtime query embedder (fastembed, model auto-cached in `<cache>/model/`).
 pub struct Embedder {
+    #[cfg(feature = "semantic")]
     model: TextEmbedding,
+    #[cfg(feature = "semantic")]
     dim: usize,
 }
 
@@ -150,6 +155,7 @@ pub struct Embedder {
 /// `.part` file, so every retry makes forward progress instead of starting
 /// over; failures that retrying can't help (404, disk full) just fail fast
 /// a few times. Backoff between attempts: 1s, 2s, 4s.
+#[cfg(feature = "semantic")]
 const INIT_ATTEMPTS: u32 = 4;
 
 /// Serialize model init per model size, process-wide. One init may download
@@ -159,6 +165,7 @@ const INIT_ATTEMPTS: u32 = 4;
 /// one is still downloading) would hit that lock and fail instead of
 /// waiting. With this lock the second init blocks until the first finishes,
 /// then loads straight from the cache.
+#[cfg(feature = "semantic")]
 fn init_lock(size: ModelSize) -> &'static Mutex<()> {
     static SMALL: Mutex<()> = Mutex::new(());
     static LARGE: Mutex<()> = Mutex::new(());
@@ -170,59 +177,80 @@ fn init_lock(size: ModelSize) -> &'static Mutex<()> {
 
 impl Embedder {
     pub fn new(size: ModelSize, model_cache_dir: &Path) -> Result<Self, SemanticError> {
-        let which = match size {
-            ModelSize::Small => EmbeddingModel::MultilingualE5Small,
-            ModelSize::Large => EmbeddingModel::MultilingualE5Large,
-        };
-        let _guard = init_lock(size).lock().unwrap_or_else(|p| p.into_inner());
-        let mut attempt = 0;
-        let model = loop {
-            let opts = TextInitOptions::new(which.clone())
-                .with_cache_dir(model_cache_dir.to_path_buf())
-                .with_show_download_progress(false);
-            match TextEmbedding::try_new(opts) {
-                Ok(m) => break m,
-                Err(e) => {
-                    attempt += 1;
-                    if attempt >= INIT_ATTEMPTS {
-                        // `:#` keeps the whole anyhow chain — the root cause
-                        // (lock contention, dropped connection, no disk
-                        // space…) matters more than fastembed's outermost
-                        // "Failed to retrieve …" context.
-                        return Err(SemanticError::Unavailable(format!(
-                            "failed to init embedding model: {e:#}"
-                        )));
+        #[cfg(feature = "semantic")]
+        {
+            let which = match size {
+                ModelSize::Small => EmbeddingModel::MultilingualE5Small,
+                ModelSize::Large => EmbeddingModel::MultilingualE5Large,
+            };
+            let _guard = init_lock(size).lock().unwrap_or_else(|p| p.into_inner());
+            let mut attempt = 0;
+            let model = loop {
+                let opts = TextInitOptions::new(which.clone())
+                    .with_cache_dir(model_cache_dir.to_path_buf())
+                    .with_show_download_progress(false);
+                match TextEmbedding::try_new(opts) {
+                    Ok(m) => break m,
+                    Err(e) => {
+                        attempt += 1;
+                        if attempt >= INIT_ATTEMPTS {
+                            // `:#` keeps the whole anyhow chain — the root cause
+                            // (lock contention, dropped connection, no disk
+                            // space…) matters more than fastembed's outermost
+                            // "Failed to retrieve …" context.
+                            return Err(SemanticError::Unavailable(format!(
+                                "failed to init embedding model: {e:#}"
+                            )));
+                        }
+                        std::thread::sleep(Duration::from_secs(1 << (attempt - 1)));
                     }
-                    std::thread::sleep(Duration::from_secs(1 << (attempt - 1)));
                 }
-            }
-        };
-        Ok(Self {
-            model,
-            dim: size.dim(),
-        })
+            };
+            Ok(Self {
+                model,
+                dim: size.dim(),
+            })
+        }
+        #[cfg(not(feature = "semantic"))]
+        {
+            // ort/ONNX Runtime has no prebuilt x86_64-apple-darwin binaries,
+            // so Intel Mac builds are BM25-only (`--no-default-features`).
+            let _ = (size, model_cache_dir);
+            Err(SemanticError::Unavailable(
+                "built without the `semantic` feature".into(),
+            ))
+        }
     }
 
     /// Embed `query: <lowercased query>`. fastembed mean-pools and
     /// L2-normalizes (e5 requirement) — verified, not re-normalized here.
     pub fn embed_query(&mut self, q_lower: &str) -> Result<Vec<f64>, SemanticError> {
-        let text = query_text(q_lower);
-        let out = self
-            .model
-            .embed(&[text], None)
-            .map_err(|e| SemanticError::Unavailable(format!("query embedding failed: {e:#}")))?;
-        let v = out
-            .into_iter()
-            .next()
-            .ok_or_else(|| SemanticError::Unavailable("empty embedding output".into()))?;
-        if v.len() != self.dim {
-            return Err(SemanticError::Invariant(format!(
-                "query embedding is {}-dim, expected {}",
-                v.len(),
-                self.dim
-            )));
+        #[cfg(feature = "semantic")]
+        {
+            let text = query_text(q_lower);
+            let out = self.model.embed(&[text], None).map_err(|e| {
+                SemanticError::Unavailable(format!("query embedding failed: {e:#}"))
+            })?;
+            let v = out
+                .into_iter()
+                .next()
+                .ok_or_else(|| SemanticError::Unavailable("empty embedding output".into()))?;
+            if v.len() != self.dim {
+                return Err(SemanticError::Invariant(format!(
+                    "query embedding is {}-dim, expected {}",
+                    v.len(),
+                    self.dim
+                )));
+            }
+            Ok(v.into_iter().map(|x| x as f64).collect())
         }
-        Ok(v.into_iter().map(|x| x as f64).collect())
+        #[cfg(not(feature = "semantic"))]
+        {
+            let _ = q_lower;
+            Err(SemanticError::Unavailable(
+                "built without the `semantic` feature".into(),
+            ))
+        }
     }
 }
 

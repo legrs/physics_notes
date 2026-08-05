@@ -2,8 +2,9 @@
 #
 # 自動トリガーは無し（GitHub Release はまだ運用開始していないため）。
 # GitHub → Actions → このワークフロー → Run workflow のボタン操作でのみ実行する:
-#   1. 4 ターゲットの release バイナリをビルド（各 OS のネイティブ runner。
-#      Intel Mac は ort crate が対応していないため対象外 — 下記コメント参照）
+#   1. 5 ターゲットの release バイナリをビルド（各 OS のネイティブ runner。
+#      Intel Mac は BM25-only ビルド（semantic 機能なし、--no-default-features）——
+#      下記コメント参照）
 #   2. アーカイブ（tar.gz / zip）を作成
 #   3. GitHub Release（draft）を作成し、タグ（physq-vX.Y.Z）とバイナリを添付
 #      （タグを事前に push 済みならそれを使う。無ければこの実行時点の main に打つ）
@@ -37,11 +38,18 @@ jobs:
           - target: aarch64-apple-darwin
             os: macos-26
             rustflags: ""
-          # x86_64-apple-darwin（Intel Mac）は対象外: ort crate（ONNX Runtime
+          # x86_64-apple-darwin（Intel Mac）: ort crate（ONNX Runtime
           # バインディング）が dist.txt に x86_64-apple-darwin 向けの配布を
           # 一切持っておらず、"ort does not provide prebuilt binaries for the
-          # target `x86_64-apple-darwin`" で必ず失敗する。ONNX Runtime を
-          # ソースからビルドする以外に回避策が無いため見送り。
+          # target `x86_64-apple-darwin`" で semantic ビルドは必ず失敗する。
+          # そのため fastembed を optional feature（`semantic`）化し、Intel は
+          # `--no-default-features` の BM25-only バイナリとして配布する
+          # （semantic なしでも検索・レンキングは完全に機能する。欠けるのは
+          # e5 埋め込みでのハイブリッド検索のみ）。ONNX Runtime をソースから
+          # ビルドすれば semantic も可能だが、現在は見送り。
+          - target: x86_64-apple-darwin
+            os: macos-26-intel
+            cargo_args: --no-default-features
           #
           # ort がダウンロードするプリビルド ONNX Runtime は glibc >= 2.38
           # (__isoc23_strtol 等の ISO C23 版シンボルを要求) でビルドされており、
@@ -75,10 +83,17 @@ jobs:
       # toolchain selection (not Cargo.lock) can silently reuse a cached
       # link-step fingerprint pointing at a since-removed Xcode path,
       # failing with "ld: library 'clang_rt.osx' not found" for an SDK that
-      # isn't even the one this job selected. Bump `key` if that happens.
+      # isn't even the one this job selected. Fixed structurally here:
+      # scope the cache key per runner image AND per selected Xcode version,
+      # so a build-script output produced on one image can never be replayed
+      # on another.
+      - name: Cache key — Xcode version
+        if: runner.os == 'macOS'
+        run: echo "XC_VERSION=$(xcodebuild -version 2>/dev/null | head -1 | awk '{print $2}')" >> "$GITHUB_ENV"
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: physq
+          prefix-key: "${{ matrix.os }}-${{ env.XC_VERSION }}"
       - name: Install lld (Linux only)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y lld
@@ -86,7 +101,7 @@ jobs:
         working-directory: physq
         env:
           RUSTFLAGS: ${{ matrix.rustflags }}
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.target }} ${{ matrix.cargo_args || '' }}
       - name: Collect
         run: |
           mkdir -p out/${{ matrix.target }}

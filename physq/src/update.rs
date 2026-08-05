@@ -67,12 +67,15 @@ fn http_client() -> Result<reqwest::blocking::Client> {
 }
 
 /// The raw-binary asset name this exact build should look for, matching the
-/// naming the release workflow uses. Only the 4 combinations physq actually
-/// ships prebuilt binaries for are recognized (CLAUDE.md-adjacent: no Intel
-/// Mac build, Linux needs glibc >= 2.38 — see physq/README.md).
+/// naming the release workflow uses. Recognized = the target triples physq
+/// actually ships prebuilt binaries for. Intel Mac builds are BM25-only
+/// (`physq` is built with `--no-default-features` there — ort has no
+/// prebuilt x86_64-apple-darwin — see physq/Cargo.toml [features]); Linux
+/// needs glibc >= 2.38 (see physq/README.md).
 fn asset_name_for_this_platform() -> Result<&'static str> {
     match (std::env::consts::OS, std::env::consts::ARCH) {
         ("macos", "aarch64") => Ok("physq-bin-aarch64-apple-darwin"),
+        ("macos", "x86_64") => Ok("physq-bin-x86_64-apple-darwin"),
         ("linux", "x86_64") => Ok("physq-bin-x86_64-unknown-linux-gnu"),
         ("linux", "aarch64") => Ok("physq-bin-aarch64-unknown-linux-gnu"),
         ("windows", "x86_64") => Ok("physq-bin-x86_64-pc-windows-msvc.exe"),

@@ -63,9 +63,15 @@ jobs:
         #               native ランナーを選ぶこと（クロスビルドは不要）。
         #               aarch64 系は arm ランナー（ubuntu-24.04-arm）を。
         #   rustflags — ビルド時に使う RUSTFLAGS（Linux は lld リンク推奨）
+        #   cargo_args— cargo build/test/clippy に追加で渡す引数。
+        #               Intel Mac (x86_64-apple-darwin) は ort crate が
+        #               x86_64-apple-darwin 向けプリビルドを持たないため
+        #               semantic 機能を落として BM25-only でビルドする
+        #               （--no-default-features。詳細は physq/Cargo.toml
+        #               の [features] と physq-release.yml のコメント参照）。
         #
         # 既知の制約（.github/workflows/physq-release.yml に詳細）:
-        #   - Intel Mac (x86_64-apple-darwin) は ort crate 非対応のため対象外
+        #   - Intel Mac は semantic 検索なし（BM25-only）
         #   - Linux バイナリは実行時に glibc >= 2.38 が必要（Ubuntu 24.04+）
         # ───────────────────────────────────────────────────────────────
         include:
@@ -73,14 +79,16 @@ jobs:
             os: xcode-27
             label: "macOS 26 arm64 with Xcode 27 beta"
             rustflags: ""
-          - target: aarch64-apple-darwin
+          - target: x86_64-apple-darwin
             os: macos-26-intel
-            label: "macOS 26 x64"
+            label: "macOS 26 x64 (BM25-only)"
             rustflags: ""
-          - target: aarch64-apple-darwin
+            cargo_args: --no-default-features
+          - target: x86_64-apple-darwin
             os: macos-15-intel
-            label: "macOS 15 x64"
+            label: "macOS 15 x64 (BM25-only)"
             rustflags: ""
+            cargo_args: --no-default-features
           - target: aarch64-apple-darwin
             os: macos-latest
             label: "macOS latest arm64"
@@ -137,9 +145,21 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+      # rust-cache's key only covers OS+arch+Cargo.lock, NOT the Xcode/SDK the
+      # build script ran against. ort-sys's build script emits a link-search
+      # path for clang_rt.osx derived from `$CC --print-search-dirs`; reusing
+      # target/ from an image whose default Xcode has since changed (e.g. a
+      # build from an image where Xcode 27 beta was selected, cached and
+      # replayed on macos-15) fails with `ld: library 'clang_rt.osx' not
+      # found` pointing at a stale path. Scope the cache per runner image AND
+      # per selected Xcode version so that never crosses images.
+      - name: Cache key — Xcode version
+        if: runner.os == 'macOS'
+        run: echo "XC_VERSION=$(xcodebuild -version 2>/dev/null | head -1 | awk '{print $2}')" >> "$GITHUB_ENV"
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: physq
+          prefix-key: "${{ matrix.os }}-${{ env.XC_VERSION }}"
       - name: Install lld (Linux only)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y lld
@@ -147,13 +167,13 @@ jobs:
         working-directory: physq
         env:
           RUSTFLAGS: ${{ matrix.rustflags }}
-        run: cargo build --target ${{ matrix.target }}
+        run: cargo build --target ${{ matrix.target }} ${{ matrix.cargo_args || '' }}
       - name: cargo test
         working-directory: physq
-        run: cargo test --target ${{ matrix.target }}
+        run: cargo test --target ${{ matrix.target }} ${{ matrix.cargo_args || '' }}
       - name: cargo clippy
         working-directory: physq
-        run: cargo clippy --target ${{ matrix.target }}
+        run: cargo clippy --target ${{ matrix.target }} ${{ matrix.cargo_args || '' }}
       - name: cargo fmt --check
         working-directory: physq
         run: cargo fmt --check

@@ -13,7 +13,7 @@ dirs = "6"
 fastembed = { version = "5.17", default-features = false, features = [
     "hf-hub-rustls-tls",
     "ort-download-binaries-rustls-tls",
-] }
+], optional = true }
 lindera = { version = "4.0", features = ["embed-ipadic"] }
 ratatui = { version = "0.30", features = ["unstable-rendered-line-info"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "blocking"] }
@@ -37,3 +37,10 @@ codegen-units = 1
 [profile.dev]
 debug = 0
 incremental = false
+
+# `semantic` (fastembed → ort/ONNX Runtime) has no prebuilt x86_64-apple-darwin
+# binaries upstream, so Intel Macs build BM25-only with `--no-default-features`.
+# Everything else in the default build is unchanged.
+[features]
+default = ["semantic"]
+semantic = ["dep:fastembed"]
