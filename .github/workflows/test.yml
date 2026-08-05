@@ -70,6 +70,18 @@ jobs:
         # ───────────────────────────────────────────────────────────────
         include:
           - target: aarch64-apple-darwin
+            os: xcode-27
+            label: "macOS 26 arm64 with Xcode 27 beta"
+            rustflags: ""
+          - target: aarch64-apple-darwin
+            os: macos-26-intel
+            label: "macOS 26 x64"
+            rustflags: ""
+          - target: aarch64-apple-darwin
+            os: macos-15-intel
+            label: "macOS 15 x64"
+            rustflags: ""
+          - target: aarch64-apple-darwin
             os: macos-latest
             label: "macOS latest arm64"
             rustflags: ""
