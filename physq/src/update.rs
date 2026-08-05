@@ -19,6 +19,15 @@
 //! binaries — `update` downloads the matching raw binary directly (no
 //! tar/zip decoding needed in the client) and verifies its SHA-256 before
 //! ever handing it to `self_replace`.
+//!
+//! Intel Mac (x86_64-apple-darwin) is the one platform whose binary is
+//! *not* self-contained: it dynamically links a bundled Microsoft ONNX
+//! Runtime dylib (ort/ONNX Runtime is in its final x86_64 macOS release,
+//! 1.23.2 — see `.github/workflows/physq-release.yml`), which the release
+//! workflow ships next to the binary as `libonnxruntime.1.23.2.dylib`.
+//! `update` downloads that companion asset too and places it beside the
+//! executable; without it the Intel binary would not even start (dyld
+//! resolves the `@loader_path` dylib at process load).
 
 use std::io::Write;
 
@@ -32,6 +41,11 @@ const GITHUB_API_RELEASES: &str =
     "https://api.github.com/repos/legrs/physics_notes/releases?per_page=100";
 const TAG_PREFIX: &str = "physq-v";
 const CHECKSUMS_ASSET: &str = "checksums.txt";
+/// Release-side name of the Microsoft ONNX Runtime dylib bundled with the
+/// Intel Mac binary. The version in the filename must match
+/// `physq/scripts/install_ort_intel.sh`'s `VERSION` (and the release
+/// workflow's copy of it) — update.rs just mirrors whatever they ship.
+const INTEL_ORT_DYLIB_ASSET: &str = "libonnxruntime.1.23.2.dylib";
 
 #[derive(Debug, Deserialize)]
 struct Release {
@@ -56,6 +70,9 @@ pub struct UpdatePlan {
     pub tag: String,
     asset_url: String,
     checksums_url: Option<String>,
+    /// Intel Mac only: the ONNX Runtime dylib that must sit next to the
+    /// binary for it to launch. `None` elsewhere.
+    companion_asset_url: Option<String>,
 }
 
 fn http_client() -> Result<reqwest::blocking::Client> {
@@ -68,10 +85,9 @@ fn http_client() -> Result<reqwest::blocking::Client> {
 
 /// The raw-binary asset name this exact build should look for, matching the
 /// naming the release workflow uses. Recognized = the target triples physq
-/// actually ships prebuilt binaries for. Intel Mac builds are BM25-only
-/// (`physq` is built with `--no-default-features` there — ort has no
-/// prebuilt x86_64-apple-darwin — see physq/Cargo.toml [features]); Linux
-/// needs glibc >= 2.38 (see physq/README.md).
+/// actually ships prebuilt binaries for. Linux needs glibc >= 2.38 (see
+/// physq/README.md). Intel Mac also has a companion dylib asset — see
+/// `companion_asset_name()`.
 fn asset_name_for_this_platform() -> Result<&'static str> {
     match (std::env::consts::OS, std::env::consts::ARCH) {
         ("macos", "aarch64") => Ok("physq-bin-aarch64-apple-darwin"),
@@ -82,6 +98,16 @@ fn asset_name_for_this_platform() -> Result<&'static str> {
         (os, arch) => bail!(
             "no prebuilt physq binary for {os}/{arch}; build from source instead (see README)"
         ),
+    }
+}
+
+/// Intel Mac binaries dynamically link a bundled ONNX Runtime dylib, so an
+/// update must fetch that companion asset as well. Every other platform
+/// returns `None` (nothing changes for them).
+fn companion_asset_name() -> Option<&'static str> {
+    match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("macos", "x86_64") => Some(INTEL_ORT_DYLIB_ASSET),
+        _ => None,
     }
 }
 
@@ -160,6 +186,13 @@ pub fn resolve(beta: bool) -> Result<UpdatePlan> {
         .iter()
         .find(|a| a.name == CHECKSUMS_ASSET)
         .map(|a| a.browser_download_url.clone());
+    let companion_asset_url = companion_asset_name().and_then(|n| {
+        release
+            .assets
+            .iter()
+            .find(|a| a.name == n)
+            .map(|a| a.browser_download_url.clone())
+    });
 
     Ok(UpdatePlan {
         current,
@@ -167,54 +200,91 @@ pub fn resolve(beta: bool) -> Result<UpdatePlan> {
         tag: release.tag_name.clone(),
         asset_url,
         checksums_url,
+        companion_asset_url,
     })
 }
 
-/// Download the resolved binary, verify its checksum (when the release
-/// publishes one), and replace the running executable via `self_replace`.
-/// `progress` receives short phase labels for the caller's spinner.
+/// Fetch `checksums.txt` and return name → SHA-256 hex. The file covers the
+/// raw `physq-bin-*` binaries plus the Intel Mac ONNX Runtime dylib.
+fn fetch_checksums(
+    client: &reqwest::blocking::Client,
+    url: &str,
+) -> Result<std::collections::HashMap<String, String>> {
+    let text = client
+        .get(url)
+        .send()
+        .context("downloading checksums.txt")?
+        .error_for_status()
+        .context("downloading checksums.txt")?
+        .text()
+        .context("reading checksums.txt")?;
+    Ok(text
+        .lines()
+        .filter_map(|line| {
+            let mut parts = line.split_whitespace();
+            let hash = parts.next()?;
+            let name = parts.next()?.trim_start_matches('*').to_string();
+            Some((name, hash.to_string()))
+        })
+        .collect())
+}
+
+/// Download an asset and verify its SHA-256 against the release's
+/// `checksums.txt`.
+fn download_verified(
+    client: &reqwest::blocking::Client,
+    url: &str,
+    name: &str,
+    checksums: &std::collections::HashMap<String, String>,
+) -> Result<Vec<u8>> {
+    let bytes = client
+        .get(url)
+        .send()
+        .with_context(|| format!("downloading {name}"))?
+        .error_for_status()
+        .with_context(|| format!("downloading {name}"))?
+        .bytes()
+        .with_context(|| format!("reading {name}"))?;
+    let expected = checksums
+        .get(name)
+        .with_context(|| format!("checksums.txt has no entry for {name}"))?;
+    let actual = sha256_hex(&bytes);
+    if actual != *expected {
+        bail!(
+            "downloaded {name} failed checksum verification (expected {expected}, got {actual}) — try again"
+        );
+    }
+    Ok(bytes.to_vec())
+}
+
+/// Download the resolved binary (and, on Intel Mac, the bundled ONNX
+/// Runtime dylib), verify each against the release's `checksums.txt`, and
+/// replace the running executable via `self_replace`. `progress` receives
+/// short phase labels for the caller's spinner.
 pub fn apply(plan: &UpdatePlan, progress: &dyn Fn(&str)) -> Result<()> {
     let client = http_client()?;
     let asset_name = asset_name_for_this_platform()?;
 
     progress(&format!("Downloading physq {}…", plan.target));
-    let bytes = client
-        .get(&plan.asset_url)
-        .send()
-        .context("downloading the new physq binary")?
-        .error_for_status()
-        .context("downloading the new physq binary")?
-        .bytes()
-        .context("reading the downloaded binary")?;
-
-    if let Some(url) = &plan.checksums_url {
-        progress("Verifying checksum…");
-        let text = client
-            .get(url)
-            .send()
-            .context("downloading checksums.txt")?
-            .error_for_status()
-            .context("downloading checksums.txt")?
-            .text()
-            .context("reading checksums.txt")?;
-        let expected = text
-            .lines()
-            .find_map(|line| {
-                let mut parts = line.split_whitespace();
-                let hash = parts.next()?;
-                let name = parts.next()?.trim_start_matches('*');
-                (name == asset_name).then(|| hash.to_string())
-            })
-            .with_context(|| format!("checksums.txt has no entry for {asset_name}"))?;
-        let actual = sha256_hex(&bytes);
-        if actual != expected {
-            bail!(
-                "downloaded binary failed checksum verification (expected {expected}, got {actual}) — try again"
-            );
+    let checksums = match &plan.checksums_url {
+        Some(url) => Some(fetch_checksums(&client, url)?),
+        None => {
+            progress("(no checksums.txt on this release; skipping verification)");
+            None
         }
-    } else {
-        progress("(no checksums.txt on this release; skipping verification)");
-    }
+    };
+    let bytes = match &checksums {
+        Some(map) => download_verified(&client, &plan.asset_url, asset_name, map)?,
+        None => client
+            .get(&plan.asset_url)
+            .send()
+            .context("downloading the new physq binary")?
+            .error_for_status()
+            .context("downloading the new physq binary")?
+            .bytes()
+            .context("reading the downloaded binary")?
+            .to_vec(),
+    };
 
     progress("Installing…");
     let dir = tempfile::Builder::new()
@@ -235,6 +305,28 @@ pub fn apply(plan: &UpdatePlan, progress: &dyn Fn(&str)) -> Result<()> {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(&new_exe_path, std::fs::Permissions::from_mode(0o755))
             .with_context(|| format!("setting {} executable", new_exe_path.display()))?;
+    }
+
+    // On Intel Mac, install the companion ONNX Runtime dylib into the same
+    // directory as the executable before replacing anything, so the
+    // replaced binary can actually launch. Ignored everywhere else.
+    if let Some(url) = &plan.companion_asset_url {
+        let Some(name) = companion_asset_name() else {
+            unreachable!("companion url implies a companion asset name");
+        };
+        let checksums = checksums.as_ref().with_context(|| {
+            format!(
+                "Intel Mac update needs checksums.txt to verify {name}, but the release has none"
+            )
+        })?;
+        let dylib = download_verified(&client, url, name, checksums)?;
+        let exe_dir = std::env::current_exe()
+            .context("locating the running executable")?
+            .parent()
+            .context("running executable has no parent dir")?
+            .to_path_buf();
+        let dest = exe_dir.join(name);
+        std::fs::write(&dest, dylib).with_context(|| format!("writing {}", dest.display()))?;
     }
 
     self_replace::self_replace(&new_exe_path).context("replacing the running executable")?;

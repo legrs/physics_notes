@@ -213,8 +213,9 @@ impl Embedder {
         }
         #[cfg(not(feature = "semantic"))]
         {
-            // ort/ONNX Runtime has no prebuilt x86_64-apple-darwin binaries,
-            // so Intel Mac builds are BM25-only (`--no-default-features`).
+            // This arm only exists for `--no-default-features` source builds
+            // (e.g. Intel Mac without the bundled MS ONNX Runtime dylib) —
+            // official releases always enable `semantic`.
             let _ = (size, model_cache_dir);
             Err(SemanticError::Unavailable(
                 "built without the `semantic` feature".into(),

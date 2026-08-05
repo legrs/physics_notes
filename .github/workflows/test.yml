@@ -63,15 +63,13 @@ jobs:
         #               native ランナーを選ぶこと（クロスビルドは不要）。
         #               aarch64 系は arm ランナー（ubuntu-24.04-arm）を。
         #   rustflags — ビルド時に使う RUSTFLAGS（Linux は lld リンク推奨）
-        #   cargo_args— cargo build/test/clippy に追加で渡す引数。
-        #               Intel Mac (x86_64-apple-darwin) は ort crate が
-        #               x86_64-apple-darwin 向けプリビルドを持たないため
-        #               semantic 機能を落として BM25-only でビルドする
-        #               （--no-default-features。詳細は physq/Cargo.toml
-        #               の [features] と physq-release.yml のコメント参照）。
+        #
+        # Intel Mac (x86_64-apple-darwin) は semantic ビルド込みで動作する。
+        # ort/ONNX Runtime は x86_64-apple-darwin 向けの配布が無いため、
+        # Microsoft 公式の最終 Intel 版 (1.23.2) dylib に動的リンクする
+        # （下記 "Install ONNX Runtime" step + physq/scripts/install_ort_intel.sh）。
         #
         # 既知の制約（.github/workflows/physq-release.yml に詳細）:
-        #   - Intel Mac は semantic 検索なし（BM25-only）
         #   - Linux バイナリは実行時に glibc >= 2.38 が必要（Ubuntu 24.04+）
         # ───────────────────────────────────────────────────────────────
         include:
@@ -81,14 +79,12 @@ jobs:
             rustflags: ""
           - target: x86_64-apple-darwin
             os: macos-26-intel
-            label: "macOS 26 x64 (BM25-only)"
+            label: "macOS 26 x64"
             rustflags: ""
-            cargo_args: --no-default-features
           - target: x86_64-apple-darwin
             os: macos-15-intel
-            label: "macOS 15 x64 (BM25-only)"
+            label: "macOS 15 x64"
             rustflags: ""
-            cargo_args: --no-default-features
           - target: aarch64-apple-darwin
             os: macos-latest
             label: "macOS latest arm64"
@@ -163,17 +159,30 @@ jobs:
       - name: Install lld (Linux only)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y lld
+      # Intel Mac links against the Microsoft official ONNX Runtime 1.23.2
+      # x86_64 dylib (the last Intel Mac release — 1.24+ ships none; ort's
+      # own prebuilts never covered x86_64-apple-darwin). ORT_LIB_LOCATION
+      # is read by ort-sys at build time; DYLD_LIBRARY_PATH lets the built
+      # test binaries load the dylib at run time.
+      - name: Install ONNX Runtime (Intel Mac only)
+        if: matrix.target == 'x86_64-apple-darwin'
+        working-directory: physq
+        run: |
+          LIB_DIR="$(bash scripts/install_ort_intel.sh)"
+          echo "ORT_LIB_LOCATION=$LIB_DIR" >> "$GITHUB_ENV"
+          echo "ORT_PREFER_DYNAMIC_LINK=1" >> "$GITHUB_ENV"
+          echo "DYLD_LIBRARY_PATH=$LIB_DIR" >> "$GITHUB_ENV"
       - name: Build (debug)
         working-directory: physq
         env:
           RUSTFLAGS: ${{ matrix.rustflags }}
-        run: cargo build --target ${{ matrix.target }} ${{ matrix.cargo_args || '' }}
+        run: cargo build --target ${{ matrix.target }}
       - name: cargo test
         working-directory: physq
-        run: cargo test --target ${{ matrix.target }} ${{ matrix.cargo_args || '' }}
+        run: cargo test --target ${{ matrix.target }}
       - name: cargo clippy
         working-directory: physq
-        run: cargo clippy --target ${{ matrix.target }} ${{ matrix.cargo_args || '' }}
+        run: cargo clippy --target ${{ matrix.target }}
       - name: cargo fmt --check
         working-directory: physq
         run: cargo fmt --check
