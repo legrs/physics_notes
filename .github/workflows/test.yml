@@ -69,17 +69,41 @@ jobs:
         #   - Linux バイナリは実行時に glibc >= 2.38 が必要（Ubuntu 24.04+）
         # ───────────────────────────────────────────────────────────────
         include:
-          - target: aarch64-apple-darwin
+          - target: aarch64-apple-darwin (macos-latest)
+            os: macos-latest
+            rustflags: ""
+          - target: aarch64-apple-darwin (macos-26-arm64)
             os: macos-26
             rustflags: ""
-          - target: x86_64-unknown-linux-gnu
+          - target: aarch64-apple-darwin (macos-15-arm64)
+            os: macos-15
+            rustflags: ""
+          - target: x86_64-unknown-linux-gnu (ubuntu-latest)
+            os: ubuntu-latest
+            rustflags: "-C link-arg=-fuse-ld=lld"
+          - target: x86_64-unknown-linux-gnu (ubuntu-26.04-x64)
+            os: ubuntu-26.04
+            rustflags: "-C link-arg=-fuse-ld=lld"
+          - target: aarch64-unknown-linux-gnu (ubuntu-26.04-arm64)
+            os: ubuntu-26.04-arm
+            rustflags: "-C link-arg=-fuse-ld=lld"
+          - target: x86_64-unknown-linux-gnu (ubuntu-24.04-x64)
             os: ubuntu-24.04
             rustflags: "-C link-arg=-fuse-ld=lld"
-          - target: aarch64-unknown-linux-gnu
+          - target: aarch64-unknown-linux-gnu (ubuntu-24.04-arm64)
             os: ubuntu-24.04-arm
             rustflags: "-C link-arg=-fuse-ld=lld"
-          - target: x86_64-pc-windows-msvc
+          - target: x86_64-pc-windows-msvc (windows-latest)
             os: windows-latest
+            rustflags: ""
+          - target: x86_64-pc-windows-msvc (windows-2025)
+            os: windows-2025
+            rustflags: ""
+          - target: x86_64-pc-windows-msvc (windows-2022)
+            os: windows-2022
+            rustflags: ""
+          - target: aarch64-pc-windows-msvc (windows-11-arm)
+            os: windows-11-arm
             rustflags: ""
     defaults:
       run:
