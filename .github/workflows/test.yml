@@ -172,6 +172,14 @@ jobs:
           echo "ORT_LIB_LOCATION=$LIB_DIR" >> "$GITHUB_ENV"
           echo "ORT_PREFER_DYNAMIC_LINK=1" >> "$GITHUB_ENV"
           echo "DYLD_LIBRARY_PATH=$LIB_DIR" >> "$GITHUB_ENV"
+      - name: Dependency versions (proof of pin)
+        working-directory: physq
+        run: |
+          # fastembed/ort/ort-sys are version-pinned in the committed Cargo.lock
+          # (see physq/Cargo.toml). Printing the resolved tree here pins the
+          # actual versions in the CI log, per platform. Expect fastembed
+          # 5.13.2 / ort + ort-sys 2.0.0-rc.11 everywhere.
+          cargo tree -p fastembed -p ort -p ort-sys
       - name: Build (debug)
         working-directory: physq
         env:
