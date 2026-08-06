@@ -7,12 +7,15 @@
 # Usage:
 #   .\install_physq.ps1                      # into $env:USERPROFILE\bin
 #   .\install_physq.ps1 -Dest C:\tools       # into a directory of your choice
+#   .\install_physq.ps1 -Global              # as above, and add it to your
+#                                            # user PATH (new terminals only)
 #
 # Note: the binary is unsigned, so Windows SmartScreen may warn on first run
 # ("More info -> Run anyway").
 
 param(
-    [string]$Dest = (Join-Path $env:USERPROFILE "bin")
+    [string]$Dest = (Join-Path $env:USERPROFILE "bin"),
+    [switch]$Global
 )
 
 $ErrorActionPreference = "Stop"
@@ -53,6 +56,19 @@ try {
     Write-Host ""
     & (Join-Path $Dest "physq.exe") --version
     Write-Host "To update later: $Dest\physq.exe update"
+
+    # --- optional global install: add DEST to the user PATH -----------------
+    if ($Global) {
+        $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+        if ($userPath -and $userPath.Split(";") -contains $Dest) {
+            Write-Host "$Dest is already on your PATH."
+        }
+        else {
+            [Environment]::SetEnvironmentVariable("Path", $(if ($userPath) { "$userPath;$Dest" } else { $Dest }), "User")
+            Write-Host "Added $Dest to your user PATH (takes effect in new terminals)."
+            Write-Host "Then run: physq --help"
+        }
+    }
 }
 finally {
     Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue

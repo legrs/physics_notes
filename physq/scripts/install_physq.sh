@@ -12,9 +12,15 @@
 #
 # Usage:
 #   bash install_physq.sh [DEST_DIR]     # default: ./bin
+#   bash install_physq.sh --global       # ~/.local/bin (macOS/Linux) or
+#                                        # ~/bin (Git Bash), then add it to PATH
 set -euo pipefail
 
-DEST="${1:-./bin}"
+case "${1:-}" in
+  -g|--global) GLOBAL=1 ;;
+  "")          GLOBAL=0 ;;
+  *)           GLOBAL=0; DEST="$1" ;;
+esac
 BASE_URL="https://github.com/legrs/physics_notes/releases/latest/download"
 
 # --- detect OS/arch and pick the asset names -------------------------------
@@ -41,6 +47,14 @@ case "$OS" in
   windows) BIN="physq-bin-$ARCH-pc-windows-msvc.exe" ;;
 esac
 EXE="physq"; [ "$OS" = windows ] && EXE="physq.exe"
+
+if [ "${GLOBAL:-0}" = 1 ]; then
+  case "$OS" in
+    windows) DEST="$HOME/bin" ;;
+    *)       DEST="$HOME/.local/bin" ;;
+  esac
+fi
+DEST="${DEST:-./bin}"
 
 # sha256sum (GNU, Git Bash) or shasum -a 256 (macOS); compare manually so the
 # whole thing works even where `-c` formats differ.
@@ -107,3 +121,23 @@ fi
 echo
 "$DEST/$EXE" --version
 echo "To update later: $DEST/$EXE update"
+
+# --- optional global install: register DEST in the shell's PATH ---------------
+if [ "${GLOBAL:-0}" = 1 ]; then
+  if [ "$OS" = windows ]; then
+    rc="$HOME/.bashrc"
+  elif [ "$(basename "${SHELL:-/bin/zsh}")" = zsh ]; then
+    rc="$HOME/.zshrc"
+  else
+    rc="$HOME/.bashrc"
+  fi
+  if grep -qF "$DEST" "$rc" 2>/dev/null; then
+    echo "$DEST is already on PATH ($rc)"
+  else
+    touch "$rc"
+    printf 'export PATH="%s:$PATH"\n' "$DEST" >> "$rc"
+    echo "Added $DEST to PATH in $rc"
+    echo "Restart your terminal, or run: source $rc"
+  fi
+  echo "Then run: physq --help"
+fi

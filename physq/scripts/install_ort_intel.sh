@@ -21,7 +21,7 @@ LIB_DIR="$DEST/lib"
 if [ ! -f "$LIB_DIR/libonnxruntime.${VERSION}.dylib" ]; then
   rm -rf "$DEST" "$DEST.tgz"
   mkdir -p "$DEST"
-  curl -fsSL -o "$DEST.tgz" "$URL"
+  curl -fL --retry 5 --retry-all-errors -o "$DEST.tgz" "$URL"
   echo "$SHA256  $DEST.tgz" | shasum -a 256 -c - >/dev/null
   # The archive has a single top-level directory. bsdtar (macOS) doesn't
   # support GNU tar's --strip-components, so extract and hoist manually.

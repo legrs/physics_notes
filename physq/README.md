@@ -48,15 +48,11 @@ platform). On Windows without Git Bash, use the PowerShell twin
 `physq/scripts/install_physq.ps1` instead.
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/legrs/physics_notes/master/physq/scripts/install_physq.sh -o install_physq.sh
-bash install_physq.sh                 # installs into ./bin
-bash install_physq.sh /usr/local/bin  # or any destination directory
+curl -fsSL https://raw.githubusercontent.com/legrs/physics_notes/master/physq/scripts/install_physq.sh | bash -s -- ./bin   # ./bin default; --global = ~/.local/bin + PATH, any dir = that dir
 ```
 
 ```powershell
-Invoke-WebRequest https://raw.githubusercontent.com/legrs/physics_notes/master/physq/scripts/install_physq.ps1 -OutFile install_physq.ps1
-.\install_physq.ps1                   # installs into $env:USERPROFILE\bin
-.\install_physq.ps1 -Dest C:\tools    # or any destination directory
+irm https://raw.githubusercontent.com/legrs/physics_notes/master/physq/scripts/install_physq.ps1 -OutFile install_physq.ps1; .\install_physq.ps1 -Global   # %USERPROFILE%\bin default + user PATH; add -Dest C:\tools to change the dir
 ```
 
 The manual per-platform steps below are the same downloads, spelled out.

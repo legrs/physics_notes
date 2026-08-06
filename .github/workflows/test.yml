@@ -215,7 +215,7 @@ jobs:
           cat > /tmp/check_ps1.ps1 <<'EOF'
           $errors = @()
           [System.Management.Automation.Language.Parser]::ParseFile(
-            "physq/scripts/install_physq.ps1", [ref]$null, [ref]$errors) | Out-Null
+            "scripts/install_physq.ps1", [ref]$null, [ref]$errors) | Out-Null
           if ($errors.Count) {
             $errors | ForEach-Object { Write-Error $_.Message }
             exit 1
