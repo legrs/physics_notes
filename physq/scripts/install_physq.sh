@@ -11,14 +11,20 @@
 # linked and the two files must always stay side by side.
 #
 # Usage:
-#   bash install_physq.sh [DEST_DIR]     # default: ./bin
-#   bash install_physq.sh --global       # ~/.local/bin (macOS/Linux) or
-#                                        # ~/bin (Git Bash), then add it to PATH
+#   bash install_physq.sh                     # global (default): ~/.local/bin
+#                                             # (macOS/Linux) or ~/bin (Git
+#                                             # Bash), then add it to PATH
+#   bash install_physq.sh --local             # into ./bin, no PATH change
+#   bash install_physq.sh [DEST_DIR]          # into that dir, no PATH change
+#   bash install_physq.sh --global [DEST_DIR] # explicit: global (default)
 set -euo pipefail
 
+GLOBAL=1   # default: user-scope install + PATH registration
+DEST=""
 case "${1:-}" in
-  -g|--global) GLOBAL=1 ;;
-  "")          GLOBAL=0 ;;
+  -g|--global) GLOBAL=1; [ -n "${2:-}" ] && DEST="$2" ;;
+  -l|--local)  GLOBAL=0; DEST="./bin" ;;
+  "")          : ;;
   *)           GLOBAL=0; DEST="$1" ;;
 esac
 BASE_URL="https://github.com/legrs/physics_notes/releases/latest/download"
@@ -48,10 +54,10 @@ case "$OS" in
 esac
 EXE="physq"; [ "$OS" = windows ] && EXE="physq.exe"
 
-if [ "${GLOBAL:-0}" = 1 ]; then
+if [ "$GLOBAL" = 1 ]; then
   case "$OS" in
-    windows) DEST="$HOME/bin" ;;
-    *)       DEST="$HOME/.local/bin" ;;
+    windows) DEST="${DEST:-$HOME/bin}" ;;
+    *)       DEST="${DEST:-$HOME/.local/bin}" ;;
   esac
 fi
 DEST="${DEST:-./bin}"

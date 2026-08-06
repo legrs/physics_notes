@@ -5,17 +5,17 @@
 # checksums.txt, and installs it into DEST.
 #
 # Usage:
-#   .\install_physq.ps1                      # into $env:USERPROFILE\bin
-#   .\install_physq.ps1 -Dest C:\tools       # into a directory of your choice
-#   .\install_physq.ps1 -Global              # as above, and add it to your
-#                                            # user PATH (new terminals only)
+#   .\install_physq.ps1                      # global (default): into
+#                                            # $env:USERPROFILE\bin + user PATH
+#   .\install_physq.ps1 -Local               # same dir, no PATH change
+#   .\install_physq.ps1 -Dest C:\tools       # custom dir, no PATH change
 #
 # Note: the binary is unsigned, so Windows SmartScreen may warn on first run
 # ("More info -> Run anyway").
 
 param(
     [string]$Dest = (Join-Path $env:USERPROFILE "bin"),
-    [switch]$Global
+    [switch]$Local
 )
 
 $ErrorActionPreference = "Stop"
@@ -57,8 +57,8 @@ try {
     & (Join-Path $Dest "physq.exe") --version
     Write-Host "To update later: $Dest\physq.exe update"
 
-    # --- optional global install: add DEST to the user PATH -----------------
-    if ($Global) {
+    # --- global install (default): add DEST to the user PATH ---------------
+    if (-not $Local) {
         $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
         if ($userPath -and $userPath.Split(";") -contains $Dest) {
             Write-Host "$Dest is already on your PATH."
