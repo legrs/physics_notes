@@ -9,6 +9,10 @@
 //   3. embeddings.json shape (`small`=384-d, `large`=1024-d), finite values,
 //      key coverage vs the corpus.
 //   4. version.json hash/size manifest matches the real files (sha256).
+//      Mismatches are a WARN, not a failure: build.yml regenerates
+//      version.json after every corpus-affecting push, so between the data
+//      change and that auto-commit the manifest is expected to lag behind
+//      the committed files.
 //   5. search_text is current: re-running the REAL pipeline
 //      (`node scripts/build.js --data <copy>`) on a working copy must
 //      reproduce the committed search_text byte-for-byte. Requires the
@@ -116,8 +120,8 @@ if (ver && ver.files) {
       continue;
     }
     const real = path.join(REPO_ROOT, f);
-    ok(meta.hash === sha256File(real), `version.json hash matches ${f}`);
-    ok(meta.size === fs.statSync(real).size, `version.json size matches ${f}`);
+    ok(meta.hash === sha256File(real), `version.json hash matches ${f}`, true);
+    ok(meta.size === fs.statSync(real).size, `version.json size matches ${f}`, true);
   }
   ok(typeof ver.tokenizer === 'string' && ver.tokenizer, 'version.json tokenizer is set');
   ok(ver.embedding_model && ver.embedding_model.small && ver.embedding_model.large, 'version.json embedding_model.small/large set');
