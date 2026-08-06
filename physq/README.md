@@ -25,7 +25,7 @@ latest release is, so they never need updating for a new version — and once in
 
 | Platform | Requirement | Binary |
 | --- | --- | --- |
-| macOS | Apple Silicon (M1+); no Intel build (see below) | `physq-bin-aarch64-apple-darwin` |
+| macOS | Apple Silicon (M1+) or Intel (Intel = BM25-only, no semantic search — see below) | `physq-bin-{aarch64,x86_64}-apple-darwin` |
 | Windows | x86_64 | `physq-bin-x86_64-pc-windows-msvc.exe` |
 | Linux | x86_64 or aarch64; **glibc ≥ 2.38** (Ubuntu 24.04+, Debian 13+, Fedora 39+, …) | `physq-bin-{x86_64,aarch64}-unknown-linux-gnu` |
 
@@ -92,10 +92,22 @@ install the resolved version anyway.
 
 ## Platform support
 
-Prebuilt releases: macOS (Apple Silicon), Windows (x86_64), Linux (x86_64 /
-aarch64). No Intel Mac build — the `ort` crate ships no prebuilt ONNX Runtime
-binary for `x86_64-apple-darwin`; building ONNX Runtime from source would be
-required and isn't done here.
+Prebuilt releases: macOS (Apple Silicon **and** Intel), Windows (x86_64), Linux
+(x86_64 / aarch64).
+
+**Intel Macs get full semantic search** via a bundled Microsoft official ONNX
+Runtime dylib. The `ort` crate (ONNX Runtime) ships no prebuilt binary for
+`x86_64-apple-darwin`, and Microsoft stopped shipping x86_64 macOS ONNX
+Runtime after 1.23 — so Intel releases are dynamically linked against
+Microsoft's official `onnxruntime-osx-x86_64-1.23.2` (SHA-256-pinned, fetched
+and cached by `physq/scripts/install_ort_intel.sh`). The binary resolves it at
+run time from its own directory (`@loader_path`), so the release archive and
+`physq update` ship both `physq` and `libonnxruntime.1.23.2.dylib` side by
+side — treat the two files as one unit when copying the Intel binary around.
+
+Building Intel Mac from source without the dylib is still possible:
+`cargo build --no-default-features` yields a BM25-only binary (no semantic
+stage, no model download) that needs no dylib at all.
 
 **Linux requires glibc ≥ 2.38** (Ubuntu 24.04+, Debian 13+, Fedora 39+, …).
 The prebuilt ONNX Runtime `ort` downloads calls ISO C23 libc symbols

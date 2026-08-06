@@ -2,8 +2,10 @@
 #
 # 自動トリガーは無し（GitHub Release はまだ運用開始していないため）。
 # GitHub → Actions → このワークフロー → Run workflow のボタン操作でのみ実行する:
-#   1. 4 ターゲットの release バイナリをビルド（各 OS のネイティブ runner。
-#      Intel Mac は ort crate が対応していないため対象外 — 下記コメント参照）
+#   1. 5 ターゲットの release バイナリをビルド（各 OS のネイティブ runner。
+#      Intel Mac は Microsoft 公式 ONNX Runtime 1.23.2 dylib に動的リンクする
+#      semantic 対応ビルド（--no-default-features の BM25-only フォールバック
+#      は physq update に触れない手動ビルド用に残してある）——下記コメント参照）
 #   2. アーカイブ（tar.gz / zip）を作成
 #   3. GitHub Release（draft）を作成し、タグ（physq-vX.Y.Z）とバイナリを添付
 #      （タグを事前に push 済みならそれを使う。無ければこの実行時点の main に打つ）
@@ -37,11 +39,28 @@ jobs:
           - target: aarch64-apple-darwin
             os: macos-26
             rustflags: ""
-          # x86_64-apple-darwin（Intel Mac）は対象外: ort crate（ONNX Runtime
-          # バインディング）が dist.txt に x86_64-apple-darwin 向けの配布を
+          # x86_64-apple-darwin（Intel Mac）: ort crate（ONNX Runtime
+          # バインディング）が x86_64-apple-darwin 向けのプリビルド配布を
           # 一切持っておらず、"ort does not provide prebuilt binaries for the
-          # target `x86_64-apple-darwin`" で必ず失敗する。ONNX Runtime を
-          # ソースからビルドする以外に回避策が無いため見送り。
+          # target `x86_64-apple-darwin`" になる。また Microsoft も ONNX
+          # Runtime 1.23.2 で x86_64 macOS の公式ビルドを終了した（1.24
+          # 以降は存在しない）。そこで Intel は Microsoft 公式 1.23.2 の
+          # dylib に動的リンクする:
+          #   - physq/scripts/install_ort_intel.sh が D: の dylib を取得
+          #     （SHA-256 固定）、ORT_LIB_LOCATION で ort-sys に指定
+          #   - fastembed は 5.13.2（ort 2.0.0-rc.11・API 17）に固定 —
+          #     5.14+ は ort に api-24 を要求し ORT 1.23 で初期化できない
+          #     （physq/Cargo.toml のコメント参照）
+          #   - RUSTFLAGS の -rpath,@loader_path で、同梱 dylib をバイナリと
+          #     同じディレクトリから探す。リリースには physq と
+          #     libonnxruntime.1.23.2.dylib を両方同梱して配布する
+          #     （archives と physq-bin の隣に単体アセットも置く。
+          #     update.rs の INTEL_ORT_DYLIB_ASSET とファイル名を一致させる）
+          #   - ソースから ONNX Runtime をビルドすれば静的リンクも可能だが
+          #     CI に 1〜2 時間かかるため見送り。
+          - target: x86_64-apple-darwin
+            os: macos-26-intel
+            rustflags: "-C link-arg=-Wl,-rpath,@loader_path"
           #
           # ort がダウンロードするプリビルド ONNX Runtime は glibc >= 2.38
           # (__isoc23_strtol 等の ISO C23 版シンボルを要求) でビルドされており、
@@ -75,13 +94,29 @@ jobs:
       # toolchain selection (not Cargo.lock) can silently reuse a cached
       # link-step fingerprint pointing at a since-removed Xcode path,
       # failing with "ld: library 'clang_rt.osx' not found" for an SDK that
-      # isn't even the one this job selected. Bump `key` if that happens.
+      # isn't even the one this job selected. Fixed structurally here:
+      # scope the cache key per runner image AND per selected Xcode version,
+      # so a build-script output produced on one image can never be replayed
+      # on another.
+      - name: Cache key — Xcode version
+        if: runner.os == 'macOS'
+        run: echo "XC_VERSION=$(xcodebuild -version 2>/dev/null | head -1 | awk '{print $2}')" >> "$GITHUB_ENV"
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: physq
+          prefix-key: "${{ matrix.os }}-${{ env.XC_VERSION }}"
       - name: Install lld (Linux only)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y lld
+      # Intel Mac links against the MS official ONNX Runtime 1.23.2 dylib —
+      # see the matrix comment above and physq/scripts/install_ort_intel.sh.
+      - name: Install ONNX Runtime (Intel Mac only)
+        if: matrix.target == 'x86_64-apple-darwin'
+        working-directory: physq
+        run: |
+          LIB_DIR="$(bash scripts/install_ort_intel.sh)"
+          echo "ORT_LIB_LOCATION=$LIB_DIR" >> "$GITHUB_ENV"
+          echo "ORT_PREFER_DYNAMIC_LINK=1" >> "$GITHUB_ENV"
       - name: Build (release)
         working-directory: physq
         env:
@@ -92,6 +127,11 @@ jobs:
           mkdir -p out/${{ matrix.target }}
           exe=physq; [[ "${{ matrix.target }}" == *windows* ]] && exe=physq.exe
           cp "physq/target/${{ matrix.target }}/release/$exe" "out/${{ matrix.target }}/"
+          # Intel Mac のみ: 動的リンクした ONNX Runtime dylib をバイナリの隣に
+          # 同梱する（RUSTFLAGS の -rpath,@loader_path で実行時にここから読み込む）
+          if [[ "${{ matrix.target }}" == "x86_64-apple-darwin" ]]; then
+            cp "$RUNNER_TEMP/onnxruntime/lib/libonnxruntime.1.23.2.dylib" "out/${{ matrix.target }}/"
+          fi
       - uses: actions/upload-artifact@v7
         with:
           name: bin-${{ matrix.target }}
@@ -123,7 +163,8 @@ jobs:
           # human-facing archives (physq-<version>-<triple>.{tar.gz,zip}) plus
           # unarchived per-target binaries (physq-bin-<triple>[.exe]) that
           # `physq update` fetches directly — no tar/zip decoding needed
-          # client-side. checksums.txt covers only the latter.
+          # client-side. checksums.txt covers only the latter (plus, for
+          # Intel Mac, the bundled libonnxruntime.1.23.2.dylib).
           mkdir -p release
           for t in binaries/*/; do
             t="${t%/}"; triple="$(basename "$t")"
@@ -133,12 +174,23 @@ jobs:
               cp "$t/physq.exe" "release/physq-bin-$triple.exe"
             else
               chmod +x "$t/physq"
-              tar -czf "release/$name.tar.gz" -C "$t" physq
+              if [ -f "$t/libonnxruntime.1.23.2.dylib" ]; then
+                # Intel Mac: dylib をアーカイブに同梱し、単体アセットとしても
+                # 公開する（update.rs の INTEL_ORT_DYLIB_ASSET と一致させる）
+                tar -czf "release/$name.tar.gz" -C "$t" physq libonnxruntime.1.23.2.dylib
+                cp "$t/libonnxruntime.1.23.2.dylib" "release/libonnxruntime.1.23.2.dylib"
+              else
+                tar -czf "release/$name.tar.gz" -C "$t" physq
+              fi
               cp "$t/physq" "release/physq-bin-$triple"
               chmod +x "release/physq-bin-$triple"
             fi
           done
-          (cd release && sha256sum physq-bin-* > checksums.txt)
+          if ls release/libonnxruntime.*.dylib >/dev/null 2>&1; then
+            (cd release && sha256sum physq-bin-* libonnxruntime.*.dylib > checksums.txt)
+          else
+            (cd release && sha256sum physq-bin-* > checksums.txt)
+          fi
       - name: Create draft GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}

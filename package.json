@@ -5,7 +5,11 @@
   "scripts": {
     "build": "node scripts/build.js",
     "build:embed": "node scripts/build.js --embed",
-    "build:embed-only": "node scripts/build.js --embed-only"
+    "build:embed-only": "node scripts/build.js --embed-only",
+    "test": "node scripts/tests/run_all.js",
+    "test:html": "node scripts/tests/html_syntax.js && node scripts/tests/html_stress.js",
+    "test:data": "node scripts/tests/data_check.js && node physq/scripts/parity_check.js",
+    "test:physq": "node scripts/tests/run_physq.js"
   },
   "dependencies": {
     "kuromoji": "^0.1.2",

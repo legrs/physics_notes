@@ -1,6 +1,6 @@
 [package]
 name = "physq"
-version = "0.1.7"
+version = "0.1.8"
 edition = "2024"
 description = "Local hybrid search (BM25 + e5 semantic, RRF-fused) for the Physics Notes Q&A corpus"
 license = "Apache-2.0"
@@ -10,10 +10,10 @@ anyhow = "1"
 bincode = "1"
 clap = { version = "4", features = ["derive"] }
 dirs = "6"
-fastembed = { version = "5.17", default-features = false, features = [
+fastembed = { version = "=5.13.2", default-features = false, features = [
     "hf-hub-rustls-tls",
     "ort-download-binaries-rustls-tls",
-] }
+], optional = true }
 lindera = { version = "4.0", features = ["embed-ipadic"] }
 ratatui = { version = "0.30", features = ["unstable-rendered-line-info"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "blocking"] }
@@ -27,6 +27,16 @@ thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 unicode-width = "0.2"
 
+# fastembed is pinned to 5.13.2 (not 5.14+) because fastembed 5.14+ pins
+# ort 2.0.0-rc.12 with the `api-24` feature, which requires ONNX Runtime
+# >= 1.24 — but Microsoft stopped shipping x86_64 macOS (Intel) ONNX
+# Runtime after 1.23, so the API-24 binding can never initialize on Intel
+# Macs. fastembed 5.13.2's ort 2.0.0-rc.11 requests API 17 and works with
+# any ONNX Runtime >= 1.19. Intel Macs link against the MS official 1.23.2
+# x86_64 dylib (see .github/workflows/physq-release.yml); all other targets
+# use ort's own prebuilt ONNX Runtime as before. The e5 embedding pipeline
+# (model files, tokenizer, pooling) is identical across these versions.
+
 # Release binaries go to GitHub Releases — optimize for size/startup.
 [profile.release]
 lto = true
@@ -37,3 +47,11 @@ codegen-units = 1
 [profile.dev]
 debug = 0
 incremental = false
+
+# `semantic` (fastembed → ort/ONNX Runtime) is default-on. Building with
+# `--no-default-features` yields a BM25-only binary with no native ONNX
+# Runtime dependency — a fallback for platforms where ort can't link
+# (e.g. building Intel Mac from source without the MS dylib).
+[features]
+default = ["semantic"]
+semantic = ["dep:fastembed"]
