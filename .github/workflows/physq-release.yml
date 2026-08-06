@@ -2,7 +2,7 @@
 #
 # 自動トリガーは無し（GitHub Release はまだ運用開始していないため）。
 # GitHub → Actions → このワークフロー → Run workflow のボタン操作でのみ実行する:
-#   1. 5 ターゲットの release バイナリをビルド（各 OS のネイティブ runner。
+#   1. 6 ターゲットの release バイナリをビルド（各 OS のネイティブ runner。
 #      Intel Mac は Microsoft 公式 ONNX Runtime 1.23.2 dylib に動的リンクする
 #      semantic 対応ビルド（--no-default-features の BM25-only フォールバック
 #      は physq update に触れない手動ビルド用に残してある）——下記コメント参照）
@@ -79,6 +79,13 @@ jobs:
             rustflags: "-C link-arg=-fuse-ld=lld"
           - target: x86_64-pc-windows-msvc
             os: windows-latest
+            rustflags: ""
+          # Windows on ARM (arm64): test.yml の windows-11-arm でテスト済み
+          # （aarch64-pc-windows-msvc）。ort のプリビルド ONNX Runtime が
+          # aarch64-pc-windows-msvc 向けにも存在する（ort-sys 2.0.0-rc.11
+          # の dist テーブル）ため、リリースビルドも可能。
+          - target: aarch64-pc-windows-msvc
+            os: windows-11-arm
             rustflags: ""
     runs-on: ${{ matrix.os }}
     defaults:

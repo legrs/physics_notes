@@ -206,6 +206,23 @@ jobs:
           if "$BIN" --no-such-flag >/dev/null 2>&1; then
             echo "unknown flag must exit non-zero"; exit 1
           fi
+      # install_physq.ps1 ships to end users (README) but can't be parsed on
+      # the macOS/Linux runners — validate it where a PowerShell exists.
+      - name: Validate install_physq.ps1 syntax (Windows only)
+        if: runner.os == 'Windows'
+        working-directory: physq
+        run: |
+          cat > /tmp/check_ps1.ps1 <<'EOF'
+          $errors = @()
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            "physq/scripts/install_physq.ps1", [ref]$null, [ref]$errors) | Out-Null
+          if ($errors.Count) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host "install_physq.ps1: syntax OK"
+          EOF
+          powershell -NoProfile -File /tmp/check_ps1.ps1
       - name: Stress — real searches on the local corpus (BM25-only, no model download)
         working-directory: physq
         env:

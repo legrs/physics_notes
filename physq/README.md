@@ -12,11 +12,14 @@ embedding is computed at runtime (fastembed / ONNX, no Python).
 ## Requirements & installation
 
 **[Latest release](https://github.com/legrs/physics_notes/releases/)** — grab the
-binary for your platform below; `physq` is a single, self-contained executable (no
-runtime dependencies to install separately; the ~470 MB embedding model downloads on
-first use, not at install time). The commands below always fetch whatever the current
-latest release is, so they never need updating for a new version — and once installed,
-`physq update` (see [Updating](#updating)) keeps it that way without re-running them.
+binary for your platform below. On every platform `physq` is a single, self-contained
+executable (no runtime dependencies to install separately; the ~470 MB embedding model
+downloads on first use, not at install time) — **except Intel Mac**, where the binary is
+dynamically linked and needs its `libonnxruntime.1.23.2.dylib` sitting next to it (see
+[macOS (Intel)](#macos-intel) below; `physq update` keeps the pair in sync for you). The
+commands below always fetch whatever the current latest release is, so they never need
+updating for a new version — and once installed, `physq update` (see
+[Updating](#updating)) keeps it that way without re-running them.
 
 > The Releases page may also list `-rcN` (release-candidate) builds for early testing
 > of upcoming features. They're marked as pre-releases and never become "latest" until
@@ -25,13 +28,40 @@ latest release is, so they never need updating for a new version — and once in
 
 | Platform | Requirement | Binary |
 | --- | --- | --- |
-| macOS | Apple Silicon (M1+) or Intel (Intel = BM25-only, no semantic search — see below) | `physq-bin-{aarch64,x86_64}-apple-darwin` |
-| Windows | x86_64 | `physq-bin-x86_64-pc-windows-msvc.exe` |
+| macOS — Apple Silicon (M1+) | none | `physq-bin-aarch64-apple-darwin` |
+| macOS — Intel | **two files**: the binary plus its `libonnxruntime.1.23.2.dylib`, in the same folder (see [macOS (Intel)](#macos-intel)) | `physq-bin-x86_64-apple-darwin` + `libonnxruntime.1.23.2.dylib` |
+| Windows — x86_64 | none | `physq-bin-x86_64-pc-windows-msvc.exe` |
+| Windows — arm64 | none | `physq-bin-aarch64-pc-windows-msvc.exe` |
 | Linux | x86_64 or aarch64; **glibc ≥ 2.38** (Ubuntu 24.04+, Debian 13+, Fedora 39+, …) | `physq-bin-{x86_64,aarch64}-unknown-linux-gnu` |
 
-These are unarchived binaries — nothing to extract.
+These are unarchived binaries — nothing to extract. (The Intel Mac build is the one
+exception to single-file: download both files below into the same directory.)
 
-### macOS
+### Install script (macOS / Linux / Windows)
+
+`physq/scripts/install_physq.sh` handles the whole install in one step: it detects the
+platform (macOS Apple Silicon/Intel, Linux x86_64/arm64, Windows under Git Bash),
+downloads the matching binary, verifies its SHA-256 against the release's
+`checksums.txt`, clears the Gatekeeper quarantine flag on macOS, and — on Intel Mac —
+installs the companion `libonnxruntime.1.23.2.dylib` side by side (the one two-file
+platform). On Windows without Git Bash, use the PowerShell twin
+`physq/scripts/install_physq.ps1` instead.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/legrs/physics_notes/master/physq/scripts/install_physq.sh -o install_physq.sh
+bash install_physq.sh                 # installs into ./bin
+bash install_physq.sh /usr/local/bin  # or any destination directory
+```
+
+```powershell
+Invoke-WebRequest https://raw.githubusercontent.com/legrs/physics_notes/master/physq/scripts/install_physq.ps1 -OutFile install_physq.ps1
+.\install_physq.ps1                   # installs into $env:USERPROFILE\bin
+.\install_physq.ps1 -Dest C:\tools    # or any destination directory
+```
+
+The manual per-platform steps below are the same downloads, spelled out.
+
+### macOS (Apple Silicon)
 
 ```sh
 curl -Lo physq https://github.com/legrs/physics_notes/releases/latest/download/physq-bin-aarch64-apple-darwin
@@ -42,6 +72,31 @@ xattr -d com.apple.quarantine physq
 sudo mv physq /usr/local/bin/   # or anywhere on your PATH
 physq --version
 ```
+
+### macOS (Intel)
+
+The Intel Mac binary is *dynamically* linked against the bundled Microsoft ONNX Runtime
+library (see [Platform support](#platform-support)), so it ships as **two files that must
+stay in the same directory**: `physq` and `libonnxruntime.1.23.2.dylib`. The
+[install script](#install-script-macos--linux--windows) above downloads both, verifies
+each against the release's `checksums.txt`, clears the Gatekeeper quarantine flag on
+both, and installs them together. Manual alternative — download both files into the same
+directory, clear quarantine on both, and move them together:
+
+```sh
+curl -Lo physq https://github.com/legrs/physics_notes/releases/latest/download/physq-bin-x86_64-apple-darwin
+curl -Lo libonnxruntime.1.23.2.dylib https://github.com/legrs/physics_notes/releases/latest/download/libonnxruntime.1.23.2.dylib
+chmod +x physq
+# unsigned binary: macOS Gatekeeper will refuse to run it until you clear the
+# quarantine flag it sets on anything downloaded from a browser/curl
+xattr -d com.apple.quarantine physq libonnxruntime.1.23.2.dylib
+sudo mv physq libonnxruntime.1.23.2.dylib /usr/local/bin/   # move BOTH, together
+physq --version
+```
+
+If you copy the binary somewhere for a friend or another machine, copy the **pair** — a
+moved lone `physq` will fail to launch with `dyld: Library not loaded` until the dylib is
+back. (`physq update` handles both files automatically, so self-updates never care.)
 
 ### Linux
 
@@ -55,9 +110,15 @@ physq --version
 
 ### Windows
 
+Easiest: the PowerShell [install script](#install-script-macos--linux--windows)
+(`install_physq.ps1`) — it detects x86_64 vs arm64, verifies the download against
+`checksums.txt`, and strips the SmartScreen Zone.Identifier flag. Manual alternative:
+
 1. Download
    [physq-bin-x86_64-pc-windows-msvc.exe](https://github.com/legrs/physics_notes/releases/latest/download/physq-bin-x86_64-pc-windows-msvc.exe)
-   and rename it to `physq.exe`.
+   (or
+   [physq-bin-aarch64-pc-windows-msvc.exe](https://github.com/legrs/physics_notes/releases/latest/download/physq-bin-aarch64-pc-windows-msvc.exe)
+   on an arm64/Windows on ARM machine) and rename it to `physq.exe`.
 2. Running it may trigger SmartScreen ("Windows protected your PC") since the binary
    is unsigned — click **More info → Run anyway**.
 3. Move `physq.exe` somewhere on your `PATH`, or run it directly from the folder you
@@ -83,6 +144,10 @@ quarantine/SmartScreen — those are only ever attached by a browser/curl
 download, and `physq update` fetches the file itself). Requires network
 access (fails clearly under `--offline`).
 
+On Intel Mac, `physq update` also downloads `libonnxruntime.1.23.2.dylib`
+alongside the new binary and verifies both against `checksums.txt`, so the
+two files stay in sync automatically.
+
 Channels compare by SemVer, not recency, so switching **from** `--beta`
 **to** the stable channel never silently downgrades you: a plain
 `physq update` refuses (with a clear message) if the currently running
@@ -92,8 +157,8 @@ install the resolved version anyway.
 
 ## Platform support
 
-Prebuilt releases: macOS (Apple Silicon **and** Intel), Windows (x86_64), Linux
-(x86_64 / aarch64).
+Prebuilt releases: macOS (Apple Silicon **and** Intel), Windows (x86_64 **and**
+arm64), Linux (x86_64 / aarch64).
 
 **Intel Macs get full semantic search** via a bundled Microsoft official ONNX
 Runtime dylib. The `ort` crate (ONNX Runtime) ships no prebuilt binary for

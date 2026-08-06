@@ -95,6 +95,7 @@ fn asset_name_for_this_platform() -> Result<&'static str> {
         ("linux", "x86_64") => Ok("physq-bin-x86_64-unknown-linux-gnu"),
         ("linux", "aarch64") => Ok("physq-bin-aarch64-unknown-linux-gnu"),
         ("windows", "x86_64") => Ok("physq-bin-x86_64-pc-windows-msvc.exe"),
+        ("windows", "aarch64") => Ok("physq-bin-aarch64-pc-windows-msvc.exe"),
         (os, arch) => bail!(
             "no prebuilt physq binary for {os}/{arch}; build from source instead (see README)"
         ),
