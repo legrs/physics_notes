@@ -15,9 +15,12 @@
 //      the committed files.
 //   5. search_text is current: re-running the REAL pipeline
 //      (`node scripts/build.js --data <copy>`) on a working copy must
-//      reproduce the committed search_text byte-for-byte. Requires the
-//      repo-root npm deps (kuromoji) — if they are absent this subcheck is a
-//      WARN, not a failure (CI always installs them first).
+//      reproduce the committed search_text byte-for-byte. A diff here is a
+//      WARN, not a failure, for the same reason as version.json above:
+//      build.yml regenerates search_text after every corpus-affecting push,
+//      so between the data change and that auto-commit the committed value
+//      is expected to lag. Requires the repo-root npm deps (kuromoji) — if
+//      they are absent this subcheck is a WARN too.
 //
 // Usage: node scripts/tests/data_check.js
 'use strict';
@@ -165,7 +168,7 @@ if (!hasDeps) {
       if (!orig) { orderMismatch = true; continue; }
       if (orig.search_text !== r.search_text) diffs++;
     }
-    ok(diffs === 0, `committed search_text matches a fresh run (${diffs} diffs)`);
+    ok(diffs === 0, `committed search_text matches a fresh run (${diffs} diffs)`, true);
     ok(regen.length === data.length, 'regenerated corpus has the same record count');
     ok(
       JSON.stringify(regen.map((r) => r.id)) === JSON.stringify(data.map((r) => r.id)),
