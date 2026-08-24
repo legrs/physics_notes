@@ -6,9 +6,12 @@
 //   2. q_and_a_data.json record schema & referential integrity (unique ids,
 //      `related` only references existing ids, required fields, types,
 //      non-finite priority).
+//      search_text empty は WARN: build.yml が search_text を自動再生成する
+//      ため、データ追加直後のコミットでは空のままになりうる。
 //   3. embeddings.json shape (`small`=384-d, `large`=1024-d), finite values,
 //      key coverage vs the corpus.
-//   4. version.json hash/size manifest matches the real files (sha256).
+//      カバレッジ/キー一致の不一致は WARN: build.yml が embeddings.json を
+//      自動再生成するため、データ追加/削除直後は不足/余剰が一時的に発生する。
 //      Mismatches are a WARN, not a failure: build.yml regenerates
 //      version.json after every corpus-affecting push, so between the data
 //      change and that auto-commit the manifest is expected to lag behind
@@ -83,7 +86,7 @@ data.forEach((r, i) => {
       ok(false, `record ${i} (${r.id}) ${arrK} must be an array of strings`);
   }
   if (typeof r.search_text !== 'string' || !r.search_text.split(/\s+/).filter(Boolean).length)
-    ok(false, `record ${i} (${r.id}) search_text empty`);
+    ok(false, `record ${i} (${r.id}) search_text empty`, true);
 });
 const ids = new Set(data.map((r) => r.id));
 ok(ids.size === data.length, 'corpus ids are unique');
@@ -100,12 +103,12 @@ if (emb) {
     ok(set && typeof set === 'object' && !Array.isArray(set), `embeddings["${key}"] is an object map`);
     if (!set) continue;
     const vals = Object.values(set);
-    ok(vals.length === data.length, `embeddings["${key}"] covers the corpus (${vals.length}/${data.length})`);
+    ok(vals.length === data.length, `embeddings["${key}"] covers the corpus (${vals.length}/${data.length})`, true);
     ok(vals.every((v) => Array.isArray(v) && v.length === dims[key]), `embeddings["${key}"] vectors are ${dims[key]}-d`);
     ok(vals.every((v) => v.every((n) => Number.isFinite(n))), `embeddings["${key}"] vectors are all finite`);
     const embIds = Object.keys(set);
-    ok(embIds.every((id) => ids.has(id)), `embeddings["${key}"] keys all exist in the corpus`);
-    ok(ids.size - new Set(embIds).size === 0, `embeddings["${key}"] missing no corpus ids`);
+    ok(embIds.every((id) => ids.has(id)), `embeddings["${key}"] keys all exist in the corpus`, true);
+    ok(ids.size - new Set(embIds).size === 0, `embeddings["${key}"] missing no corpus ids`, true);
     ok(new Set(embIds).size === embIds.length, `embeddings["${key}"] keys are unique`);
   }
   const topKeys = Object.keys(emb).sort();
