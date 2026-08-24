@@ -37,6 +37,7 @@
             width: 100%;
             max-width: 500px;
             padding: 20px;
+            box-sizing: border-box;
         }
 
         /* 👇 タイピングテキスト（等幅フォント） */
@@ -89,6 +90,7 @@
             justify-content: center;
             gap: 4px;
             margin-top: 12px;
+            flex-wrap: wrap;
         }
 
         .link-btn {
@@ -125,6 +127,43 @@
             opacity: 0.4;
             cursor: default;
         }
+
+        /* 推論レベル選択: OS標準のセレクト (狭い画面でのみ表示) */
+        .mode-select {
+            display: none;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 999px;
+            padding: 5px 14px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #888;
+            cursor: pointer;
+            /* OS標準メニューを維持 (独自UIにしない) */
+            appearance: auto;
+            -webkit-appearance: auto;
+        }
+
+        .mode-select:focus {
+            outline: none;
+            border-color: #888;
+        }
+
+        @media (max-width: 430px) {
+            .mode-btn {
+                display: none;
+            }
+
+            .mode-select {
+                display: inline-block;
+            }
+        }
+
+        @media (min-width: 431px) {
+            .mode-select {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 
@@ -139,6 +178,13 @@
         </div>
 
         <div class="mode-row">
+            <select id="mode-select" class="mode-select" aria-label="推論レベル">
+                <option value="auto">Auto</option>
+                <option value="fast">Fast</option>
+                <option value="pro">Pro</option>
+                <option value="ultra">Ultra</option>
+                <option value="max">Max</option>
+            </select>
             <button class="mode-btn" data-mode="auto">Auto</button>
             <button class="mode-btn" data-mode="fast">Fast</button>
             <button class="mode-btn" data-mode="pro">Pro</button>
@@ -244,14 +290,17 @@
         // 任意文字列をそのまま保存・URL 連結しない）
         const VALID_MODES = new Set(['auto', 'fast', 'pro', 'ultra', 'max']);
         const modeBtns = document.querySelectorAll('.mode-btn');
+        const modeSelect = document.getElementById('mode-select');
         const modeParam = new URLSearchParams(location.search).get('mode');
         let currentMode =
             [modeParam, localStorage.getItem('search_mode')].find(m => VALID_MODES.has(m)) || 'auto';
 
         function applyMode(mode) {
+            if (!VALID_MODES.has(mode)) return;
             currentMode = mode;
             localStorage.setItem('search_mode', mode);
             modeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+            if (modeSelect) modeSelect.value = mode;
         }
 
         applyMode(currentMode);
@@ -261,6 +310,10 @@
                 btn.addEventListener('click', () => applyMode(btn.dataset.mode));
             }
         });
+
+        if (modeSelect) {
+            modeSelect.addEventListener('change', () => applyMode(modeSelect.value));
+        }
 
         // ===== 検索処理 =====
         const input = document.getElementById("search");
