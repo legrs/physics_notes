@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-23T13:14:05.966Z",
+  "generated_at": "2026-08-26T01:42:46.485Z",
   "schema_version": 3,
   "tokenizer": "lindera-ipadic",
   "embedding_model": {
@@ -8,12 +8,12 @@
   },
   "files": {
     "q_and_a_data.json": {
-      "hash": "d7c7bffa4d7cc72901b2a756f83989f645e18067dfeb0067424f235eb25a8463",
-      "size": 839586
+      "hash": "f6a5cf53db4e885e5b29c85cb8d9c371f35ea56eaa06a6252f8fb8f7d4620141",
+      "size": 863110
     },
     "embeddings.json": {
-      "hash": "d3d5e4fd74ad2e0d7492085795ab54e4e704dac82be91fb2edc7712f62edf054",
-      "size": 7910316
+      "hash": "481a1ef648636b5900fe1ca27bd24c49935429c6c5438cb23c663bb3621937fa",
+      "size": 8029467
     }
   }
 }
