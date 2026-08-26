@@ -2380,7 +2380,7 @@ There are also $r = "const."$ accelarator which is called *synchrotron*.
   ]
 ])
 #h(1em)
-*Faraday's law of induction*
+*Faraday's law of induction* ( rule of thumb )
 $
   bold(V  = N dot (Delta Phi)/(Delta t))
 $
@@ -2552,7 +2552,7 @@ $I V_0 t = v t I B l + I^2 R t$
     })
   ]
 ])
-$Phi = mu N/l S I quad ( because H = N/l I )\
+$Delta Phi = mu N/l S Delta I quad ( because H = N/l I )\
 V = N dot (Delta Phi) / (Delta t)\
   quad = N dot (mu N/l S Delta I)/(Delta t)\
 therefore V = (mu N^2 S) / l dot (Delta I)/(Delta t)
@@ -2572,11 +2572,75 @@ $
 ($n = N/l$ is number of roll per unit length of coil)
 
 This voltage $bold(V)$ acts as a potential slope that impedes changes in current ($bold(Delta I)$).
-This phenomenon is called **Self-induction**.
+This phenomenon is called *Self-induction*.
 
+Thus, coil softens(impede) rapid current changes and the ability 
 
-
-
+== Energy of Coil
+#grid(
+  columns:(1fr,1fr),
+  gutter:1cm,
+  [
+    #align(center,box(width:15cm, height:5.5cm, clip:true)[
+      #place(center + horizon)[
+        #cetz.canvas({
+          import cetz.draw: *
+    
+    
+          line((-0.1,-0.5),(-0.1,-1.5))
+          line((0.1,-0.7),(0.1,-1.3))
+          content((0,-1.8),$bold(E)$)
+    
+          line((-0.1,-1),(-2,-1))
+          line((0.1,-1),(2,-1))
+    
+          line((-2,-1),(-2,0))
+    
+          resistor(0.3,(-2,1),(-2,0),r:(0,0,0))
+    
+          line((-2,1),(-2,2))
+    
+          line((2,-1),(2,2))
+    
+          line((-2,2),(-1,2))
+          coil(0.3,2,(-1,2),r:(0,0,0))
+          content((0,1.4),$bold(L)$)
+          line((2,2),(1,2))
+        
+    
+          //line((-2,1),(-0.5,1))
+          //resistor(0.2,(-0.5,1),(0.5,1))
+          //line((-0.5,0.7),(0.5,1.3),mark:(end:">", fill:black))
+          //content((0,0.5),$bold(R)$)
+          //line((0.5,1),(2,1))
+    
+          //circle((0,2),radius:0.5)
+          //content((0,2),"V")
+    
+          //line((-2,2),(-0.5,2))
+          //line((2,2),(0.5,2))
+    
+          //circle((-2,0),radius:0.5, fill:white)
+          //content((-2,0),"A")
+    
+          //line((-2.2,0.7),(-2.2,2), mark:(end:">", fill:black))
+          //content((-2.5,1.3),$bold(I)$)
+    
+          line((-2,2.6),(2,2.6), mark:(start: ">",end:">", fill:black))
+          line((-2,3),(-2,2))
+          line((2,3),(2,2))
+          content((0,3),$bold(V = L dot (d I)/(d t))$)
+        })
+      ]
+    ])
+  ],
+  [
+    #v(1em)
+    $W = I dot V\
+    W = I dot L (d I)/(d t)
+    $
+  ]
+)
 
 
 

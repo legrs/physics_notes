@@ -84,6 +84,40 @@
   })
 }
 
+
+#let coil(l,m,p,r:(0,0,0))={
+  import cetz.draw: *
+
+
+  let (x1,y1) = p
+  //let (x2,y2) = q
+  let (r1,r2,r3) = r
+
+  let theta = 5 * calc.pi
+  let dtheta = calc.pi/10
+  let x = x1
+  let y = y1
+  let x_p = 0
+  let y_p = 0
+  let k = 0.3 // それっっぽい形にするconstant
+  let m_f = m / (5*calc.pi * k + 2)
+
+
+
+  group({
+    rotate(x:r1,y:r2,z:r3)
+    while (theta >= 0){
+      x_p = x1 +m_f*(- k*(theta - 5*calc.pi) + calc.cos(theta) + 1)
+      y_p = y1 +l*(calc.sin(theta))
+      line((x,y),(x_p,y_p))
+      x = x_p
+      y = y_p
+
+      theta -= dtheta
+    }
+
+  })
+}
 #let drawc(p,r,q,c,t)={
       import cetz.draw: *
   group({
