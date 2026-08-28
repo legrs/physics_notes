@@ -2512,7 +2512,9 @@
         ],
         "difficulty": "",
         "priority": 2,
-        "related": [],
+        "related": [
+            "414f0337-da02-4fef-8e11-a90f7e2a7bd5"
+        ],
         "updated_at": "2026-05-25",
         "search_text": "直流のDCって何の略？ Direct Current 電流 直流 DC って Direct Current 電流 チョクリュウノDCッテナニノリャク？ Direct Current デンリュウ ちょくりゅうのDCってなにのりゃく？ Direct Current でんりゅう",
         "_note": ""
@@ -2564,7 +2566,7 @@
         "questions": [
             "交流のACって何の略？"
         ],
-        "answer": "Alternating Current",
+        "answer": "Alternating Current\n\nalternate：行ったり来たりすること",
         "description": "",
         "keywords": [],
         "synonyms": [],
@@ -2573,8 +2575,10 @@
         ],
         "difficulty": "",
         "priority": 2,
-        "related": [],
-        "updated_at": "2026-05-25",
+        "related": [
+            "edd878f2-f358-47e1-9de5-5b52d04e2f5f"
+        ],
+        "updated_at": "2026-08-28",
         "search_text": "交流のACって何の略？ Alternating Current 電流 交流 AC って Alternating Current 電流 コウリュウノACッテナニノリャク？ Alternating Current デンリュウ こうりゅうのACってなにのりゃく？ Alternating Current でんりゅう",
         "_note": ""
     },
@@ -3585,7 +3589,7 @@
         "questions": [
             "電力とは？"
         ],
-        "answer": "単位時間あたりの電気のエネルギーのこと。単位は$ W $（ワット）。\n$$ P=IV=I^2R=\\frac{V^2}{R} $$\nこれはオームの法則によって式変形したもの。",
+        "answer": "単位時間あたりの電気のエネルギーのこと。単位は$ W $（ワット）。\n\n## 直流\n\n$$ P=IV=I^2R=\\frac{V^2}{R} $$\nこれはオームの法則によって式変形したもの。\n\n## 交流\n\n$$ P=IV=I_0\\sin\\omega t\\cdot V_0\\sin\\omega t=I_0V_0\\sin^2\\omega t $$",
         "description": "",
         "keywords": [],
         "synonyms": [],
@@ -3595,7 +3599,7 @@
         "difficulty": "",
         "priority": 2,
         "related": [],
-        "updated_at": "2026-06-05",
+        "updated_at": "2026-08-28",
         "search_text": "電力とは？ 単位時間あたりの電気のエネルギーのこと。単位は （ワット）。 これはオームの法則によって式変形したもの。 電流 電力 単位 時間 あたり 電気 エネルギー こと 単位 ワット これ オーム 法則 によって 変形 もの 電流 デンリョクトハ？ タンイジカンアタリノデンキノエネルギーノコト。タンイハ （ワット）。 コレハオームノホウソクニヨッテシキヘンケイシタモノ。 デンリュウ でんりょくとは？ たんいじかんあたりのでんきのえねるぎーのこと。たんいは （わっと）。 これはおーむのほうそくによってしきへんけいしたもの。 でんりゅう",
         "_note": ""
     },
@@ -6348,6 +6352,93 @@
         "related": [],
         "updated_at": "2026-08-26",
         "search_text": "相互インダクタンス を設定するのはなぜ？ 直流では、電圧を変えたりするのが苦手。 交流は、自己誘導で発生した を**簡単に相互誘導 に変換**できる。 こういった電子機器のことを**トランス**という。 相互インダクタンスMを設定するのはなぜ？ 相互 インダクタンス 設定 する なぜ 直流 電圧 変え たり する 苦手 交流 自己 誘導 発生 ** 簡単 相互 誘導 変換 ** できる こう いっ 電子 機器 こと ** トランス ** いう 相互 インダクタンス M 設定 する なぜ ソウゴインダクタンス ヲセッテイスルノハナゼ？ チョクリュウデハ、デンアツヲカエタリスルノガニガテ。 コウリュウハ、ジコユウドウデハッセイシタ ヲ**カンタンニソウゴユウドウ ニヘンカン**デキル。 コウイッタデンシキキノコトヲ**トランス**トイウ。 ソウゴインダクタンスMヲセッテイスルノハナゼ？ そうごいんだくたんす をせっていするのはなぜ？ ちょくりゅうでは、でんあつをかえたりするのがにがて。 こうりゅうは、じこゆうどうではっせいした を**かんたんにそうごゆうどう にへんかん**できる。 こういったでんしききのことを**とらんす**という。 そうごいんだくたんすMをせっていするのはなぜ？",
+        "_note": ""
+    },
+    {
+        "id": "a8b469a3-306a-48b5-8c2a-9ff1386d9837",
+        "questions": [
+            "電気を作るには？"
+        ],
+        "answer": "# 直流\n\nイオン化傾向の違う2つの金属を使う。\n\n金属資源を消費せざるを得ない。\n\n# 交流\n\n金属は不要。教科書230ページ。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-08-28",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "0d7ab528-01b4-4262-87dd-2302ae397b03",
+        "questions": [
+            "磁場の中でコイルを回転させると、どのような減少が起こる？"
+        ],
+        "answer": "磁場が変化し、誘導起電力が生まれる。（**電磁誘導**という現象）\n\nファラデー先生のおっしゃるに、コイルの中を貫く磁束の本数が変化すると自己誘導？でコイルには誘導起電力が発生する。\n\n我々はすでに、**磁場を横切る導線に誘導起電力が発生する**ことを知っている。\n\n - 磁場を横切る導線に誘導起電力がはたらく。\n - 磁場を横切らない導線に誘導起電力ははたらかない。\n\n",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-08-28",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "b9771f6d-e63b-4c6f-892f-250b2bc198e2",
+        "questions": [
+            "$ V=V_0\\cdot\\sin\\omega t $"
+        ],
+        "answer": "$$ V=V_0\\cdot\\sin\\omega t $$\n$$ T=\\frac{2\\pi}{\\omega} $$\n$$ f=\\frac{1}{T}=\\frac{\\omega}{2\\pi} $$\n\n| 記号 | 意味 |\n|---|---|\n| $ f $ | 周波数 |\n| $ \\omega $ | 角周波数 |",
+        "description": "V=V_0sinωtで表されるとき、周期は？",
+        "keywords": [],
+        "synonyms": [],
+        "category": [],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-08-28",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "15ed3906-06c8-4478-8a2f-6c37026d1608",
+        "questions": [
+            "直流と交流の違いは？"
+        ],
+        "answer": "# 交流\n\n## 長所\n\n - 電圧の変換が簡単にできる\n\n## 弱点\n\n - 周波数が違う交流同士は融通し合えない\n   - 昔は周波数が違うことで使えない家電があった\n - 周波数の変換は簡単じゃない",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-08-28",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "47503d4b-5df0-4340-b61f-897574a7ae60",
+        "questions": [
+            "変圧器で、1次コイルや2次コイルの巻数と、変圧前後の電圧にはどのような関係があるか？"
+        ],
+        "answer": "$$ V_1=-N_1\\frac{\\Delta\\Phi}{\\Delta t} $$\n$$ V_2=-N_2\\frac{\\Delta\\Phi}{\\Delta t} $$\n$$ \\Delta\\Phi_1=\\Delta\\Phi_2 $$\n\n1次コイルにおける自己誘導の**とばっちり**が2次コイルにも及ぶ。",
+        "description": "",
+        "keywords": [
+            "トランス"
+        ],
+        "synonyms": [],
+        "category": [],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-08-28",
+        "search_text": "",
         "_note": ""
     }
 ]
