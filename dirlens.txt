@@ -1,4 +1,4 @@
-physics_notes/ (4 dirs, 20 files, 301 MB)
+physics_notes/ (4 dirs, 20 files, 301.07 MB)
 ├── fast/ (0 dirs, 2 files, 518 bytes)
 │   ├── index.html (199 bytes)
 │   └── search.html (319 bytes)
