@@ -2190,7 +2190,7 @@ dependencies = [
 
 [[package]]
 name = "physq"
-version = "0.1.8"
+version = "0.1.9-rc1"
 dependencies = [
  "anyhow",
  "bincode",

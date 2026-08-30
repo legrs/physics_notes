@@ -140,6 +140,14 @@ fn pick_best<'a>(
         if !r.assets.iter().any(|a| a.name == asset_name) {
             continue; // no binary for this platform on this release
         }
+        // Intel Mac requires the companion ONNX Runtime dylib alongside the
+        // binary; a release that ships the binary but not the dylib would
+        // leave the binary unable to launch.
+        if let Some(companion) = companion_asset_name()
+            && !r.assets.iter().any(|a| a.name == companion)
+        {
+            continue;
+        }
         if best.as_ref().is_none_or(|(bv, _)| v > *bv) {
             best = Some((v, r));
         }
@@ -328,6 +336,12 @@ pub fn apply(plan: &UpdatePlan, progress: &dyn Fn(&str)) -> Result<()> {
             .to_path_buf();
         let dest = exe_dir.join(name);
         std::fs::write(&dest, dylib).with_context(|| format!("writing {}", dest.display()))?;
+    } else if companion_asset_name().is_some() {
+        bail!(
+            "Intel Mac update: release {} is missing required companion asset {}; aborting (binary would not launch)",
+            plan.tag,
+            companion_asset_name().unwrap()
+        );
     }
 
     self_replace::self_replace(&new_exe_path).context("replacing the running executable")?;

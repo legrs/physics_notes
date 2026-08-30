@@ -1,11 +1,9 @@
 //! Q&A corpus records (`q_and_a_data.json`, CLAUDE.md §10) and the id
 //! normalization rule shared with `build.js` / `search.html`.
 
-use std::fmt;
-
 use anyhow::{Context, Result};
 use serde::Deserialize;
-use serde::de::{self, Deserializer, SeqAccess, Visitor};
+use serde::de::{self, Deserializer};
 
 /// Byte-identical port of `normalizeId` in `build.js` / `search.html`:
 /// trim, then strip leading zeros on all-digit ids (`"00001"` → `"1"`,
@@ -25,7 +23,8 @@ pub fn normalize_id(id: &str) -> String {
 }
 
 /// `build.js` calls `String(id)` before normalizing, so numeric JSON ids are
-/// accepted too.
+/// accepted too. `null` is treated as empty (avoids a single bad record
+/// taking the whole corpus down).
 fn deserialize_id<'de, D>(deserializer: D) -> std::result::Result<String, D::Error>
 where
     D: Deserializer<'de>,
@@ -34,75 +33,104 @@ where
     match v {
         serde_json::Value::String(s) => Ok(s),
         serde_json::Value::Number(n) => Ok(n.to_string()),
+        serde_json::Value::Null => Ok(String::new()),
         other => Err(de::Error::custom(format!("unsupported id type: {other}"))),
     }
 }
 
+fn deserialize_null_default_string<'de, D>(deserializer: D) -> std::result::Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt = Option::<String>::deserialize(deserializer)?;
+    Ok(opt.unwrap_or_default())
+}
+
+fn deserialize_null_default_vec<'de, D>(
+    deserializer: D,
+) -> std::result::Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt = Option::<Vec<String>>::deserialize(deserializer)?;
+    Ok(opt.unwrap_or_default())
+}
+
+fn deserialize_null_default_f64<'de, D>(deserializer: D) -> std::result::Result<f64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt = Option::<f64>::deserialize(deserializer)?;
+    Ok(opt.unwrap_or_default())
+}
+
 /// `category` is an array today but was a plain string (possibly
 /// `"a | b"`-separated) historically; mirror the web's `normalizeCategory`:
-/// arrays are trimmed and empties dropped, strings split on `|`.
+/// arrays are trimmed and empties dropped, strings split on `|`. `null`
+/// is treated as empty (a single bad record must not take the corpus down).
 fn deserialize_string_or_vec<'de, D>(deserializer: D) -> std::result::Result<Vec<String>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    struct V;
-    impl<'de> Visitor<'de> for V {
-        type Value = Vec<String>;
-        fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.write_str("a string or an array of strings")
-        }
-        fn visit_str<E: de::Error>(self, s: &str) -> std::result::Result<Vec<String>, E> {
-            Ok(s.split('|')
-                .map(str::trim)
-                .filter(|c| !c.is_empty())
-                .map(str::to_string)
-                .collect())
-        }
-        fn visit_seq<A: SeqAccess<'de>>(
-            self,
-            mut seq: A,
-        ) -> std::result::Result<Vec<String>, A::Error> {
+    let opt = Option::<serde_json::Value>::deserialize(deserializer)?;
+    match opt {
+        None | Some(serde_json::Value::Null) => Ok(Vec::new()),
+        Some(serde_json::Value::String(s)) => Ok(s
+            .split('|')
+            .map(str::trim)
+            .filter(|c| !c.is_empty())
+            .map(str::to_string)
+            .collect()),
+        Some(serde_json::Value::Array(arr)) => {
             let mut out = Vec::new();
-            while let Some(s) = seq.next_element::<String>()? {
-                let s = s.trim().to_string();
-                if !s.is_empty() {
-                    out.push(s);
+            for v in arr {
+                if let serde_json::Value::String(s) = v {
+                    let t = s.trim().to_string();
+                    if !t.is_empty() {
+                        out.push(t);
+                    }
+                } else if let serde_json::Value::Null = v {
+                    continue;
+                } else {
+                    return Err(de::Error::custom(format!("invalid category entry: {v}")));
                 }
             }
             Ok(out)
         }
+        Some(other) => Err(de::Error::custom(format!(
+            "invalid category value: {other}"
+        ))),
     }
-    deserializer.deserialize_any(V)
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Record {
     #[serde(deserialize_with = "deserialize_id")]
     pub id: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_default_vec")]
     pub questions: Vec<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_default_string")]
     pub answer: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_default_string")]
     pub description: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_default_vec")]
     pub keywords: Vec<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_default_vec")]
     pub synonyms: Vec<String>,
     #[serde(default, deserialize_with = "deserialize_string_or_vec")]
     pub category: Vec<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_default_string")]
     pub difficulty: String,
     /// JS applies `score * (priority || 1)`, so 0/absent both mean 1.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_default_f64")]
     pub priority: f64,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_default_vec")]
     pub related: Vec<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_default_string")]
     pub updated_at: String,
     /// Pre-tokenized upstream (kuromoji morphemes + kana readings). The BM25
     /// source of truth — never re-tokenized here (CLAUDE.md §3, §10).
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_default_string")]
     pub search_text: String,
 }
 
@@ -133,7 +161,10 @@ pub struct Corpus {
 
 impl Corpus {
     /// Parse `q_and_a_data.json` bytes and normalize ids/related in place,
-    /// mirroring the web's `normalizeData`.
+    /// mirroring the web's `normalizeData`. Duplicate ids after
+    /// normalization are treated as an error — they would make
+    /// `id_to_doc` and embedding lookups ambiguous (the web's
+    /// `Object.fromEntries` would also silently overwrite).
     pub fn from_json(bytes: &[u8]) -> Result<Self> {
         let mut records: Vec<Record> =
             serde_json::from_slice(bytes).context("failed to parse q_and_a_data.json")?;
@@ -141,6 +172,15 @@ impl Corpus {
             r.id = normalize_id(&r.id);
             for rel in &mut r.related {
                 *rel = normalize_id(rel);
+            }
+        }
+        {
+            use std::collections::HashSet;
+            let mut seen = HashSet::new();
+            for r in &records {
+                if !r.id.is_empty() && !seen.insert(r.id.clone()) {
+                    anyhow::bail!("duplicate record id after normalization: {}", r.id);
+                }
             }
         }
         Ok(Self::new(records))

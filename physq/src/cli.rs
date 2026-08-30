@@ -328,6 +328,12 @@ fn run_cache(cfg: Config, cmd: CacheCmd) -> Result<()> {
 /// Composes with pipes: plain TSV (`rank\tscore\tid\tquestion`) when stdout
 /// is not a terminal.
 fn run_search(cfg: Config, query: &str, limit: usize, plain: bool) -> Result<()> {
+    let limit = if limit == 0 {
+        eprintln!("warning: --limit 0 is not meaningful, using 10");
+        10
+    } else {
+        limit
+    };
     let spinner = StderrSpinner::start("Fetching data…");
     let engine = {
         let progress = |s: &str| spinner.set_label(s);

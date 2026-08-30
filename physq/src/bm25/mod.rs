@@ -122,7 +122,11 @@ impl Bm25Index {
             std::fs::create_dir_all(parent)?;
         }
         let bytes = bincode::serialize(self).context("failed to serialize BM25 index")?;
-        let tmp = path.with_extension("bin.tmp");
+        let file_name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| "tmp".to_string());
+        let tmp = path.with_file_name(format!("{file_name}.tmp"));
         std::fs::write(&tmp, bytes)?;
         std::fs::rename(&tmp, path)?;
         Ok(())

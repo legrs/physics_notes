@@ -132,7 +132,13 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    let tmp = path.with_extension("tmp");
+    // Preserve the original extension (e.g. `q_and_a_data.json` → `q_and_a_data.json.tmp`)
+    // so two different files in the same directory never collide on the temp name.
+    let file_name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "tmp".to_string());
+    let tmp = path.with_file_name(format!("{file_name}.tmp"));
     std::fs::write(&tmp, bytes).with_context(|| format!("writing {}", tmp.display()))?;
     std::fs::rename(&tmp, path).with_context(|| format!("renaming into {}", path.display()))?;
     Ok(())
@@ -176,6 +182,16 @@ pub async fn ensure_data(
             cfg.refresh_interval_secs,
         )
     {
+        // Prefer the last fetched version.json's tokenizer tag over the
+        // hard-coded default, so a recent upstream tokenizer change is
+        // respected even while the network check is skipped.
+        let cached_tag = std::fs::read(cfg.data_dir().join(VERSION_FILE))
+            .ok()
+            .and_then(|b| serde_json::from_slice::<Manifest>(&b).ok())
+            .and_then(|m| m.tokenizer);
+        if let Some(tag) = cached_tag {
+            tokenizer_tag = tag;
+        }
         return Ok(DataFiles {
             qa_path: cfg.qa_data_path(),
             embeddings_path: cfg.embeddings_path(),
@@ -226,8 +242,15 @@ pub async fn ensure_data(
             let status = resp.status();
             if cache_complete(cfg) {
                 warnings.push(format!(
-                    "data host returned HTTP {status} for version.json; using cached data"
+                    "data host returned HTTP {status} for version.json; falling back to conditional fetches"
                 ));
+                if let Err(e) =
+                    fetch_by_etag(cfg, &client, &mut meta, progress, &mut warnings).await
+                {
+                    warnings.push(format!(
+                        "conditional fetch also failed ({e:#}); using cached data"
+                    ));
+                }
             } else {
                 bail!(
                     "data host returned HTTP {status} for {version_url} and no local cache exists"
@@ -236,7 +259,16 @@ pub async fn ensure_data(
         }
         Err(e) => {
             if cache_complete(cfg) {
-                warnings.push(format!("offline? ({e}); using cached data"));
+                warnings.push(format!(
+                    "offline? ({e}); falling back to conditional fetches"
+                ));
+                if let Err(e2) =
+                    fetch_by_etag(cfg, &client, &mut meta, progress, &mut warnings).await
+                {
+                    warnings.push(format!(
+                        "conditional fetch also failed ({e2:#}); using cached data"
+                    ));
+                }
             } else {
                 return Err(anyhow::Error::new(e).context(format!(
                     "cannot reach the data host ({version_url}) and no local cache exists"
