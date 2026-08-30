@@ -142,9 +142,11 @@ fn pick_best<'a>(
         }
         // Intel Mac requires the companion ONNX Runtime dylib alongside the
         // binary; a release that ships the binary but not the dylib would
-        // leave the binary unable to launch.
-        if let Some(companion) = companion_asset_name()
-            && !r.assets.iter().any(|a| a.name == companion)
+        // leave the binary unable to launch. Only the Intel binary itself
+        // needs this check — other platforms (e.g. aarch64) are unaffected
+        // even when the host happens to be Intel.
+        if asset_name == "physq-bin-x86_64-apple-darwin"
+            && !r.assets.iter().any(|a| a.name == INTEL_ORT_DYLIB_ASSET)
         {
             continue;
         }
