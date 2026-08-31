@@ -6264,7 +6264,9 @@
         "description": "1学期期末考査 大問8\n導体で単位時間あたりに生じるジュール熱がVIとなることを示せ。",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "電磁気"
+        ],
         "difficulty": "",
         "priority": 3,
         "related": [],
@@ -6281,7 +6283,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "電磁気"
+        ],
         "difficulty": "",
         "priority": 3,
         "related": [],
@@ -6298,7 +6302,9 @@
         "description": "2026年度 第1回実力テスト 物理 大問2の解説",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "熱力学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -6315,7 +6321,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "電磁気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -6332,7 +6340,9 @@
         "description": "コンデンサーが蓄えるエネルギーがどちらも1/2なんとかになるのはなぜ？物理的プロセスに着目して答えよ。",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "電磁気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -6349,7 +6359,9 @@
         "description": "相互インダクタンスMを設定するのはなぜ？",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "電磁気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -6366,7 +6378,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "電磁気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -6383,7 +6397,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "電磁気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -6394,13 +6410,15 @@
     {
         "id": "b9771f6d-e63b-4c6f-892f-250b2bc198e2",
         "questions": [
-            "$ V=V_0\\cdot\\sin\\omega t $"
+            "$ V=V_0\\cdot\\sin\\omega t $で表されるとき、周期は？"
         ],
         "answer": "$$ V=V_0\\cdot\\sin\\omega t $$\n$$ T=\\frac{2\\pi}{\\omega} $$\n$$ f=\\frac{1}{T}=\\frac{\\omega}{2\\pi} $$\n\n| 記号 | 意味 |\n|---|---|\n| $ f $ | 周波数 |\n| $ \\omega $ | 角周波数 |",
         "description": "V=V_0sinωtで表されるとき、周期は？",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "数学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -6417,7 +6435,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "電磁気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -6436,7 +6456,9 @@
             "トランス"
         ],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "電磁気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -6453,7 +6475,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "電磁気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -6472,7 +6496,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "電磁気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -6491,7 +6517,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "電磁気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -6508,7 +6536,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "電磁気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [
