@@ -189,7 +189,7 @@ jobs:
         run: |
           set -e
           if command -v file >/dev/null 2>&1; then
-            for f in qa_images/*.{jpg,jpeg,png,webp,svg,gif} 2>/dev/null; do
+            for f in qa_images/*.{jpg,jpeg,png,webp,svg,gif}; do
               [ -e "$f" ] || continue
               file "$f" | cat
               # SVG is XML, others are binary; just ensure 'empty' is not reported
