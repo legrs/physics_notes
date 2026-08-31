@@ -132,8 +132,8 @@ jobs:
           test -f qa_images/.gitkeep || echo "WARN: qa_images/.gitkeep missing (ok if dir tracked via other file)"
           test -f qa_images/licenses.json || { echo "FAIL: qa_images/licenses.json missing"; exit 1; }
           test -f qa_images/README.md || echo "WARN: qa_images/README.md missing"
-          # No upper-case, no spaces, no weird files (strict)
-          bad=$(ls qa_images 2>/dev/null | grep -E '[A-Z ]' || true)
+          # No upper-case, no spaces in image files (README.md / licenses.json are allowed)
+          bad=$(ls qa_images 2>/dev/null | grep -vE '^(\.gitkeep|licenses\.json|README\.md)$' | grep -E '[A-Z ]' || true)
           if [ -n "$bad" ]; then echo "FAIL: qa_images has upper-case or space: $bad"; exit 1; fi
           # No non-image stray files (allow .gitkeep/licenses.json/README.md)
           stray=$(ls qa_images | grep -vE '^(\.gitkeep|licenses\.json|README\.md|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]+)$' || true)
