@@ -51,6 +51,7 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::config::{Config, CustomWeights, KeyMode, ModelSel, ModelSize};
 use crate::engine::{Engine, SemanticEngine, hybrid, hybrid_custom};
+use crate::image::extract_images;
 use crate::query::prepare_query;
 use crate::semantic::SemanticError;
 use crate::spinner;
@@ -144,13 +145,14 @@ enum ResultsMode {
     Hybrid,
 }
 
-/// Which pane keyboard navigation controls. `Tab` switches into `Related`
-/// only when the selected record has related items; anything that isn't a
-/// Related-focus key (typing, Esc, …) switches back to `Results`.
+/// Which pane keyboard navigation controls. `Tab` cycles through
+/// `Results` → `Related` (if any) → `Image` (if any) → `Results`.
+/// Anything that isn't a Related/Image-focus key (typing, Esc, …) switches back to `Results`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum PaneFocus {
     Results,
     Related,
+    Image,
 }
 
 /// The Vim keymap's pane focus (Shift+HJKL): decides which pane j/k, gg/G
@@ -223,6 +225,8 @@ struct App {
     detail_scroll: u16,
     /// row → corpus index of a clickable Related entry, rebuilt every draw.
     detail_row_targets: Vec<Option<u32>>,
+    /// row → image URL for clickable Image entry, rebuilt every draw.
+    image_row_targets: Vec<Option<String>>,
     detail_area: Rect,
     pane_focus: PaneFocus,
     related_selected: Option<usize>,
@@ -231,6 +235,8 @@ struct App {
     /// wheel/Vim scroll clears it (free scrolling), moving the selection
     /// re-arms it — same pattern as `scroll_follow_selection`.
     detail_follow_related: bool,
+    image_selected: Option<usize>,
+    detail_follow_image: bool,
     /// Vim-keymap modal state (`cfg.keys == KeyMode::Vim` only).
     vim_mode: VimMode,
     /// A pending operator/prefix key awaiting its motion: 'd', 'c' or 'g'.
@@ -304,10 +310,13 @@ impl App {
             list_area: Rect::default(),
             detail_scroll: 0,
             detail_row_targets: Vec::new(),
+            image_row_targets: Vec::new(),
             detail_area: Rect::default(),
             pane_focus: PaneFocus::Results,
             related_selected: None,
             detail_follow_related: false,
+            image_selected: None,
+            detail_follow_image: false,
             vim_mode: VimMode::Insert,
             vim_pending: None,
             vim_register: String::new(),
@@ -375,6 +384,15 @@ impl App {
         data.corpus.records[doc as usize].related.len()
     }
 
+    fn current_image_count(&self) -> usize {
+        let Some(data) = &self.data else { return 0 };
+        let Some(doc) = self.selected_doc() else {
+            return 0;
+        };
+        let ans = &data.corpus.records[doc as usize].answer;
+        extract_images(ans).len()
+    }
+
     fn refresh_bm25(&mut self) {
         self.seq += 1;
         self.last_input_at = Instant::now();
@@ -384,6 +402,9 @@ impl App {
         self.scroll_follow_selection = true;
         self.pane_focus = PaneFocus::Results;
         self.related_selected = None;
+        self.image_selected = None;
+        self.detail_follow_related = false;
+        self.detail_follow_image = false;
         self.command_error = None;
         self.q_lower = prepare_query(&self.input);
 
@@ -583,6 +604,19 @@ impl App {
         if self.pane_focus == PaneFocus::Related && self.handle_related_focus_key(key) {
             return;
         }
+        if self.pane_focus == PaneFocus::Image && self.handle_image_focus_key(key) {
+            return;
+        }
+        // 'o' opens image when Image pane has items (mouseless access, §8.4)
+        if key.code == KeyCode::Char('o')
+            && self.current_image_count() > 0
+            && self.pane_focus != PaneFocus::Image
+        {
+            // If not already in Image focus, focus it and open first; if already handled above, this is fallback
+            // Only trigger when not typing? We are in Results focus with image available – allow quick open
+            // But to avoid hijacking typing 'o', only when Image already focused via handle_image_focus_key.
+            // So no-op here.
+        }
 
         match key.code {
             KeyCode::Esc => {
@@ -644,6 +678,9 @@ impl App {
         if self.pane_focus == PaneFocus::Related && self.vim_related_key(key) {
             return;
         }
+        if self.pane_focus == PaneFocus::Image && self.vim_image_key(key) {
+            return;
+        }
         match self.vim_mode {
             VimMode::Insert => self.vim_insert_key(key),
             VimMode::Normal => self.vim_normal_key(key),
@@ -676,6 +713,35 @@ impl App {
             _ => {
                 self.pane_focus = PaneFocus::Results;
                 self.related_selected = None;
+                false
+            }
+        }
+    }
+
+    fn vim_image_key(&mut self, key: KeyEvent) -> bool {
+        match key.code {
+            KeyCode::Esc | KeyCode::Tab => {
+                self.pane_focus = PaneFocus::Results;
+                self.image_selected = None;
+                self.detail_follow_image = false;
+                true
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.move_image_selection(-1);
+                true
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                self.move_image_selection(1);
+                true
+            }
+            KeyCode::Enter | KeyCode::Char('o') => {
+                self.activate_image_selection();
+                true
+            }
+            _ => {
+                self.pane_focus = PaneFocus::Results;
+                self.image_selected = None;
+                self.detail_follow_image = false;
                 false
             }
         }
@@ -962,6 +1028,11 @@ impl App {
             self.pane_focus = PaneFocus::Results;
             self.related_selected = None;
         }
+        if self.pane_focus == PaneFocus::Image {
+            self.pane_focus = PaneFocus::Results;
+            self.image_selected = None;
+            self.detail_follow_image = false;
+        }
     }
 
     fn set_focus(&mut self, pane: FocusPane) {
@@ -969,6 +1040,11 @@ impl App {
         if self.pane_focus == PaneFocus::Related {
             self.pane_focus = PaneFocus::Results;
             self.related_selected = None;
+        }
+        if self.pane_focus == PaneFocus::Image {
+            self.pane_focus = PaneFocus::Results;
+            self.image_selected = None;
+            self.detail_follow_image = false;
         }
         // INSERT only makes sense while the input pane is focused.
         if pane != FocusPane::Input && self.vim_mode == VimMode::Insert {
@@ -1000,6 +1076,7 @@ impl App {
                     self.detail_scroll.saturating_sub(1)
                 };
                 self.detail_follow_related = false;
+                self.detail_follow_image = false;
             }
         }
     }
@@ -1026,6 +1103,7 @@ impl App {
         };
         if self.vim_focus == FocusPane::Detail {
             self.detail_follow_related = false;
+            self.detail_follow_image = false;
         } else {
             self.scroll_follow_selection = false;
         }
@@ -1040,6 +1118,7 @@ impl App {
             FocusPane::Detail => {
                 self.detail_scroll = if bottom { u16::MAX } else { 0 };
                 self.detail_follow_related = false;
+                self.detail_follow_image = false;
             }
             FocusPane::Results => {
                 if !self.results.is_empty() {
@@ -1062,6 +1141,8 @@ impl App {
         self.vim_focus = FocusPane::Input;
         self.pane_focus = PaneFocus::Results;
         self.related_selected = None;
+        self.image_selected = None;
+        self.detail_follow_image = false;
     }
 
     fn toggle_key_mode(&mut self) {
@@ -1294,16 +1375,37 @@ impl App {
                     self.related_selected = Some(0);
                     self.detail_follow_related = true;
                     if self.cfg.keys == KeyMode::Vim {
-                        // Browsing Related is a Detail-pane activity; leave
-                        // INSERT so j/k pick entries instead of typing.
+                        self.vim_mode = VimMode::Normal;
+                        self.vim_focus = FocusPane::Detail;
+                    }
+                } else if self.current_image_count() > 0 {
+                    self.pane_focus = PaneFocus::Image;
+                    self.image_selected = Some(0);
+                    self.detail_follow_image = true;
+                    if self.cfg.keys == KeyMode::Vim {
                         self.vim_mode = VimMode::Normal;
                         self.vim_focus = FocusPane::Detail;
                     }
                 }
             }
             PaneFocus::Related => {
+                if self.current_image_count() > 0 {
+                    self.pane_focus = PaneFocus::Image;
+                    self.related_selected = None;
+                    self.image_selected = Some(0);
+                    self.detail_follow_image = true;
+                    if self.cfg.keys == KeyMode::Vim {
+                        self.vim_focus = FocusPane::Detail;
+                    }
+                } else {
+                    self.pane_focus = PaneFocus::Results;
+                    self.related_selected = None;
+                }
+            }
+            PaneFocus::Image => {
                 self.pane_focus = PaneFocus::Results;
-                self.related_selected = None;
+                self.image_selected = None;
+                self.detail_follow_image = false;
             }
         }
     }
@@ -1366,6 +1468,81 @@ impl App {
             id
         };
         self.jump_to_related(&id);
+    }
+
+    fn handle_image_focus_key(&mut self, key: KeyEvent) -> bool {
+        match key.code {
+            KeyCode::Esc | KeyCode::Tab => {
+                self.pane_focus = PaneFocus::Results;
+                self.image_selected = None;
+                self.detail_follow_image = false;
+                true
+            }
+            KeyCode::Up => {
+                self.move_image_selection(-1);
+                true
+            }
+            KeyCode::Down => {
+                self.move_image_selection(1);
+                true
+            }
+            KeyCode::Enter | KeyCode::Char('o') => {
+                self.activate_image_selection();
+                true
+            }
+            _ => {
+                self.pane_focus = PaneFocus::Results;
+                self.image_selected = None;
+                self.detail_follow_image = false;
+                false
+            }
+        }
+    }
+
+    fn move_image_selection(&mut self, delta: i64) {
+        let len = self.current_image_count();
+        if len == 0 {
+            self.pane_focus = PaneFocus::Results;
+            self.image_selected = None;
+            return;
+        }
+        let cur = self.image_selected.unwrap_or(0) as i64;
+        let next = (cur + delta).rem_euclid(len as i64) as usize;
+        self.image_selected = Some(next);
+        self.detail_follow_image = true;
+    }
+
+    fn activate_image_selection(&mut self) {
+        let Some(i) = self.image_selected else { return };
+        let url = {
+            let Some(data) = &self.data else { return };
+            let Some(doc) = self.selected_doc() else {
+                return;
+            };
+            let ans = &data.corpus.records[doc as usize].answer;
+            let imgs = extract_images(ans);
+            imgs.get(i).map(|(_, src)| src.clone()).unwrap_or_default()
+        };
+        if url.is_empty() {
+            return;
+        }
+        self.open_url(&url);
+    }
+
+    fn open_url(&mut self, url: &str) {
+        let full = if url.starts_with("http://")
+            || url.starts_with("https://")
+            || url.starts_with("data:")
+            || url.starts_with("//")
+        {
+            url.to_string()
+        } else {
+            self.cfg.file_url(url)
+        };
+        if open::that(&full).is_err() {
+            self.warnings
+                .push(format!("⚠ 画像を開けませんでした: {}", url));
+        }
     }
 
     /// "Jump" to a related item by re-searching its first question — BM25's
@@ -1447,6 +1624,7 @@ impl App {
                 } else if in_detail {
                     self.detail_scroll = self.detail_scroll.saturating_sub(MOUSE_SCROLL_STEP);
                     self.detail_follow_related = false;
+                    self.detail_follow_image = false;
                 }
             }
             MouseEventKind::ScrollDown => {
@@ -1456,6 +1634,7 @@ impl App {
                 } else if in_detail {
                     self.detail_scroll = self.detail_scroll.saturating_add(MOUSE_SCROLL_STEP);
                     self.detail_follow_related = false;
+                    self.detail_follow_image = false;
                 }
             }
             MouseEventKind::Down(MouseButton::Left) => {
@@ -1487,7 +1666,10 @@ impl App {
                 } else if in_detail {
                     let local_row = m.row.saturating_sub(self.detail_area.y + 1);
                     let abs_row = (self.detail_scroll + local_row) as usize;
-                    let target_id = self
+                    // Image click has priority (separate vector)
+                    if let Some(url) = self.image_row_targets.get(abs_row).cloned().flatten() {
+                        self.open_url(&url);
+                    } else if let Some(target_id) = self
                         .detail_row_targets
                         .get(abs_row)
                         .copied()
@@ -1497,9 +1679,9 @@ impl App {
                                 .as_ref()
                                 .and_then(|d| d.corpus.records.get(idx as usize))
                                 .map(|r| r.id.clone())
-                        });
-                    if let Some(id) = target_id {
-                        self.jump_to_related(&id);
+                        })
+                    {
+                        self.jump_to_related(&target_id);
                     }
                 }
             }
@@ -2107,26 +2289,59 @@ struct LineBuilder {
     lines: Vec<Line<'static>>,
     targets: Vec<Option<u32>>,
     related_rows: Vec<usize>,
+    image_rows: Vec<usize>,
+    image_targets: Vec<Option<String>>,
 }
 
 impl LineBuilder {
     fn push(&mut self, line: Line<'static>) {
         self.lines.push(line);
         self.targets.push(None);
+        self.image_targets.push(None);
     }
 
     fn push_related(&mut self, line: Line<'static>, target: Option<u32>) {
         self.related_rows.push(self.lines.len());
         self.lines.push(line);
         self.targets.push(target);
+        self.image_targets.push(None);
     }
 
-    fn finish(self) -> (Vec<Line<'static>>, Vec<Option<u32>>, Vec<usize>) {
-        (self.lines, self.targets, self.related_rows)
+    fn push_image(&mut self, line: Line<'static>, url: String) {
+        self.image_rows.push(self.lines.len());
+        self.lines.push(line);
+        self.targets.push(None);
+        self.image_targets.push(Some(url));
+    }
+
+    fn finish(
+        self,
+    ) -> (
+        Vec<Line<'static>>,
+        Vec<Option<u32>>,
+        Vec<usize>,
+        Vec<Option<String>>,
+        Vec<usize>,
+    ) {
+        (
+            self.lines,
+            self.targets,
+            self.related_rows,
+            self.image_targets,
+            self.image_rows,
+        )
     }
 }
 
-fn detail_lines(app: &App) -> (Vec<Line<'static>>, Vec<Option<u32>>, Vec<usize>) {
+fn detail_lines(
+    app: &App,
+) -> (
+    Vec<Line<'static>>,
+    Vec<Option<u32>>,
+    Vec<usize>,
+    Vec<Option<String>>,
+    Vec<usize>,
+) {
     let mut b = LineBuilder::default();
 
     if app.is_command_input() {
@@ -2250,8 +2465,68 @@ fn detail_lines(app: &App) -> (Vec<Line<'static>>, Vec<Option<u32>>, Vec<usize>)
         b.push(Line::raw(""));
     }
     b.push(Line::styled("Answer", heading));
+    let mut img_idx = 0usize;
     for l in record.answer.lines() {
-        b.push(Line::raw(l.to_string()));
+        let line_imgs = extract_images(l);
+        if line_imgs.is_empty() {
+            b.push(Line::raw(l.to_string()));
+        } else {
+            for (alt, src) in &line_imgs {
+                let focused =
+                    app.pane_focus == PaneFocus::Image && app.image_selected == Some(img_idx);
+                let marker = if focused { "▸ " } else { "  " };
+                let style = if focused {
+                    Style::default().fg(Color::White).bg(Color::Cyan)
+                } else {
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::UNDERLINED)
+                };
+                let lic = record.image_licenses.get(src).or_else(|| {
+                    let bn = src.split('/').last().unwrap_or(src);
+                    record
+                        .image_licenses
+                        .get(&format!("qa_images/{}", bn))
+                        .or_else(|| record.image_licenses.get(bn))
+                });
+                let lic_text = lic
+                    .map(|lc| {
+                        let mut s = String::new();
+                        if let Some(a) = &lc.attribution {
+                            s.push_str(a);
+                        }
+                        if !lc.license.is_empty() && lc.license != "Apache-2.0" {
+                            if !s.is_empty() {
+                                s.push_str(&format!(" ({})", lc.license));
+                            } else {
+                                s = lc.license.clone();
+                            }
+                        } else if !lc.license.is_empty() && lc.attribution.is_none() && s.is_empty()
+                        {
+                            s = lc.license.clone();
+                        }
+                        if let Some(url) = &lc.url {
+                            if !s.is_empty() {
+                                s.push(' ');
+                            }
+                            s.push_str(url);
+                        }
+                        s
+                    })
+                    .unwrap_or_default();
+                let mut spans = vec![
+                    Span::raw(marker.to_string()),
+                    Span::styled("🖼 ".to_string(), dim),
+                    Span::styled(alt.clone(), style),
+                    Span::raw(format!("  ({})", src)),
+                ];
+                if !lic_text.is_empty() {
+                    spans.push(Span::styled(format!("  {}", lic_text), dim));
+                }
+                b.push_image(Line::from(spans), (*src).clone());
+                img_idx += 1;
+            }
+        }
     }
     if !record.keywords.is_empty() {
         b.push(Line::raw(""));
@@ -2313,15 +2588,22 @@ fn draw_detail(frame: &mut Frame, app: &mut App, area: Rect) {
     let inner_width = inner.width.max(1);
     let inner_height = inner.height;
 
-    let (lines, line_targets, related_rows) = detail_lines(app);
+    let (lines, line_targets, related_rows, image_line_targets, image_rows) = detail_lines(app);
 
     let mut row_targets: Vec<Option<u32>> = Vec::new();
+    let mut image_row_targets: Vec<Option<String>> = Vec::new();
     let mut line_start_rows: Vec<u16> = Vec::with_capacity(lines.len());
-    for (line, target) in lines.iter().zip(line_targets.iter()) {
+    for (line, target, img_target) in lines
+        .iter()
+        .zip(line_targets.iter())
+        .zip(image_line_targets.iter())
+        .map(|((a, b), c)| (a, b, c))
+    {
         line_start_rows.push(row_targets.len() as u16);
         let rows = wrapped_row_count(line, inner_width);
         for _ in 0..rows {
             row_targets.push(*target);
+            image_row_targets.push(img_target.clone());
         }
     }
     let total_rows = row_targets.len() as u16;
@@ -2343,11 +2625,26 @@ fn draw_detail(frame: &mut Frame, app: &mut App, area: Rect) {
             app.detail_scroll = end + 1 - inner_height;
         }
     }
+    if app.pane_focus == PaneFocus::Image
+        && app.detail_follow_image
+        && let Some(i) = app.image_selected
+        && let Some(&li) = image_rows.get(i)
+    {
+        let start = line_start_rows[li];
+        let end = start + wrapped_row_count(&lines[li], inner_width) - 1;
+        if start < app.detail_scroll {
+            app.detail_scroll = start;
+        }
+        if inner_height > 0 && end >= app.detail_scroll + inner_height {
+            app.detail_scroll = end + 1 - inner_height;
+        }
+    }
 
     app.detail_scroll = app
         .detail_scroll
         .min(total_rows.saturating_sub(inner_height));
     app.detail_row_targets = row_targets;
+    app.image_row_targets = image_row_targets;
 
     let paragraph = Paragraph::new(Text::from(lines))
         .block(block)

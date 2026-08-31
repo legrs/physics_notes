@@ -64,7 +64,8 @@ const MODELS = {
 // ── version.json スキーマ定数 ─────────────────────────────
 // physq (CLI) の CLAUDE.md §3/§5/§8 で決め打ちされている値と揃える。
 // tokenizer が変わったら physq 側の BM25 インデックスキャッシュが再構築される。
-const VERSION_SCHEMA = 3;
+// schema_version 4: qa_images (combined hash) 追加 (2026-08-31)
+const VERSION_SCHEMA = 4;
 const TOKENIZER_TAG = 'lindera-ipadic';
 // embeddings.json の実際のキー（"small"/"large"）ごとのモデル名。MODELS から導出し、
 // 二重管理を避ける。
@@ -94,6 +95,13 @@ function stripLatex(str) {
     .replace(/\s+/g, ' ').trim();
 }
 
+// ── 画像記法除去（search_text 用） ─────────────────────────
+// §5: altのみ残し srcは除去。コードブロック内の ![]() は無視、title付きや <img alt> も対応
+function stripCodeFences(s) { return s.replace(/```[\s\S]*?```/g,' ').replace(/`[^`]*`/g,' '); }
+function stripMarkdownImages(s){ return s.replace(/!\[([^\]]*)\]\(\s*([^\s)]+)(?:\s+"[^"]*")?\s*\)/g, ' $1 '); }
+function stripHtmlImages(s){ return s.replace(/<img\b[^>]*>/gi, m => { const alt=(m.match(/alt\s*=\s*(['"])(.*?)\1/i)||[])[2]||''; return ' '+alt+' '; }); }
+function stripHtmlImageRows(s){ return s.replace(/<div class="img-row">/g,' ').replace(/<\/div>/g,' '); }
+
 // ── カタカナ → ひらがな ────────────────────────────────────
 function toHiragana(str) {
   return str.replace(/[\u30a1-\u30f6]/g, ch =>
@@ -122,7 +130,13 @@ function buildSearchText(tokenizer, item) {
     ...(item.synonyms || []),
     ...categories,
   ];
-  const cleaned = fields.map(s => stripLatex(String(s))).filter(Boolean).join(' ');
+  // 画像記法は alt のみ残し src は除去（§5）。コードブロック内の ![]() は無視
+  let rawJoined = fields.map(s => String(s)).filter(Boolean).join(' ');
+  rawJoined = stripCodeFences(rawJoined);
+  rawJoined = stripMarkdownImages(rawJoined);
+  rawJoined = stripHtmlImages(rawJoined);
+  rawJoined = stripHtmlImageRows(rawJoined);
+  const cleaned = stripLatex(rawJoined).replace(/\s+/g, ' ').trim();
 
   // 形態素に分解してスペース区切りで追加（BM25用）
   // 記号・助詞1文字などは除外してノイズを減らす
@@ -204,6 +218,39 @@ function fileManifest(filePath) {
   return { hash, size: buf.length };
 }
 
+function qaImagesManifest() {
+  const dir = path.join(__dirname, '..', 'qa_images');
+  if (!fs.existsSync(dir)) return null;
+  const IMAGE_EXT_RE = /\.(jpe?g|png|webp|svg|gif)$/i;
+  const files = fs.readdirSync(dir).filter(f => {
+    if (f === 'licenses.json' || f === '.gitkeep' || f === 'README.md') return false;
+    try { if (fs.statSync(path.join(dir, f)).isDirectory()) return false; } catch (_) { return false; }
+    return IMAGE_EXT_RE.test(f);
+  });
+  files.sort();
+  let total = 0;
+  const buckets = { lt3: 0, btw: 0, gte5: 0 };
+  const hashes = [];
+  for (const f of files) {
+    const p = path.join(dir, f);
+    const buf = fs.readFileSync(p);
+    total += buf.length;
+    hashes.push(crypto.createHash('sha256').update(buf).digest('hex'));
+    const mb = buf.length / (1024 * 1024);
+    if (mb < 3) buckets.lt3++;
+    else if (mb < 5) buckets.btw++;
+    else buckets.gte5++;
+  }
+  const combined = hashes.length ? crypto.createHash('sha256').update(hashes.join('')).digest('hex') : crypto.createHash('sha256').update('').digest('hex');
+  return {
+    hash: combined,
+    count: files.length,
+    total_bytes: total,
+    avg_bytes: files.length ? Math.round(total / files.length) : 0,
+    buckets,
+  };
+}
+
 function generateVersionManifest() {
   const manifest = {
     generated_at: new Date().toISOString(),
@@ -215,8 +262,68 @@ function generateVersionManifest() {
       'embeddings.json': fileManifest(EMBEDDINGS_PATH),
     },
   };
+  const qa = qaImagesManifest();
+  if (qa) manifest.qa_images = qa;
   fs.writeFileSync(VERSION_PATH, JSON.stringify(manifest, null, 2) + '\n', 'utf-8');
-  console.log('✅ version.json 生成完了');
+  console.log('✅ version.json 生成完了' + (qa ? ` (qa_images: ${qa.count} files, ${qa.hash.slice(0,8)}…)` : ''));
+}
+
+// ── image_licenses 注入（§12-5 C: ビルド時埋め込み） ─────────────
+function loadLicensesMap() {
+  const p = path.join(__dirname, '..', 'qa_images', 'licenses.json');
+  if (!fs.existsSync(p)) return {};
+  try { return JSON.parse(fs.readFileSync(p, 'utf-8')); } catch (e) { console.warn(`⚠ licenses.json parse failed: ${e.message}`); return {}; }
+}
+function extractImageSrcsForLicenses(answer) {
+  if (!answer || typeof answer !== 'string') return [];
+  const fenceRe = /```[\s\S]*?```|`[^`]*`/g;
+  const ranges = [];
+  let m;
+  while ((m = fenceRe.exec(answer)) !== null) ranges.push([m.index, m.index + m[0].length]);
+  const inFence = (pos) => ranges.some(([s, e]) => pos >= s && pos < e);
+  const srcs = [];
+  const mdRe = /!\[([^\]]*)\]\(\s*([^\s)]+)(?:\s+"[^"]*")?\s*\)/g;
+  while ((m = mdRe.exec(answer)) !== null) {
+    if (inFence(m.index)) continue;
+    const src = m[2];
+    if (src.startsWith('qa_images/')) srcs.push(src);
+  }
+  const htmlRe = /<img\b[^>]*>/gi;
+  while ((m = htmlRe.exec(answer)) !== null) {
+    if (inFence(m.index)) continue;
+    const tag = m[0];
+    const sm = tag.match(/\ssrc\s*=\s*(['"])(.*?)\1/i) || tag.match(/\ssrc\s*=\s*([^\s>]+)/i);
+    const src = sm ? (sm[2] || sm[1]) : null;
+    if (src && src.startsWith('qa_images/')) srcs.push(src);
+  }
+  return srcs;
+}
+function injectImageLicenses(data) {
+  const licenses = loadLicensesMap();
+  const def = licenses['_default'] || { license: 'Apache-2.0' };
+  let changed = 0;
+  for (const item of data) {
+    const srcs = extractImageSrcsForLicenses(item.answer || '');
+    if (!srcs.length) {
+      if ('image_licenses' in item) { delete item.image_licenses; changed++; }
+      continue;
+    }
+    const map = {};
+    for (const src of srcs) {
+      const bn = path.basename(src);
+      let lic = licenses[src] || licenses[bn] || licenses['qa_images/' + bn];
+      if (!lic) lic = def;
+      map[src] = lic;
+    }
+    const newStr = JSON.stringify(map);
+    const oldStr = item.image_licenses ? JSON.stringify(item.image_licenses) : null;
+    if (newStr !== oldStr) {
+      item.image_licenses = map;
+      changed++;
+    }
+  }
+  if (changed) console.log(`✅ image_licenses 注入/更新: ${changed} 件`);
+  return changed;
 }
 
 // ── メイン ────────────────────────────────────────────────
@@ -224,7 +331,7 @@ async function main() {
   const raw = fs.readFileSync(JSON_PATH, 'utf-8');
   const data = JSON.parse(raw);
 
-  // 1. search_text 生成
+  // 1. search_text 生成 + image_licenses 注入
   if (!SKIP_TEXT) {
     await new Promise((resolve, reject) => {
       // CWD 依存にしない（リポジトリ外から `node scripts/build.js --data …` を
@@ -236,11 +343,24 @@ async function main() {
           const generated = buildSearchText(tokenizer, item);
           if (item.search_text !== generated) { item.search_text = generated; changed++; }
         }
-        fs.writeFileSync(JSON_PATH, JSON.stringify(data, null, 4), 'utf-8');
-        console.log(`✅ search_text 生成完了（${changed} 件更新 / ${data.length} 件中）`);
+        const licChanged = injectImageLicenses(data);
+        if (changed || licChanged) {
+          fs.writeFileSync(JSON_PATH, JSON.stringify(data, null, 4), 'utf-8');
+          console.log(`✅ search_text 生成完了（${changed} 件更新 / ${data.length} 件中）${licChanged ? ` + image_licenses ${licChanged}件` : ''}`);
+        } else {
+          console.log(`✅ search_text 生成完了（${changed} 件更新 / ${data.length} 件中） — 変更なし`);
+        }
         resolve();
       });
     });
+  } else {
+    // --embed-only 等で search_text をスキップする場合も image_licenses は注入する
+    // (--data モードでは配信ファイルを触らないため version.json 生成はしないが、 licenses 注入は作業コピーに対して行う)
+    const licChanged = injectImageLicenses(data);
+    if (licChanged) {
+      fs.writeFileSync(JSON_PATH, JSON.stringify(data, null, 4), 'utf-8');
+      console.log(`✅ image_licenses 注入: ${licChanged} 件`);
+    }
   }
 
   // 2. Embedding 生成

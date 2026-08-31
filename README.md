@@ -56,10 +56,13 @@ physics_notes/
 ├── q_and_a.txt                        # 先生の質問の模範解答テキスト集
 ├── q_and_a_data.json                  # メインの Q&A コーパス（Google Sheets から書き出し・264 件）
 ├── q_and_a_data_handcrafted.json      # 手作業で整えたデータセット案（パイプライン未接続）
+├── qa_images/                         # QA写真専用（`![](qa_images/<uuid>.jpg)` で answer から参照、CIがUUID正規化）
+│   ├── licenses.json                  # 個別ライセンス上書き（未記載は Apache-2.0）
+│   └── <uuid>.jpg                     # 実体はUUIDファイル名のみ（手元では雑な名前で置いてpushすればCIが直す）
 ├── qa_editor.html                     # Q&A データの編集ツール（<title>Q&A Editor</title>）
 ├── search.html                        # 検索 UI 本体（BM25 + e5 + RRF のハイブリッド検索）
 ├── template.typ / .pdf                # Typst ノートの共通テンプレート（ページ設定・数式スタイル）
-└── version.json                       # 生成物のハッシュ・埋め込みモデル情報（キャッシュ整合検証用）
+└── version.json                       # 生成物のハッシュ・埋め込みモデル情報（キャッシュ整合検証用。`qa_images` のハッシュも含む）
 ```
 
 ## テスト / Tests
@@ -242,3 +245,14 @@ query.split(" ").every(word => item.search_text.includes(word))
 ---
 
 このルールに従うことで、シンプルな実装でも十分に実用的な検索が可能になります。
+
+---
+
+## QA画像（qa_images/）
+
+`answer` は Markdown の画像記法 `![alt](qa_images/<uuid>.jpg)` で写真を埋め込めます。1レコードに複数枚可（縦積み）。横並びが必要な場合のみ `<div class="img-row">![](qa_images/a.jpg) ![](qa_images/b.jpg)</div>` を使えます。`alt` は検索対象（BM25）になりますが `src`（URL）は語彙にしません。
+
+* **手元では雑な名前でOK** — `photo_001.JPG` のような名前で `qa_images/` に置き、`answer` に `![](qa_images/photo_001.JPG)` と書いて push するだけで、CI（`.github/workflows/build.yml`）が `qa_images/<uuid>.jpg` にリネームし、`q_and_a_data.json` 内参照も `qa_images/licenses.json` のキーも追従して `[skip ci]` で再pushします。
+* **ライセンス** — デフォルトは `LICENSE` の Apache-2.0。例外のみ `qa_images/licenses.json` に記載します。`scripts/build.js` が `licenses.json` を読み、各レコードに `image_licenses` として埋め込むため、Web は `<figcaption>`、physq は Detail で自動表示されます。
+* **ローカルで正規化** — `npm run normalize:images`（実行） / `npm run normalize:images:check`（dry-run）。
+* **サイズ** — `webp` 推奨ですが強制しません。CI は `<3MB / 3-5MB / ≥5MB` の統計を出力し、5MB超は警告のみです。詳細は `qa_images/README.md` を参照。

@@ -805,6 +805,32 @@
       margin: 1em auto;
     }
 
+    .prose .img-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 1em 0;
+    }
+
+    .prose .img-row img {
+      margin: 0;
+      flex: 1 1 200px;
+      max-width: calc(50% - 6px);
+    }
+
+    .prose figure {
+      margin: 1em auto;
+      text-align: center;
+    }
+
+    .prose figcaption {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
     .prose table {
       display: block;
       overflow-x: auto;
@@ -2251,6 +2277,12 @@
         if (typeof DOMPurify === 'undefined') return escHtml(raw);
         return raw;
       };
+      renderer.image = function (token) {
+        const href = token.href || '';
+        const text = token.text || '';
+        const title = token.title ? ` title="${escHtml(token.title)}"` : '';
+        return `<img src="${escHtml(href)}" alt="${escHtml(text)}"${title} loading="lazy">`;
+      };
       marked.use({ renderer });
     })();
 
@@ -2260,6 +2292,7 @@
       if (typeof DOMPurify === 'undefined') return html; // renderer 側で全HTMLエスケープ済み
       return DOMPurify.sanitize(html, {
         USE_PROFILES: { html: true, svg: true, svgFilters: true, mathMl: true },
+        ADD_ATTR: ['loading'],
       });
     }
 
@@ -2267,6 +2300,52 @@
     function mdToSafeHtml(text) {
       if (typeof marked === 'undefined') return '<p>' + escHtml(text || '') + '</p>';
       return sanitizeHtml(marked.parse(formatMath(text || '')));
+    }
+
+    /* 画像のライセンスを <figcaption> として付与（build.js の image_licenses 埋め込みを利用） */
+    function enhanceImagesWithLicenses(container, imageLicenses) {
+      if (!container || !imageLicenses) return;
+      const imgs = container.querySelectorAll('img');
+      imgs.forEach(img => {
+        const src = img.getAttribute('src') || '';
+        // qa_images/ 相対のみ対象、外部URLは手書き運用
+        if (!src.startsWith('qa_images/')) return;
+        const lic = imageLicenses[src] || imageLicenses['qa_images/' + src.split('/').pop()] || imageLicenses[src.split('/').pop()];
+        if (!lic || !lic.attribution && !lic.license) return;
+        // 既に figure でラップ済みならスキップ
+        if (img.parentElement && img.parentElement.tagName === 'FIGURE') return;
+        const figure = document.createElement('figure');
+        img.parentNode.insertBefore(figure, img);
+        figure.appendChild(img);
+        if (lic.attribution || lic.license) {
+          const cap = document.createElement('figcaption');
+          let capText = lic.attribution || '';
+          if (lic.license && lic.license !== 'Apache-2.0') {
+            capText = capText ? `${capText} (${lic.license})` : lic.license;
+          } else if (lic.license && !lic.attribution) {
+            capText = lic.license;
+          }
+          if (lic.url) {
+            const a = document.createElement('a');
+            a.href = lic.url;
+            a.textContent = capText || lic.url;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            cap.appendChild(a);
+          } else {
+            cap.textContent = capText;
+          }
+          if (cap.textContent) figure.appendChild(cap);
+        }
+        // onerror でプレースホルダ
+        img.onerror = () => {
+          img.style.display = 'none';
+          const ph = document.createElement('div');
+          ph.textContent = '⚠ 画像を読み込めません: ' + src;
+          ph.style.cssText = 'font-size:12px;color:var(--text-muted);padding:8px;border:1px dashed var(--border-mid);border-radius:8px;text-align:center;margin:0.5em 0';
+          figure.appendChild(ph);
+        };
+      });
     }
 
     /* ── 数式変換（KaTeX） ── $$...$$ ブロック → $...$ インライン の順に処理 */
@@ -2335,6 +2414,7 @@
 
     let isStreaming = false, streamTimer = null, isUserScrolling = false;
     let allData = null; // fetch後にキャッシュ
+    let _currentModalLicenses = null; // 現在モーダルで表示中のレコードの image_licenses
 
     // ── ID 正規化 ───────────────────────────────────────────────
     // データ・related・embeddings のキーを保存形式に依存せず統一する。
@@ -2433,6 +2513,7 @@
         `;
         const openRelated = () => {
           stopStreaming();
+          _currentModalLicenses = ri.image_licenses || null;
           modalTitle.textContent = ri.questions[0];
           modalContent.innerHTML = '';
           modalRelated.innerHTML = '';
@@ -2448,6 +2529,7 @@
     }
 
     function openModal(triggerEl, item) {
+      _currentModalLicenses = item.image_licenses || null;
       document.body.style.overflow = 'hidden';
       isUserScrolling = false;
 
@@ -2508,6 +2590,7 @@
 
       if (_animMode === 'instant') {
         modalContent.innerHTML = mdToSafeHtml(fullText);
+        enhanceImagesWithLicenses(modalContent, _currentModalLicenses);
         isStreaming = false;
         if (onComplete) onComplete();
         return;
@@ -2520,6 +2603,7 @@
           if (!isStreaming) return;
           if (lineIdx >= lines.length) {
             modalContent.innerHTML = mdToSafeHtml(fullText);
+            enhanceImagesWithLicenses(modalContent, _currentModalLicenses);
             isStreaming = false;
             if (onComplete) onComplete();
             return;
@@ -2546,6 +2630,7 @@
           streamTimer = setTimeout(tick, Math.random() * 20 + 8);
         } else {
           modalContent.innerHTML = mdToSafeHtml(fullText);
+          enhanceImagesWithLicenses(modalContent, _currentModalLicenses);
           isStreaming = false;
           if (onComplete) onComplete();
         }
@@ -2587,6 +2672,7 @@
     // チャットへ渡す検索コンテキストをキャッシュ
     let _chatContextQuery = '';
     let _chatContextAnswer = '';
+    let _chatContextLicenses = null;
 
     /* ── グローバル検索ヘルパー（Chat パネルからも利用） ─────── */
 
@@ -3328,6 +3414,7 @@
         // ── AI Answer（1位の回答をストリーミング表示） ──────────
         const top = results[0];
         _chatContextAnswer = top.answer; // チャットコンテキスト用にキャッシュ
+        _chatContextLicenses = top.image_licenses || null;
         aiBox.innerHTML = `
         <div class="ai-answer">
           <div class="ai-label">AI Answer</div>
@@ -3376,11 +3463,13 @@
         let aiStreamTimer = null;
         let aiBuf = '', aiIdx = 0;
         const fullText = top.answer;
+        const topLicenses = top.image_licenses || null;
 
         function aiTick() {
           if (_animMode === 'instant') {
             // 即時表示
             aiProse.innerHTML = mdToSafeHtml(fullText);
+            enhanceImagesWithLicenses(aiProse, topLicenses);
             checkOverflow();
           } else if (_animMode === 'line') {
             // 行単位：改行ごとに一括表示
@@ -3389,6 +3478,7 @@
             function nextLine() {
               if (lineIdx >= lines.length) {
                 aiProse.innerHTML = mdToSafeHtml(fullText);
+                enhanceImagesWithLicenses(aiProse, topLicenses);
                 checkOverflow();
                 return;
               }
@@ -3409,6 +3499,7 @@
               aiStreamTimer = setTimeout(aiTick, Math.random() * 20 + 8);
             } else {
               aiProse.innerHTML = mdToSafeHtml(fullText);
+              enhanceImagesWithLicenses(aiProse, topLicenses);
               checkOverflow();
             }
           }
@@ -3737,7 +3828,7 @@
       }
 
       // ── Stream answer from local data ─────────────────────────────────
-      function streamAnswer(contentEl, fullText, onDone) {
+      function streamAnswer(contentEl, fullText, onDone, imageLicenses) {
         const _urlMode = getSafeMode();
         const _reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         const _animMode = (_urlMode === 'fast') ? 'instant'
@@ -3749,6 +3840,7 @@
 
         if (_animMode === 'instant') {
           renderMarkdown(contentEl, fullText);
+          if (typeof enhanceImagesWithLicenses === 'function' && imageLicenses) enhanceImagesWithLicenses(contentEl, imageLicenses);
           if (onDone) onDone();
           return;
         }
@@ -3759,6 +3851,7 @@
           function nextLine() {
             if (lineIdx >= lines.length) {
               renderMarkdown(contentEl, fullText);
+              if (typeof enhanceImagesWithLicenses === 'function' && imageLicenses) enhanceImagesWithLicenses(contentEl, imageLicenses);
               if (onDone) onDone();
               return;
             }
@@ -3785,6 +3878,7 @@
             setTimeout(tick, Math.random() * 20 + 8);
           } else {
             renderMarkdown(contentEl, fullText);
+            if (typeof enhanceImagesWithLicenses === 'function' && imageLicenses) enhanceImagesWithLicenses(contentEl, imageLicenses);
             if (onDone) onDone();
           }
         }
@@ -3847,6 +3941,7 @@
 
         const queryText = typeof _chatContextQuery !== 'undefined' ? _chatContextQuery : '';
         const answerText = typeof _chatContextAnswer !== 'undefined' ? _chatContextAnswer : '';
+        const answerLicenses = typeof _chatContextLicenses !== 'undefined' ? _chatContextLicenses : null;
 
         // 1. Position panel at button rect (invisible contents)
         chatHeader.style.opacity = '0';
@@ -3921,7 +4016,7 @@
                 setTimeout(() => {
                   aiWrap.classList.remove('ghost-ready');
                   aiWrap.style.animation = 'chatFadeIn 0.3s ease-out forwards';
-                  streamAnswer(aiContent, answerText, null);
+                  streamAnswer(aiContent, answerText, null, answerLicenses);
                 }, 220);
               }, 80);
             } else {
@@ -4131,7 +4226,7 @@
               isSending = false;
               chatSendBtn.disabled = false;
               scrollChatBottom();
-            });
+            }, result.image_licenses || null);
           } else {
             const msg = '該当する物理の解説が見つかりませんでした。もう少し具体的なキーワードで試してみてください。';
             chatHistory.push({ role: 'assistant', content: msg });

@@ -6,6 +6,8 @@
     "build": "node scripts/build.js",
     "build:embed": "node scripts/build.js --embed",
     "build:embed-only": "node scripts/build.js --embed-only",
+    "normalize:images": "node scripts/normalize-images.js",
+    "normalize:images:check": "node scripts/normalize-images.js --check",
     "test": "node scripts/tests/run_all.js",
     "test:html": "node scripts/tests/html_syntax.js && node scripts/tests/html_stress.js",
     "test:data": "node scripts/tests/data_check.js && node physq/scripts/parity_check.js",

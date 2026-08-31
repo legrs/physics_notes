@@ -6,7 +6,10 @@ on:
       - master
     paths:
       - 'q_and_a_data.json'
+      - 'qa_images/**'
+      - 'qa_images/licenses.json'
       - 'scripts/build.js'
+      - 'scripts/normalize-images.js'
       - 'package.json'
   workflow_dispatch:
 
@@ -19,6 +22,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -40,6 +45,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Normalize qa_images filenames
+        run: node scripts/normalize-images.js || { echo "::warning::normalize failed, skipping commit"; exit 0; }
+
+      - name: Image stats
+        run: |
+          node -e "
+          const fs=require('fs'),p=require('path'),MB=1024*1024,dir='qa_images';
+          if(!fs.existsSync(dir)) { console.log('No qa_images dir'); process.exit(0); }
+          const files=fs.readdirSync(dir).filter(f=>/\.(jpe?g|png|webp|svg|gif)$/i.test(f));
+          let lt3=0,btw=0,gte5=0,total=0;
+          files.forEach(f=>{const s=fs.statSync(p.join(dir,f)).size; total+=s; if(s<3*MB)lt3++; else if(s<5*MB)btw++; else gte5++; if(s>=5*MB) console.log('::warning::'+f+' is '+(s/MB).toFixed(1)+'MB (>=5MB)');});
+          console.log('Images: '+files.length+' files, avg '+((total/(files.length||1))/MB).toFixed(2)+'MB, <3MB:'+lt3+' 3-5MB:'+btw+' >=5MB:'+gte5+', total '+(total/MB).toFixed(1)+'MB');
+          "
+
       - name: Generate search_text and embeddings
         run: node scripts/build.js --embed
 
@@ -48,12 +67,11 @@ jobs:
           OUTPUT=$(./node_modules/.bin/dirlens -G)
           printf '%s\n' "$OUTPUT" > dirlens.txt
 
-      - name: Commit updated files
+      - name: Commit and push directly
         run: |
-          git config user.name  'github-actions[bot]'
+          git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add q_and_a_data.json embeddings.json version.json dirlens.txt || true
-          git diff --staged --quiet \
-            && echo "変更なし。コミットをスキップします。" \
-            || git commit -m 'chore: auto-generate search_text and embeddings [skip ci]'
-          git push
+          git add qa_images q_and_a_data.json qa_images/licenses.json embeddings.json version.json dirlens.txt || true
+          git diff --staged --quiet && echo "no changes" && exit 0
+          git commit -m 'chore: normalize qa_images and regenerate embeddings [skip ci]'
+          git push || { git pull --rebase && git push; }

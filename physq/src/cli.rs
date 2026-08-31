@@ -10,6 +10,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use crate::config::{Config, ModelSel, ModelSize};
 use crate::engine::{Engine, SemanticEngine, hybrid};
 use crate::eval;
+use crate::image::extract_images;
 use crate::model::Corpus;
 use crate::query::prepare_query;
 use crate::semantic::SemanticError;
@@ -380,11 +381,11 @@ fn run_search(cfg: Config, query: &str, limit: usize, plain: bool) -> Result<()>
     }
     eprintln!("mode: {mode}");
 
-    print_results(&engine.corpus, &results, limit, plain);
+    print_results(&engine.corpus, &results, limit, plain, &cfg);
     Ok(())
 }
 
-fn print_results(corpus: &Corpus, results: &[(u32, f64)], limit: usize, plain: bool) {
+fn print_results(corpus: &Corpus, results: &[(u32, f64)], limit: usize, plain: bool, cfg: &Config) {
     let pretty = !plain && std::io::stdout().is_terminal();
     if results.is_empty() {
         if pretty {
@@ -414,8 +415,49 @@ fn print_results(corpus: &Corpus, results: &[(u32, f64)], limit: usize, plain: b
                 r.difficulty,
                 r.id
             );
+            for (alt, src) in extract_images(&r.answer) {
+                let lic = r.image_licenses.get(&src).or_else(|| {
+                    let bn = src.split('/').last().unwrap_or(&src);
+                    r.image_licenses
+                        .get(&format!("qa_images/{}", bn))
+                        .or_else(|| r.image_licenses.get(bn))
+                });
+                let lic_str = lic
+                    .map(|lc| {
+                        let mut s = String::new();
+                        if let Some(a) = &lc.attribution {
+                            s.push_str(a);
+                        }
+                        if !lc.license.is_empty() && lc.license != "Apache-2.0" {
+                            if !s.is_empty() {
+                                s.push_str(&format!(" ({})", lc.license));
+                            } else {
+                                s = lc.license.clone();
+                            }
+                        }
+                        s
+                    })
+                    .unwrap_or_default();
+                if lic_str.is_empty() {
+                    println!("    {dim}🖼 {alt}  ({src}){reset}");
+                } else {
+                    println!("    {dim}🖼 {alt}  ({src})  {lic_str}{reset}");
+                }
+            }
         } else {
             println!("{}\t{score:.6}\t{}\t{question}", i + 1, r.id);
+            for (alt, src) in extract_images(&r.answer) {
+                let url = if src.starts_with("http://")
+                    || src.starts_with("https://")
+                    || src.starts_with("data:")
+                    || src.starts_with("//")
+                {
+                    src.clone()
+                } else {
+                    cfg.file_url(&src)
+                };
+                println!("image\t{}\t{}", alt, url);
+            }
         }
     }
 }

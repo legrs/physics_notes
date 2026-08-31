@@ -853,6 +853,32 @@
       margin: 1em auto;
     }
 
+    .prose .img-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 1em 0;
+    }
+
+    .prose .img-row img {
+      margin: 0;
+      flex: 1 1 200px;
+      max-width: calc(50% - 6px);
+    }
+
+    .prose figure {
+      margin: 1em auto;
+      text-align: center;
+    }
+
+    .prose figcaption {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
     .prose table {
       display: block;
       overflow-x: auto;
@@ -1100,7 +1126,10 @@
       <section class="editor-pane" id="editor-pane">
         <div class="editor-topbar">
           <div class="editor-qtitle" id="editor-qtitle">項目が選択されていません</div>
-          <div class="editor-id" id="editor-id-badge"></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button id="insert-image-btn" class="btn" type="button" title="カーソル位置に画像記法を挿入">🖼 画像</button>
+            <div class="editor-id" id="editor-id-badge"></div>
+          </div>
         </div>
         <textarea id="answer-input" spellcheck="false" disabled
           placeholder="回答をMarkdownで入力してください（$$…$$ / $…$ でLaTeX数式）"></textarea>
@@ -1166,6 +1195,12 @@
         if (typeof DOMPurify === 'undefined') return escHtml(raw);
         return raw;
       };
+      renderer.image = function (token) {
+        const href = token.href || '';
+        const text = token.text || '';
+        const title = token.title ? ` title="${escHtml(token.title)}"` : '';
+        return `<img src="${escHtml(href)}" alt="${escHtml(text)}"${title} loading="lazy">`;
+      };
       marked.use({ renderer });
     })();
 
@@ -1173,12 +1208,48 @@
       if (typeof DOMPurify === 'undefined') return html;
       return DOMPurify.sanitize(html, {
         USE_PROFILES: { html: true, svg: true, svgFilters: true, mathMl: true },
+        ADD_ATTR: ['loading'],
       });
     }
 
     function mdToSafeHtml(text) {
       if (typeof marked === 'undefined') return '<p>' + escHtml(text || '') + '</p>';
       return sanitizeHtml(marked.parse(formatMath(text || '')));
+    }
+
+    /* 画像のライセンスを <figcaption> として付与（build.js の image_licenses 埋め込み） */
+    function enhanceImagesWithLicenses(container, imageLicenses) {
+      if (!container || !imageLicenses) return;
+      const imgs = container.querySelectorAll('img');
+      imgs.forEach(img => {
+        const src = img.getAttribute('src') || '';
+        if (!src.startsWith('qa_images/')) return;
+        const lic = imageLicenses[src] || imageLicenses['qa_images/' + src.split('/').pop()] || imageLicenses[src.split('/').pop()];
+        if (!lic || (!lic.attribution && !lic.license)) return;
+        if (img.parentElement && img.parentElement.tagName === 'FIGURE') return;
+        const figure = document.createElement('figure');
+        img.parentNode.insertBefore(figure, img);
+        figure.appendChild(img);
+        if (lic.attribution || lic.license) {
+          const cap = document.createElement('figcaption');
+          let capText = lic.attribution || '';
+          if (lic.license && lic.license !== 'Apache-2.0') capText = capText ? `${capText} (${lic.license})` : lic.license;
+          else if (lic.license && !lic.attribution) capText = lic.license;
+          if (lic.url) {
+            const a = document.createElement('a');
+            a.href = lic.url; a.textContent = capText || lic.url; a.target='_blank'; a.rel='noopener';
+            cap.appendChild(a);
+          } else cap.textContent = capText;
+          if (cap.textContent) figure.appendChild(cap);
+        }
+        img.onerror = () => {
+          img.style.display='none';
+          const ph=document.createElement('div');
+          ph.textContent='⚠ 画像を読み込めません: '+src;
+          ph.style.cssText='font-size:12px;color:var(--text-muted);padding:8px;border:1px dashed var(--border-mid);border-radius:8px;text-align:center;margin:0.5em 0';
+          figure.appendChild(ph);
+        };
+      });
     }
 
     /* CommonMark の right-flanking delimiter 制約への対応:
@@ -1720,6 +1791,28 @@
       scheduleLiveRender();
     });
 
+    document.getElementById('insert-image-btn').addEventListener('click', () => {
+      const item = getSelectedItem();
+      const input = document.getElementById('answer-input');
+      if (!item || input.disabled) return;
+      const template = '![説明](qa_images/)';
+      const start = input.selectionStart ?? input.value.length;
+      const end = input.selectionEnd ?? input.value.length;
+      if (typeof input.setRangeText === 'function') {
+        input.setRangeText(template, start, end, 'end');
+        const cursorPos = start + '![説明](qa_images/'.length;
+        input.setSelectionRange(cursorPos, cursorPos);
+      } else {
+        input.value = input.value.slice(0, start) + template + input.value.slice(end);
+        const pos = start + template.length;
+        input.selectionStart = input.selectionEnd = pos;
+      }
+      item.answer = input.value;
+      markDirty();
+      scheduleLiveRender();
+      input.focus();
+    });
+
     function scheduleLiveRender() {
       if (renderScheduled) return;
       renderScheduled = true;
@@ -1740,6 +1833,7 @@
       out.innerHTML = item.answer
         ? mdToSafeHtml(item.answer)
         : '<p class="empty-hint">回答を入力するとプレビューが表示されます</p>';
+      if (item.answer && item.image_licenses) enhanceImagesWithLicenses(out, item.image_licenses);
     }
 
     function orderFields(item) {

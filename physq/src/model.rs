@@ -1,6 +1,8 @@
 //! Q&A corpus records (`q_and_a_data.json`, CLAUDE.md §10) and the id
 //! normalization rule shared with `build.js` / `search.html`.
 
+use std::collections::HashMap;
+
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use serde::de::{self, Deserializer};
@@ -104,6 +106,26 @@ where
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct ImageLicense {
+    #[serde(default)]
+    pub license: String,
+    #[serde(default)]
+    pub attribution: Option<String>,
+    #[serde(default)]
+    pub url: Option<String>,
+}
+
+fn deserialize_image_licenses<'de, D>(
+    deserializer: D,
+) -> std::result::Result<HashMap<String, ImageLicense>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt = Option::<HashMap<String, ImageLicense>>::deserialize(deserializer)?;
+    Ok(opt.unwrap_or_default())
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct Record {
     #[serde(deserialize_with = "deserialize_id")]
     pub id: String,
@@ -132,6 +154,10 @@ pub struct Record {
     /// source of truth — never re-tokenized here (CLAUDE.md §3, §10).
     #[serde(default, deserialize_with = "deserialize_null_default_string")]
     pub search_text: String,
+    /// Per-image license info injected by `scripts/build.js` (§12-5 C).
+    /// Key is `qa_images/<uuid>.<ext>` as referenced in `answer`.
+    #[serde(default, deserialize_with = "deserialize_image_licenses")]
+    pub image_licenses: HashMap<String, ImageLicense>,
 }
 
 impl Record {

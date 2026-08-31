@@ -39,6 +39,23 @@ pub struct Manifest {
     pub embedding_model: Option<HashMap<String, String>>,
     #[serde(default)]
     pub files: HashMap<String, ManifestFile>,
+    /// QA images combined hash (§12-7, schema_version 4). Optional for backward compat.
+    #[serde(default)]
+    pub qa_images: Option<QaImagesManifest>,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct QaImagesManifest {
+    #[serde(default)]
+    pub hash: String,
+    #[serde(default)]
+    pub count: usize,
+    #[serde(default)]
+    pub total_bytes: u64,
+    #[serde(default)]
+    pub avg_bytes: u64,
+    #[serde(default)]
+    pub buckets: HashMap<String, u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
