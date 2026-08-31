@@ -59,7 +59,7 @@
 #align(center + horizon)[
   #text(size: 35pt, weight: "bold",font: ("New Computer Modern"))[Physics Note]
   #v(0em)
-  #text(size: 13pt)[Matsumotofukashi High School\ 240620 Tsuyoshi Kobayashi]
+  #text(size: 13pt)[Matsumotofukashi High School\ Tsuyoshi Kobayashi]
   #v(0em)
   #text(size: 15pt)[form 2026-04-14]
   #v(1em)
@@ -71,7 +71,6 @@
 
 
 //==============================================================================
-
 
 = _Electric Field_
 \
@@ -1349,7 +1348,7 @@ $bold(k v = e V/l) \
 <=> I = e^2 n S / (k l) dot V  \ 
 $
 
-Let $ k l / (e^2 n S)$ as $R$,
+Set $ k l / (e^2 n S)$ to $R$,
 
 #h(2em)
 $I = V / R
@@ -1406,7 +1405,7 @@ $
 
 - *Electrical Power*$[upright(M L T^(-3))]$(電力) - work per unit time
 
-#text(size:10pt)[ 教員：電力量という訳はうれしくない。日本語はscienceに向かない。　　←ワイトもそう思います]
+#text(size:10pt)[ 教員：電力量という訳はうれしくない。日本語ってscienceに向かないがち。　　←ワイトもたまにそう思います]
 
 $
   bold(P"(power)" = I V = I^2 R)
@@ -1417,9 +1416,9 @@ work which done by field $ W = e dot V/l dot v t  dot n S l = e n v S dot V dot 
 
 //#text(size:10pt)[ 教員：日本語はscienceに向いていない　←用語だけenglishにするのは割とアリだと思うんだけどな…]
 
-#text(size:10pt)[ ※ Thermal energyは、定義が"ambiguous"なため議論には使えない(使いづらい)]
+#text(size:10pt)[ -  Thermal energyは、定義が"ambiguous"なため議論には使えない(使いづらい)]
 
-#text(size:10pt)[ heatは「macroscopicな力学で説明できないenergyの移動(energy transfer)」と定義されている]
+#text(size:10pt)[ heatは「macroscopicな力学で説明できないenergy transfer」と定義されている]
 
 #text(size:10pt)[ "heatが発生する"という記述ができる　高温な物体は何かしらの方法(emisionなど)で"heatを発生させる"から、"抵抗のある導体に電流が流れると*熱が発生する*。これをジュール熱と呼ぶ。"という記述ができるっぽい。「熱」って高校物理で直感的じゃない定義ナンバーワンじゃないか…？]
 
@@ -1567,7 +1566,7 @@ work which done by field $ W = e dot V/l dot v t  dot n S l = e n v S dot V dot 
 
 === How to Determine Electromotive Force
 
-- *Electromotive Force* - "起電力"
+- *Electromotive Force( EMF )* - "起電力"
 
 
 #align(center,box(width:15cm, height:5.5cm, clip:true)[
@@ -2563,7 +2562,9 @@ Let $L := (mu N^2 S) / l$,
 $
   bold(V = L (Delta I)/(Delta t))
 $
-$bold(L)$ is called *self inductance*
+$bold(V)$ is called induced electromotive force( *induced EMF* )\
+$bold(L)$ is called *self inductance*.
+Unit is *H ( henry )*.
 
 $
   L = (mu N^2 S)/l\
@@ -2607,24 +2608,8 @@ Thus, coil softens(impede) rapid current changes and the ability
           content((0,1.4),$bold(L)$)
           line((2,2),(1,2))
         
-    
-          //line((-2,1),(-0.5,1))
-          //resistor(0.2,(-0.5,1),(0.5,1))
-          //line((-0.5,0.7),(0.5,1.3),mark:(end:">", fill:black))
-          //content((0,0.5),$bold(R)$)
-          //line((0.5,1),(2,1))
-    
-          //circle((0,2),radius:0.5)
-          //content((0,2),"V")
-    
-          //line((-2,2),(-0.5,2))
-          //line((2,2),(0.5,2))
-    
-          //circle((-2,0),radius:0.5, fill:white)
-          //content((-2,0),"A")
-    
-          //line((-2.2,0.7),(-2.2,2), mark:(end:">", fill:black))
-          //content((-2.5,1.3),$bold(I)$)
+          line((-2.5,0.7),(-2.5,2), mark:(end:">", fill:black))
+          content((-2.7,1.3),$bold(I)$)
     
           line((-2,2.6),(2,2.6), mark:(start: ">",end:">", fill:black))
           line((-2,3),(-2,2))
@@ -2636,11 +2621,107 @@ Thus, coil softens(impede) rapid current changes and the ability
   ],
   [
     #v(1em)
-    $W = I dot V\
-    W = I dot L (d I)/(d t)
+    $W = I V t$ ($V$ is self inductance)
+    The work during $d t$ is
+    $I dot L (d I)/(d t) dot d t$\
+    Thus,$integral_0^I I L d I = 1/2 L I^2$\
+    Therefore, Energy $U$ is
+    $
+      bold(U = 1/2 L I^2)
     $
   ]
 )
+
+#text(size:10pt)[( コイルにエネルギーってあんまり馴染ないけど，超伝導でもないとすぐ消失するもんな．逆に超伝導の違和感がすごい )]
+
+#pagebreak()
+== Mutural Induction
+
+#align(center,box(width:15cm, height:6cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      let r = 1
+      ortho(x:0deg, y:-80deg,{
+        //axis(2.5)
+        circle((0,0,0),radius:r)
+        circle((0,0,10),radius:r)
+        line((0,r,0),(0,r,10))
+        line((0,-r,0),(0,-r,10))
+
+
+        line((-r -0.3,0,1),(-r -0.3,3,1), mark:(end:"<",fill:red),stroke:(thickness:0.1,paint:red))
+        line((-r -0.3,0,1 + 3),(-r -0.3,-3,1 + 3), mark:(end:">",fill:red),stroke:(thickness:0.1,paint:red))
+        spiral((0,0,1),(0,0,0.5),(0,0,calc.pi),6,r+0.3,red,0.1,true)
+
+        line((0,1.5,0.5),(0,1.5,4), mark:(start:">",fill:black),stroke:(thickness:0.05))
+        content((0,2,2.5),$bold(V_1)$)
+        content((0,-2,2.5),$bold(N_1)$)
+
+        line((0,0,-2),(0,0,12),mark:(end:">",fill:blue),stroke:(thickness:0.05,paint:blue))
+        content((0,-0.5,-2),text(fill:blue)[$bold(B)$])
+
+
+        line((0,2.5,0.5),(0,1.5,0.5), mark:(end:">",fill:red),stroke:(thickness:0.05,paint:red))
+        content((0,2,0),text(fill:red)[$bold(I_1)$])
+
+
+
+        translate((0,0,4))
+
+        line((0,2.5,0.5),(0,1.5,0.5), mark:(start:">",fill:black))
+        line((-r -0.3,0,1),(-r -0.3,3,1))
+        line((-r -0.3,0,1 + 1.6),(-r -0.3,-3,1 + 1.6))
+        spiral((0,0,1),(0,0,0.4),(0,0,calc.pi),4,r+0.3,black,0.05,false)
+
+
+        line((0,1.5,0.5),(0,1.5,2.6), mark:(start:">",fill:black),stroke:(thickness:0.05))
+        content((0,2,2),$bold(V_2)$)
+        content((0,-2,2),$bold(N_2)$)
+
+      })
+    })
+  ]
+])
+$B = mu N_1 / l dot I_1 quad <=> quad Delta Phi = mu N_1 / l S dot Delta I_1\
+V_2 = - N_2 mu N_1 / l S dot (Delta I_1) / (Delta t)\
+$
+
+Let $ N_2 mu N_1 / l S = M$,
+$
+  bold(V_2 = -M (Delta I_1) / (Delta t))
+$
+
+$M$ is called *matural inductance*.
+
+= Alternating Current
+
+== How to make A.C.
+
+#align(center,box(width:15cm, height:6cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      rect((-2,6),(2,2))
+      rect((-2,-2),(2,-6))
+
+      line((-1,-2),(-1,2),mark:(end:">",fill:blue),stroke:(paint:blue))
+      line((0,-2),(0,2),mark:(end:">",fill:blue),stroke:(paint:blue))
+      line((1,-2),(1,2),mark:(end:">",fill:blue),stroke:(paint:blue))
+
+      circle((0,0),radius:0.1)
+      line((-1.4,-1.4),(1.4,1.4),stroke:(paint:gray,thickness:0.1))
+
+      content((5,0),[←rotate this])
+    })
+  ]
+])
+
+
+== Transformer
+
 
 
 

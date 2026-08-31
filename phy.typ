@@ -141,6 +141,7 @@
 }
 #let spiral(p,q,s,n,r,c,t,doMark)={
   import cetz.draw: *
+  group({
   let (p_x,p_y,p_z) = p
   let (q_x,q_y,q_z) = q
   let (s_x,s_y,s_z) = s
@@ -190,8 +191,9 @@
     //  line((x+ r * calc.cos(theta), y+ r * calc.sin(theta),z+ v_x * (theta + 2*i*calc.pi)),(x+ r * calc.cos(theta+dtheta), y+ r * calc.sin(theta+dtheta),z+ v_x * (theta+dtheta+2*i*calc.pi)),stroke:(paint:c,thickness:t))
     //}
   }
-  rotate(x:-s_x,y:-s_y,z:-s_z)
-  translate((-p_x,-p_y,-p_z))
+})
+  //rotate(x:-s_x,y:-s_y,z:-s_z)
+  //translate((-p_x,-p_y,-p_z))
 }
 
 #let axis(len)={
