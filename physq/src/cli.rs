@@ -417,7 +417,7 @@ fn print_results(corpus: &Corpus, results: &[(u32, f64)], limit: usize, plain: b
             );
             for (alt, src) in extract_images(&r.answer) {
                 let lic = r.image_licenses.get(&src).or_else(|| {
-                    let bn = src.split('/').last().unwrap_or(&src);
+                    let bn = src.split('/').next_back().unwrap_or(&src);
                     r.image_licenses
                         .get(&format!("qa_images/{}", bn))
                         .or_else(|| r.image_licenses.get(bn))

@@ -97,10 +97,24 @@ function stripLatex(str) {
 
 // ── 画像記法除去（search_text 用） ─────────────────────────
 // §5: altのみ残し srcは除去。コードブロック内の ![]() は無視、title付きや <img alt> も対応
+// 極端な入力にも耐える堅牢版: title は " / ' 両対応、alt は無クォートも拾う、img-row は属性順不同/余分な空白に対応
 function stripCodeFences(s) { return s.replace(/```[\s\S]*?```/g,' ').replace(/`[^`]*`/g,' '); }
-function stripMarkdownImages(s){ return s.replace(/!\[([^\]]*)\]\(\s*([^\s)]+)(?:\s+"[^"]*")?\s*\)/g, ' $1 '); }
-function stripHtmlImages(s){ return s.replace(/<img\b[^>]*>/gi, m => { const alt=(m.match(/alt\s*=\s*(['"])(.*?)\1/i)||[])[2]||''; return ' '+alt+' '; }); }
-function stripHtmlImageRows(s){ return s.replace(/<div class="img-row">/g,' ').replace(/<\/div>/g,' '); }
+function stripMarkdownImages(s){ return s.replace(/!\[([^\]]*)\]\(\s*([^\s)]+)(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)/g, ' $1 '); }
+function stripHtmlImages(s){
+  return s.replace(/<img\b[^>]*>/gi, m => {
+    // alt: double-quoted → single-quoted → unquoted の順に試す。XSSペイロードでもaltだけ安全に抽出
+    let alt = '';
+    let am = m.match(/alt\s*=\s*"([^"]*)"/i);
+    if (am) alt = am[1];
+    else if ((am = m.match(/alt\s*=\s*'([^']*)'/i))) alt = am[1];
+    else if ((am = m.match(/alt\s*=\s*([^\s"'`>]+)/i))) alt = am[1];
+    return ' ' + alt + ' ';
+  });
+}
+function stripHtmlImageRows(s){
+  // <div class="img-row"> の変種（余分な空白/他class/他属性/クォート差異）にも対応。閉じは汎用で除去（answer内に素の</div>はimg-row以外ほぼ無い）
+  return s.replace(/<div\b[^>]*\bclass\s*=\s*["'][^"']*\bimg-row\b[^"']*["'][^>]*>/gi,' ').replace(/<\/div>/gi,' ');
+}
 
 // ── カタカナ → ひらがな ────────────────────────────────────
 function toHiragana(str) {

@@ -23,16 +23,22 @@ const { REPO_ROOT } = require('./_extract');
 
 function buildBinary() {
   const exe = process.platform === 'win32' ? 'physq.exe' : 'physq';
-  const bin = path.join(REPO_ROOT, 'physq', 'target', 'debug', exe);
-  if (fs.existsSync(bin)) return bin;
+  // Respect matrix TARGET if set (CI physq job builds --target <triple> to target/<triple>/debug)
+  const target = process.env.TARGET || '';
+  const candidates = [];
+  if (target) candidates.push(path.join(REPO_ROOT, 'physq', 'target', target, 'debug', exe));
+  candidates.push(path.join(REPO_ROOT, 'physq', 'target', 'debug', exe));
+  for (const p of candidates) if (fs.existsSync(p)) return p;
   process.stdout.write('physq debug binary not found — building (cargo build)…\n');
-  const r = spawnSync('cargo', ['build'], { cwd: path.join(REPO_ROOT, 'physq'), stdio: 'inherit' });
+  const args = target ? ['build', '--target', target] : ['build'];
+  const r = spawnSync('cargo', args, { cwd: path.join(REPO_ROOT, 'physq'), stdio: 'inherit' });
   if (r.status !== 0) {
     console.error('FAIL: cargo build of physq failed');
     process.exit(r.status ?? 1);
   }
-  if (!fs.existsSync(bin)) { console.error(`FAIL: binary not produced at ${bin}`); process.exit(1); }
-  return bin;
+  for (const p of candidates) if (fs.existsSync(p)) return p;
+  console.error(`FAIL: binary not produced at ${candidates.join(' or ')}`);
+  process.exit(1);
 }
 
 const bin = buildBinary();

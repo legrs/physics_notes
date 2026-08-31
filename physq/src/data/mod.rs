@@ -235,6 +235,28 @@ pub async fn ensure_data(
                     if let Some(tag) = &manifest.tokenizer {
                         tokenizer_tag = tag.clone();
                     }
+                    // Detect qa_images change even when q_and_a_data.json / embeddings.json are unchanged.
+                    // Images themselves are fetched on demand via file_url, but the hash tells us
+                    // whether the set on the server has changed — surface it as a warning so the
+                    // user knows a new image is available without needing to read version.json.
+                    if let Some(new_qa) = &manifest.qa_images {
+                        let old_qa_hash = std::fs::read(cfg.data_dir().join(VERSION_FILE))
+                            .ok()
+                            .and_then(|b| serde_json::from_slice::<Manifest>(&b).ok())
+                            .and_then(|m| m.qa_images.map(|q| q.hash));
+                        if old_qa_hash.as_deref() != Some(new_qa.hash.as_str()) {
+                            // Only warn when we actually had a previous hash to compare (i.e. not first fetch)
+                            // and the count/hash indicates a change. Empty→non-empty is also a change.
+                            if old_qa_hash.is_some() || new_qa.count > 0 {
+                                warnings.push(format!(
+                                    "qa_images updated: {} file(s), {} total bytes (hash {})",
+                                    new_qa.count,
+                                    new_qa.total_bytes,
+                                    &new_qa.hash[..8.min(new_qa.hash.len())]
+                                ));
+                            }
+                        }
+                    }
                     fetch_by_manifest(cfg, &client, &manifest, &mut meta, progress, &mut warnings)
                         .await?;
                     write_atomic(&cfg.data_dir().join(VERSION_FILE), &bytes)?;

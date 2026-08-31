@@ -133,9 +133,9 @@ function main() {
     // 非UUID basename はUUIDにリネーム
     const isUuidBase = UUID_BASE_RE.test(base.toLowerCase()) && base === base.toLowerCase();
     // Note: base の大文字小文字も正規形では小文字のみ許可。UUID_BASE_RE は小文字のみ。
-    // 大文字UUIDは非正規としてリネーム対象にする (衝突回避のため新規UUID生成)
-    // ただし小文字UUIDで拡張子だけ大文字のケースは拡張子修正のみで済むが、
-    // 一貫して renameMap 経由でファイル名を直す。
+    // 大文字UUIDは非正規だが、内容保持を優先し小文字化で正規化する（新規UUIDを振り直すと
+    // 既存の answer 参照と licenses.json の対応が失われる）。衝突時のみ新規UUIDへフォールバック。
+    // 小文字UUIDで拡張子だけ大文字のケースも同様に拡張子小文字化のみで済ませ、renameMap経由で追従する。
 
     if (isUuidBase && oldName !== lowerName && isUuidFilename(lowerName)) {
       // 拡張子のみ正規化ケース: 同じUUIDで拡張子を小文字化

@@ -57,9 +57,7 @@ fn html_src_alt(tag: &str) -> (String, String) {
     let src_unquoted = Regex::new(r"(?i)\ssrc\s*=\s*([^\s>]+)").unwrap();
     if let Some(c) = src_unquoted.captures(tag) {
         let src = c.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
-        let src = src
-            .trim_end_matches(|ch| ch == '"' || ch == '\'' || ch == '>')
-            .to_string();
+        let src = src.trim_end_matches(['"', '\'', '>']).to_string();
         return (alt, src);
     }
     (alt, String::new())

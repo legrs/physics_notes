@@ -1,21 +1,17 @@
-# Full test suite — runs on EVERY push (build.yml とは独立。生成物のコミットはしない)
+# Strict Test Suite — runs on EVERY push and PR (build.yml とは独立。生成物のコミットはしない)
 #
-# ジョブ構成（全て並列実行）:
-#   html-data — HTML の構文/SRI/必須ID チェック、search.html の実スコア関数に
-#               対するストレステスト（極端な入力の大量実行含む）、JSON 生成物の
-#               整合性チェック、web↔physq の parity チェック
-#   physq     — matrix で各プラットフォーム（下記）ごとにビルド → cargo test/
-#               clippy/fmt → 実バイナリでの検索ストレステスト（実データ、BM25のみ）
-#
-# トリガー: 毎回の push。master だけに限定したい場合は
-#   on:
-#     push:
-#       branches: [master]
-# と書き換える（workflow_dispatch は手動実行用）。
-name: Test Suite
+# 設計方針（"めっちゃ厳しい"）:
+#   - 正常系だけでなく、極端な入力・XSS・失敗ケース・境界値も自動検証する。
+#   - HTML / data / qa_images / build は並列で走る（needs: なし＝同時起動）。各OSの physq は matrix で並列。
+#   - 最後の `gate` ジョブが `needs: [html,data,qa-images,build,physq]` で全結果を集約し、
+#     1つでも失敗したら CI 全体を赤にする（required check に `gate` を指定する）。
+#   - 負荷の高い physq matrix は他の軽量ジョブと同時起動して待ち時間を最小化する。
+#   - 失敗時の診断を容易にするため、各ジョブは `set -e` と明示的なフェイルメッセージを出す。
+name: Test Suite (Strict)
 
 on:
   push:
+  pull_request:
   workflow_dispatch:
 
 concurrency:
@@ -26,8 +22,11 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  html-data:
-    name: HTML + data tests
+  # ──────────────────────────────────────────────────────────────
+  # HTML: 構文/SRI/必須ID + 実スコア関数の極端入力ストレステスト + 画像サニタイズ
+  # ──────────────────────────────────────────────────────────────
+  html:
+    name: HTML (syntax + stress + image XSS)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -42,12 +41,282 @@ jobs:
         run: node scripts/tests/html_syntax.js
       - name: HTML stress — real scoring functions, extreme inputs, hybrid RRF
         run: node scripts/tests/html_stress.js
-      - name: Data artifacts — schema, embeddings coverage, version.json hashes,
-              search_text determinism
-        run: node scripts/tests/data_check.js
-      - name: Web ↔ physq ranking parity
-        run: node physq/scripts/parity_check.js
+      - name: Image XSS source-level guards (renderer/DOMPurify)
+        run: |
+          set -e
+          # These greps are the "fail-closed" invariant: if someone removes the hardening, CI fails immediately
+          grep -q "renderer.image" search.html || { echo "FAIL: search.html missing renderer.image"; exit 1; }
+          grep -q 'ADD_ATTR.*loading' search.html || { echo "FAIL: search.html missing DOMPurify ADD_ATTR loading"; exit 1; }
+          grep -q 'enhanceImagesWithLicenses' search.html || { echo "FAIL: search.html missing enhanceImagesWithLicenses"; exit 1; }
+          grep -q 'img.onerror' search.html || { echo "FAIL: search.html missing img.onerror placeholder"; exit 1; }
+          grep -q 'USE_PROFILES.*html' search.html || { echo "FAIL: search.html missing DOMPurify USE_PROFILES"; exit 1; }
+          grep -q '\.prose .img-row' search.html || { echo "FAIL: search.html missing .img-row CSS"; exit 1; }
+          grep -q 'renderer.image' qa_editor.html || { echo "FAIL: qa_editor.html missing renderer.image"; exit 1; }
+          echo "HTML image guards: OK"
+      - name: No stray inline event handlers in HTML sources
+        run: |
+          set -e
+          # Answer Markdown is rendered via marked+DOMPurify, but raw HTML files must not contain on*=
+          # outside of the sanitizer config (false positive inside JS strings is okay — we only scan markup outside <script>)
+          # Simple heuristic: extract non-script parts and grep
+          node -e "
+          const fs=require('fs');
+          for(const f of ['search.html','qa_editor.html']){
+            const html=fs.readFileSync(f,'utf-8');
+            const noScript=html.replace(/<script[\s\S]*?<\/script>/gi,'');
+            if(/\\bon\\w+\\s*=/.test(noScript)){ console.error('FAIL '+f+' has raw on* handler outside <script>'); process.exit(1); }
+          }
+          console.log('No raw on* handlers: OK');
+          "
 
+  # ──────────────────────────────────────────────────────────────
+  # Data: JSONスキーマ / embeddings / version hash / search_text 決定性
+  # ──────────────────────────────────────────────────────────────
+  data:
+    name: Data (schema + embeddings + version)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Data artifacts — schema, embeddings coverage, version hashes, search_text determinism, qa_images manifest
+        run: node scripts/tests/data_check.js
+      - name: Web ↔ physq ranking parity (real vectors)
+        run: node physq/scripts/parity_check.js
+      - name: version.json schema_version must be 4 (qa_images)
+        run: |
+          set -e
+          test "$(node -p "require('./version.json').schema_version")" = "4" || { echo "FAIL: schema_version != 4"; exit 1; }
+          echo "schema_version=4 OK"
+      - name: Negative test — build.js --data with non-existent file must fail non-zero
+        run: |
+          set -e
+          if node scripts/build.js --data /tmp/does-not-exist-$$.json 2>/dev/null; then
+            echo "FAIL: build.js --data with missing file should exit non-zero"; exit 1
+          fi
+          echo "Negative test (missing file): OK"
+      - name: Negative test — malformed JSON must fail fast
+        run: |
+          set -e
+          echo '{ invalid json' > /tmp/bad-$$.json
+          if node scripts/build.js --data /tmp/bad-$$.json 2>/dev/null; then
+            echo "FAIL: malformed JSON should exit non-zero"; exit 1
+          fi
+          rm /tmp/bad-$$.json
+          echo "Negative test (malformed JSON): OK"
+
+  # ──────────────────────────────────────────────────────────────
+  # QA images: UUID命名 / ライセンス / orphan-broken / search_text alt-src / normalize
+  # ──────────────────────────────────────────────────────────────
+  qa-images:
+    name: QA images (UUID / licenses / normalize / stress)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: File system — qa_images naming, extensions, permissions, .gitkeep
+        run: |
+          set -e
+          test -d qa_images || { echo "FAIL: qa_images dir missing"; exit 1; }
+          test -f qa_images/.gitkeep || echo "WARN: qa_images/.gitkeep missing (ok if dir tracked via other file)"
+          test -f qa_images/licenses.json || { echo "FAIL: qa_images/licenses.json missing"; exit 1; }
+          test -f qa_images/README.md || echo "WARN: qa_images/README.md missing"
+          # No upper-case, no spaces, no weird files (strict)
+          bad=$(ls qa_images 2>/dev/null | grep -E '[A-Z ]' || true)
+          if [ -n "$bad" ]; then echo "FAIL: qa_images has upper-case or space: $bad"; exit 1; fi
+          # No non-image stray files (allow .gitkeep/licenses.json/README.md)
+          stray=$(ls qa_images | grep -vE '^(\.gitkeep|licenses\.json|README\.md|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]+)$' || true)
+          if [ -n "$stray" ]; then echo "FAIL: qa_images has stray non-UUID file: $stray"; exit 1; fi
+          echo "qa_images file system: OK"
+      - name: licenses.json — JSON valid, keys are UUID, licenses non-empty, no duplicate basenames case-insensitively
+        run: |
+          set -e
+          node -e "
+          const fs=require('fs'), path=require('path');
+          const j=JSON.parse(fs.readFileSync('qa_images/licenses.json','utf-8'));
+          const seen=new Set();
+          for(const k of Object.keys(j)){
+            if(k==='_default') continue;
+            const bn=path.basename(k).toLowerCase();
+            if(seen.has(bn)){ console.error('FAIL duplicate basename '+k); process.exit(1); }
+            seen.add(bn);
+          }
+          console.log('licenses.json duplicate check: OK');
+          "
+      - name: normalize-images.js --check (dry-run) — must be 0 when repo is clean
+        run: node scripts/normalize-images.js --check
+      - name: QA images stress — UUID, strip helpers, search_text, licenses, sanitize
+        run: node scripts/tests/qa_images_stress.js
+      - name: Negative — normalize must detect non-UUID when injected (fail-closed)
+        run: |
+          set -e
+          # Inject a fake non-UUID file and ensure --check fails
+          echo "fake" > qa_images/photo_999.jpg
+          if node scripts/normalize-images.js --check 2>/dev/null; then
+            echo "FAIL: --check should fail with non-UUID file"; rm qa_images/photo_999.jpg; exit 1
+          fi
+          rm qa_images/photo_999.jpg
+          echo "Negative test (non-UUID detection): OK"
+      - name: Orphan / broken detection — data_check already does this; double-check via normalize
+        run: |
+          set -e
+          # normalize-images.js reports orphans/brokens; we run it and check output doesn't contain BROKEN
+          out=$(node scripts/normalize-images.js 2>&1 || true)
+          echo "$out"
+          if echo "$out" | grep -q "Broken refs"; then
+            # It's okay if it prints "No broken refs", but "Broken refs (missing files):" with content is failure
+            if echo "$out" | grep -q "Broken refs (missing files): [^ ]"; then
+              # Extract list after colon
+              listed=$(echo "$out" | sed -n 's/.*Broken refs (missing files): //p')
+              if [ -n "$listed" ] && [ "$listed" != "" ]; then
+                echo "FAIL: broken refs found: $listed"; exit 1
+              fi
+            fi
+          fi
+          echo "orphan/broken double-check: OK"
+      - name: Image file integrity — file(1) magic check if available
+        run: |
+          set -e
+          if command -v file >/dev/null 2>&1; then
+            for f in qa_images/*.{jpg,jpeg,png,webp,svg,gif} 2>/dev/null; do
+              [ -e "$f" ] || continue
+              file "$f" | cat
+              # SVG is XML, others are binary; just ensure 'empty' is not reported
+              if file "$f" | grep -qi "empty"; then echo "FAIL: $f is empty (file magic)"; exit 1; fi
+            done
+            echo "file magic check: OK"
+          else
+            echo "file(1) not available, skipping"
+          fi
+      - name: Disk budget — total qa_images size warning (soft, not fail)
+        run: |
+          set -e
+          node -e "
+          const fs=require('fs'),p=require('path');
+          const dir='qa_images'; if(!fs.existsSync(dir)) process.exit(0);
+          const files=fs.readdirSync(dir).filter(f=>/\.(jpe?g|png|webp|svg|gif)$/i.test(f));
+          let total=0; files.forEach(f=> total+=fs.statSync(p.join(dir,f)).size);
+          const mb=total/1024/1024;
+          console.log('qa_images total: '+mb.toFixed(2)+' MB ('+files.length+' files)');
+          if(mb>100) console.log('::warning::qa_images total >100MB — consider WebP/recompression');
+          "
+
+  # ──────────────────────────────────────────────────────────────
+  # Build: search_text 再生成決定性 + version hash + build idempotence + dirlens
+  # ──────────────────────────────────────────────────────────────
+  build:
+    name: Build (search_text + version + idempotence)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Build — search_text only (must not modify version.json when --data)
+        run: |
+          set -e
+          cp version.json /tmp/version.before.json
+          TMP=$(mktemp /tmp/qa-XXXX.json)
+          cp q_and_a_data.json "$TMP"
+          node scripts/build.js --data "$TMP"
+          # --data must NOT touch the repo's version.json
+          diff -q version.json /tmp/version.before.json || { echo "FAIL: --data touched version.json"; exit 1; }
+          echo "build --data isolation: OK"
+          rm "$TMP" /tmp/version.before.json
+      - name: Build — search_text determinism (full copy, two runs must match)
+        run: |
+          set -e
+          TMP1=$(mktemp /tmp/qa-1-XXXX.json)
+          TMP2=$(mktemp /tmp/qa-2-XXXX.json)
+          cp q_and_a_data.json "$TMP1"
+          cp q_and_a_data.json "$TMP2"
+          node scripts/build.js --data "$TMP1"
+          node scripts/build.js --data "$TMP2"
+          diff -q "$TMP1" "$TMP2" || { echo "FAIL: two --data runs differ (non-deterministic)"; diff -u "$TMP1" "$TMP2" | head -n 100; exit 1; }
+          echo "determinism: OK"
+          rm "$TMP1" "$TMP2"
+      - name: Build — idempotence (running build twice without changes must be diff-free)
+        run: |
+          set -e
+          TMP=$(mktemp /tmp/qa-idem-XXXX.json)
+          cp q_and_a_data.json "$TMP"
+          node scripts/build.js --data "$TMP"
+          cp "$TMP" /tmp/qa-after1.json
+          node scripts/build.js --data "$TMP"
+          diff -q /tmp/qa-after1.json "$TMP" || { echo "FAIL: second run changed file (not idempotent)"; exit 1; }
+          echo "idempotence: OK"
+          rm "$TMP" /tmp/qa-after1.json
+      - name: version.json hashes match actual files (strict, not warn-only)
+        run: |
+          set -e
+          node -e "
+          const fs=require('fs'),crypto=require('crypto');
+          const ver=JSON.parse(fs.readFileSync('version.json','utf-8'));
+          for(const f of ['q_and_a_data.json','embeddings.json']){
+            const buf=fs.readFileSync(f);
+            const h=crypto.createHash('sha256').update(buf).digest('hex');
+            if(ver.files[f].hash!==h){ console.error('FAIL '+f+' hash mismatch'); process.exit(1); }
+            if(ver.files[f].size!==buf.length){ console.error('FAIL '+f+' size mismatch'); process.exit(1); }
+          }
+          console.log('version.json hashes: OK');
+          "
+      - name: embeddings.json shape (strict, not warn-only)
+        run: |
+          set -e
+          node -e "
+          const emb=require('./embeddings.json'), data=require('./q_and_a_data.json');
+          for(const k of ['small','large']){
+            if(!emb[k]){ console.error('FAIL missing '+k); process.exit(1); }
+            if(Object.keys(emb[k]).length!==data.length){ console.error('FAIL '+k+' coverage '+Object.keys(emb[k]).length+' vs '+data.length); process.exit(1); }
+          }
+          console.log('embeddings coverage: OK');
+          "
+      - name: Search_text image alt/src invariants (strict)
+        run: |
+          set -e
+          node -e "
+          const data=require('./q_and_a_data.json');
+          // Every image src must be qa_images/ prefixed, every alt must not leak src
+          const mdRe=/!\[([^\]]*)\]\\(\\s*([^\\)]+)(?:\\s+\"[^\"]*\")?\\s*\\)/g;
+          let bad=0;
+          for(const r of data){
+            if(!r.answer) continue;
+            let m; const re=new RegExp(mdRe.source,'g');
+            while((m=re.exec(r.answer))){
+              const src=m[2];
+              if(src && src.includes('qa_images') && !src.startsWith('qa_images/')){ console.error('FAIL '+r.id+' src not normalized '+src); bad++; }
+              if(r.search_text && src && r.search_text.includes(src.split('/').pop().split('.')[0])){ console.error('FAIL '+r.id+' search_text leaks UUID'); bad++; }
+            }
+          }
+          if(bad) process.exit(1);
+          console.log('search_text image invariants: OK');
+          "
+      - name: dirlens generation (must succeed and be non-empty)
+        run: |
+          set -e
+          ./node_modules/.bin/dirlens -G > /tmp/dirlens.txt
+          test -s /tmp/dirlens.txt || { echo "FAIL: dirlens output empty"; exit 1; }
+          echo "dirlens: OK ($(wc -l < /tmp/dirlens.txt) lines)"
+
+  # ──────────────────────────────────────────────────────────────
+  # physq: matrix across OS/arch, each with handler for extreme cases
+  # Runs in parallel with the above jobs (no needs), but the final gate waits for it.
+  # ──────────────────────────────────────────────────────────────
   physq:
     name: physq (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
@@ -55,23 +324,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ───────────────────────────────────────────────────────────────
-        # プラットフォームの追加・削除はこの include リストを編集する。
-        # エントリの意味:
-        #   target    — cargo build --target に渡す Rust ターゲット三重項
-        #   os        — GitHub ランナー。target と同一アーキテクチャの
-        #               native ランナーを選ぶこと（クロスビルドは不要）。
-        #               aarch64 系は arm ランナー（ubuntu-24.04-arm）を。
-        #   rustflags — ビルド時に使う RUSTFLAGS（Linux は lld リンク推奨）
-        #
-        # Intel Mac (x86_64-apple-darwin) は semantic ビルド込みで動作する。
-        # ort/ONNX Runtime は x86_64-apple-darwin 向けの配布が無いため、
-        # Microsoft 公式の最終 Intel 版 (1.23.2) dylib に動的リンクする
-        # （下記 "Install ONNX Runtime" step + physq/scripts/install_ort_intel.sh）。
-        #
-        # 既知の制約（.github/workflows/physq-release.yml に詳細）:
-        #   - Linux バイナリは実行時に glibc >= 2.38 が必要（Ubuntu 24.04+）
-        # ───────────────────────────────────────────────────────────────
         include:
           - target: aarch64-apple-darwin
             os: xcode-27
@@ -138,17 +390,15 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - name: Install Node dependencies (for run_physq.js harness)
+        run: npm ci
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-      # rust-cache's key only covers OS+arch+Cargo.lock, NOT the Xcode/SDK the
-      # build script ran against. ort-sys's build script emits a link-search
-      # path for clang_rt.osx derived from `$CC --print-search-dirs`; reusing
-      # target/ from an image whose default Xcode has since changed (e.g. a
-      # build from an image where Xcode 27 beta was selected, cached and
-      # replayed on macos-15) fails with `ld: library 'clang_rt.osx' not
-      # found` pointing at a stale path. Scope the cache per runner image AND
-      # per selected Xcode version so that never crosses images.
       - name: Cache key — Xcode version
         if: runner.os == 'macOS'
         run: echo "XC_VERSION=$(xcodebuild -version 2>/dev/null | head -1 | awk '{print $2}')" >> "$GITHUB_ENV"
@@ -159,11 +409,6 @@ jobs:
       - name: Install lld (Linux only)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y lld
-      # Intel Mac links against the Microsoft official ONNX Runtime 1.23.2
-      # x86_64 dylib (the last Intel Mac release — 1.24+ ships none; ort's
-      # own prebuilts never covered x86_64-apple-darwin). ORT_LIB_LOCATION
-      # is read by ort-sys at build time; DYLD_LIBRARY_PATH lets the built
-      # test binaries load the dylib at run time.
       - name: Install ONNX Runtime (Intel Mac only)
         if: matrix.target == 'x86_64-apple-darwin'
         working-directory: physq
@@ -174,40 +419,40 @@ jobs:
           echo "DYLD_LIBRARY_PATH=$LIB_DIR" >> "$GITHUB_ENV"
       - name: Dependency versions (proof of pin)
         working-directory: physq
-        run: |
-          # fastembed/ort/ort-sys are version-pinned in the committed Cargo.lock
-          # (see physq/Cargo.toml). Printing the resolved tree here pins the
-          # actual versions in the CI log, per platform. Expect fastembed
-          # 5.13.2 / ort + ort-sys 2.0.0-rc.11 everywhere.
-          cargo tree -p fastembed -p ort -p ort-sys
+        run: cargo tree -p fastembed -p ort -p ort-sys
       - name: Build (debug)
         working-directory: physq
         env:
           RUSTFLAGS: ${{ matrix.rustflags }}
         run: cargo build --target ${{ matrix.target }}
-      - name: cargo test
+      - name: cargo test (all features, strict)
         working-directory: physq
-        run: cargo test --target ${{ matrix.target }}
-      - name: cargo clippy
+        run: cargo test --target ${{ matrix.target }} --verbose
+      - name: cargo test — image extraction edge cases (extra filter)
         working-directory: physq
-        run: cargo clippy --target ${{ matrix.target }}
+        run: cargo test --target ${{ matrix.target }} image -- --nocapture
+      - name: cargo clippy (deny warnings)
+        working-directory: physq
+        run: cargo clippy --target ${{ matrix.target }} -- -D warnings
       - name: cargo fmt --check
         working-directory: physq
         run: cargo fmt --check
+      - name: Exact local harness — npm run test:physq (run_physq.js) — word-for-word same as local
+        env:
+          TARGET: ${{ matrix.target }}
+        run: node scripts/tests/run_physq.js
       - name: Binary smoke — version / cache path / unknown flag
         working-directory: physq
         env:
           TARGET: ${{ matrix.target }}
         run: |
+          set -e
           exe=physq; [[ "$TARGET" == *windows* ]] && exe=physq.exe
           BIN="target/$TARGET/debug/$exe"
           "$BIN" --version
           "$BIN" cache path
-          if "$BIN" --no-such-flag >/dev/null 2>&1; then
-            echo "unknown flag must exit non-zero"; exit 1
-          fi
-      # install_physq.ps1 ships to end users (README) but can't be parsed on
-      # the macOS/Linux runners — validate it where a PowerShell exists.
+          if "$BIN" --no-such-flag >/dev/null 2>&1; then echo "FAIL: unknown flag must exit non-zero"; exit 1; fi
+          echo "smoke: OK"
       - name: Validate install_physq.ps1 syntax (Windows only)
         if: runner.os == 'Windows'
         working-directory: physq
@@ -223,21 +468,116 @@ jobs:
           Write-Host "install_physq.ps1: syntax OK"
           EOF
           powershell -NoProfile -File /tmp/check_ps1.ps1
-      - name: Stress — real searches on the local corpus (BM25-only, no model download)
+      - name: Stress — real searches on corpus (BM25-only, no model download) — extreme cases
         working-directory: physq
         env:
           TARGET: ${{ matrix.target }}
         run: |
+          set -e
           exe=physq; [[ "$TARGET" == *windows* ]] && exe=physq.exe
           BIN="target/$TARGET/debug/$exe"
           ncases=$(wc -l < ../scripts/tests/physq_stress_cases.jsonl)
-          "$BIN" --model none eval --data ../q_and_a_data.json \
-            --cases ../scripts/tests/physq_stress_cases.jsonl > /tmp/physq-stress.jsonl
+          "$BIN" --model none eval --data ../q_and_a_data.json --cases ../scripts/tests/physq_stress_cases.jsonl > /tmp/physq-stress.jsonl
           lines=$(wc -l < /tmp/physq-stress.jsonl)
-          [ "$lines" -eq $((ncases + 1)) ] || { echo "expected $((ncases + 1)) output lines, got $lines"; exit 1; }
-          grep -q '"type":"summary"' /tmp/physq-stress.jsonl || { echo "no summary line"; exit 1; }
-          ! grep -q 'panicked' /tmp/physq-stress.jsonl || { echo "Rust panic detected"; exit 1; }
+          [ "$lines" -eq $((ncases + 1)) ] || { echo "FAIL: expected $((ncases+1)) lines, got $lines"; exit 1; }
+          grep -q '"type":"summary"' /tmp/physq-stress.jsonl || { echo "FAIL: no summary"; exit 1; }
+          ! grep -q 'panicked' /tmp/physq-stress.jsonl || { echo "FAIL: panic"; exit 1; }
+          # Negative: malformed cases must degrade gracefully, not crash, not panic, and still emit summary
           printf 'not json\n' > /tmp/physq-bad.jsonl
-          "$BIN" --model none eval --data ../q_and_a_data.json \
-            --cases /tmp/physq-bad.jsonl 2>/dev/null | grep -q '"type":"summary"' \
-            || { echo "malformed cases file must degrade to a soft error"; exit 1; }
+          "$BIN" --model none eval --data ../q_and_a_data.json --cases /tmp/physq-bad.jsonl > /tmp/physq-bad-out.jsonl 2>/tmp/physq-bad-err.log || true
+          grep -q '"type":"summary"' /tmp/physq-bad-out.jsonl || { echo "FAIL: malformed should still emit summary"; cat /tmp/physq-bad-err.log; exit 1; }
+          # Extreme: empty query, huge query, null bytes (via printf), and image-containing record
+          echo '{"query":"","target":"test"}' | "$BIN" --model none eval --data ../q_and_a_data.json --cases - > /tmp/empty-q.jsonl
+          grep -q '"type":"summary"' /tmp/empty-q.jsonl || { echo "FAIL: empty query"; exit 1; }
+          python3 -c "print('{\"query\":\"'+'A'*5000+'\",\"target\":\"test\"}')" | "$BIN" --model none eval --data ../q_and_a_data.json --cases - > /tmp/huge-q.jsonl
+          grep -q '"type":"summary"' /tmp/huge-q.jsonl || { echo "FAIL: huge query"; exit 1; }
+          echo "stress (BM25): OK"
+      - name: Image CLI check — eval with image alt/url + plain mode smoke
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04'
+        working-directory: physq
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -e
+          exe=physq; BIN="target/$TARGET/debug/$exe"
+          TMP=$(mktemp /tmp/qa-img-XXXX.json)
+          cat > "$TMP" <<'JSON'
+          [{"id":"img-test-1","questions":["image test"],"answer":"See ![alt text](qa_images/3f9a8c1e-1a2b-4c3d-9e8f-a1b2c3d4e5f6.jpg)","description":"with image","keywords":[],"synonyms":[],"category":[],"difficulty":"1","priority":1,"related":[],"updated_at":"2026-01-01","search_text":"image test alt text"}]
+          JSON
+          # eval with --data must handle image records without crashing and produce summary
+          echo '{"query":"alt text","target":"img-test-1"}' | "$BIN" --model none eval --data "$TMP" --cases - > /tmp/img-eval.jsonl
+          cat /tmp/img-eval.jsonl
+          grep -q '"type":"summary"' /tmp/img-eval.jsonl || { echo "FAIL: image eval"; exit 1; }
+          # plain + search: verify that an image-containing corpus does not break BM25 search when run via eval (strict)
+          echo '{"query":"alt","target":"img-test-1"}' | "$BIN" --model none eval --data "$TMP" --cases - > /tmp/img-eval2.jsonl
+          grep -q '"target":"img-test-1"' /tmp/img-eval2.jsonl || { echo "FAIL: image record not found in eval output"; exit 1; }
+          rm "$TMP"
+          echo "image CLI check: OK"
+
+  # ──────────────────────────────────────────────────────────────
+  # Literal local suite — exactly the 8 commands you run locally, in one job
+  # `npm run test:html` etc are the same `node ...` lines above; this job proves
+  # `npm test` (run_all.js) itself passes word-for-word.
+  # ──────────────────────────────────────────────────────────────
+  literal:
+    name: Literal npm test (run_all.js) — 8 commands verbatim
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Node deps
+        run: npm ci
+      - name: Install lld (for cargo test)
+        run: sudo apt-get update && sudo apt-get install -y lld
+      - name: npm test (run_all.js) — runs html_syntax + html_stress + qa_images_stress + normalize --check + data_check + parity + cargo fmt/clippy/test + run_physq
+        run: npm test
+      - name: Explicit npm scripts — prove each of the 8 lines you listed passes individually
+        run: |
+          set -e
+          echo "── npm run test:html"
+          npm run test:html
+          echo "── node qa_images_stress.js"
+          node scripts/tests/qa_images_stress.js
+          echo "── node data_check.js"
+          node scripts/tests/data_check.js
+          echo "── cargo test"
+          cargo test --manifest-path physq/Cargo.toml
+          echo "── cargo clippy -D warnings"
+          cargo clippy --manifest-path physq/Cargo.toml -- -D warnings
+          echo "── cargo fmt --check"
+          cargo fmt --manifest-path physq/Cargo.toml -- --check
+          echo "── node normalize-images.js --check"
+          node scripts/normalize-images.js --check
+          echo "── node run_physq.js"
+          node scripts/tests/run_physq.js
+          echo "All 8 literal commands PASSED"
+
+  # ──────────────────────────────────────────────────────────────
+  # Gate — required status check (set this as required in branch protection)
+  # ──────────────────────────────────────────────────────────────
+  gate:
+    name: CI gate (all must pass)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [html, data, qa-images, build, physq, literal]
+    if: always()
+    steps:
+      - name: Check all jobs
+        run: |
+          set -e
+          for job in html data qa-images build physq literal; do
+            echo "checking $job ..."
+          done
+          # needs.*.result is 'success' | 'failed' | 'skipped' | 'cancelled'
+          if [ "${{ needs.html.result }}" != "success" ]; then echo "FAIL: html"; exit 1; fi
+          if [ "${{ needs.data.result }}" != "success" ]; then echo "FAIL: data"; exit 1; fi
+          if [ "${{ needs.qa-images.result }}" != "success" ]; then echo "FAIL: qa-images"; exit 1; fi
+          if [ "${{ needs.build.result }}" != "success" ]; then echo "FAIL: build"; exit 1; fi
+          if [ "${{ needs.physq.result }}" != "success" ]; then echo "FAIL: physq (matrix)"; exit 1; fi
+          if [ "${{ needs.literal.result }}" != "success" ]; then echo "FAIL: literal"; exit 1; fi
+          echo "All gates passed — CI is GREEN"

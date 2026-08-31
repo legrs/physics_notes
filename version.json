@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-31T07:59:14.951Z",
-  "schema_version": 3,
+  "generated_at": "2026-08-31T11:05:11.982Z",
+  "schema_version": 4,
   "tokenizer": "lindera-ipadic",
   "embedding_model": {
     "small": "multilingual-e5-small",
@@ -8,12 +8,23 @@
   },
   "files": {
     "q_and_a_data.json": {
-      "hash": "20dc2af5fbf885a08ce1f7c6c6985f9871866dc539be8ab7e01fa429f9793f35",
-      "size": 895449
+      "hash": "12f7f1a0e8d8d62bca82befabe5f3d3b3f0662526a56a858af3dd263ec08f3db",
+      "size": 890461
     },
     "embeddings.json": {
       "hash": "c7f1f2ee189f27194443155ab9239a862bda5b12e2c4f2f081dd283b78cad97a",
       "size": 8297210
+    }
+  },
+  "qa_images": {
+    "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "count": 0,
+    "total_bytes": 0,
+    "avg_bytes": 0,
+    "buckets": {
+      "lt3": 0,
+      "btw": 0,
+      "gte5": 0
     }
   }
 }

@@ -181,6 +181,183 @@ if (!hasDeps) {
   try { fs.unlinkSync(tmp); } catch (_) { /* ignore */ }
 }
 
+// ── 7. qa_images folder + licenses.json + UUID naming ─────────────
+section('qa_images integrity (folder, licenses, UUID naming)');
+const QA_DIR = path.join(REPO_ROOT, 'qa_images');
+const LICENSES_PATH = path.join(QA_DIR, 'licenses.json');
+const licenses = (() => {
+  try { return JSON.parse(fs.readFileSync(LICENSES_PATH, 'utf-8')); } catch (e) { return null; }
+})();
+ok(licenses !== null, 'qa_images/licenses.json parses as JSON');
+if (licenses) {
+  ok('_default' in licenses || Object.keys(licenses).length === 0 || licenses['_default']?.license, 'licenses.json has _default or is empty (default Apache-2.0)');
+  for (const [k, v] of Object.entries(licenses)) {
+    if (k === '_default') {
+      ok(typeof v.license === 'string' && v.license.length > 0, '_default license is a non-empty string');
+    } else {
+      // key should be a UUID filename (with extension) or qa_images/ prefixed variant
+      const bn = path.basename(k);
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]+$/;
+      ok(uuidRe.test(bn), `licenses.json key "${k}" basename is UUID filename`);
+      ok(!/[A-Z]/.test(k), `licenses.json key "${k}" is lowercase`);
+      ok(typeof v.license === 'string' && v.license, `licenses.json["${k}"].license is non-empty`);
+      if (v.attribution) ok(typeof v.attribution === 'string', `licenses.json["${k}"].attribution is string`);
+      if (v.url) ok(typeof v.url === 'string' && /^https?:\/\//.test(v.url), `licenses.json["${k}"].url is http(s) URL`);
+    }
+  }
+}
+if (fs.existsSync(QA_DIR)) {
+  const QA_EXT_RE = /\.(jpe?g|png|webp|svg|gif)$/i;
+  const files = fs.readdirSync(QA_DIR).filter(f => {
+    if (f === 'licenses.json' || f === '.gitkeep' || f === 'README.md') return false;
+    try { if (fs.statSync(path.join(QA_DIR, f)).isDirectory()) return false; } catch(_) { return false; }
+    return true; // keep even non-image to detect stray files
+  });
+  // Every tracked file should be an image with UUID name and lowercase ext
+  for (const f of files) {
+    const isImg = QA_EXT_RE.test(f);
+    ok(isImg, `qa_images/${f} has allowed image extension (jpg/jpeg/png/webp/svg/gif)`);
+    if (isImg) {
+      const uuidImgRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]+$/;
+      ok(uuidImgRe.test(f), `qa_images/${f} is UUID filename with lowercase ext`);
+      ok(!/[A-Z]/.test(f), `qa_images/${f} is fully lowercase`);
+      ok(!/\s/.test(f), `qa_images/${f} has no whitespace`);
+      // file readable and non-empty (strict: empty image is a failure, warn-only would hide corruption)
+      try {
+        const st = fs.statSync(path.join(QA_DIR, f));
+        ok(st.size > 0, `qa_images/${f} is non-empty (${st.size} bytes)`);
+        ok(st.size < 8 * 1024 * 1024, `qa_images/${f} is <8MB (${(st.size/1024/1024).toFixed(2)}MB) else CI should have warned`);
+      } catch (e) { ok(false, `qa_images/${f} stat failed: ${e.message}`); }
+    } else {
+      ok(false, `qa_images/${f} is unexpected non-image file (should be gitignored or removed)`);
+    }
+  }
+  // orphan/broken detection (mirrors normalize-images.js)
+  const mdImgRe = /!\[([^\]]*)\]\(\s*([^\s)]+)(?:\s+"[^"]*")?\s*\)/g;
+  const htmlImgRe = /<img\b[^>]*>/gi;
+  const fenceRe = /```[\s\S]*?```|`[^`]*`/g;
+  function extractRefsForCheck(answer) {
+    if (!answer || typeof answer !== 'string') return [];
+    const ranges = [];
+    let m; const re = new RegExp(fenceRe.source, 'g');
+    while ((m = re.exec(answer)) !== null) ranges.push([m.index, m.index+m[0].length]);
+    const inF = (pos) => ranges.some(([s,e])=> pos>=s && pos<e);
+    const out = [];
+    mdImgRe.lastIndex=0; let mm; while ((mm=mdImgRe.exec(answer))!==null) { if(inF(mm.index)) continue; out.push(mm[2]); }
+    htmlImgRe.lastIndex=0; let hm; while ((hm=htmlImgRe.exec(answer))!==null) { if(inF(hm.index)) continue; const tag=hm[0]; const sm=tag.match(/\ssrc\s*=\s*(['"])(.*?)\1/i) || tag.match(/\ssrc\s*=\s*([^\s>]+)/i); const src=sm?(sm[2]||sm[1]):null; if(src) out.push(src); }
+    return out;
+  }
+  const allRefs = new Set();
+  const refDetails = [];
+  data.forEach(r => {
+    for (const s of extractRefsForCheck(r.answer)) {
+      if (s.startsWith('qa_images/')) { allRefs.add(path.basename(s)); refDetails.push({id:r.id, src:s}); }
+    }
+  });
+  const imgFiles = new Set(fs.readdirSync(QA_DIR).filter(f => QA_EXT_RE.test(f)));
+  const orphans = [...imgFiles].filter(f=> !allRefs.has(f));
+  const brokens = [...allRefs].filter(bn=> !imgFiles.has(bn));
+  ok(brokens.length===0, `qa_images: no broken refs (missing files: ${brokens.slice(0,3).join(', ')||'none'})`);
+  // orphan is warn-only: an image may be intentionally staged before answer refs it
+  ok(orphans.length===0, `qa_images: no orphan files (unreferenced: ${orphans.slice(0,3).join(', ')||'none'})`, true);
+  // every referenced file should have its basename exactly matching the file on disk (including case)
+  for (const {id, src} of refDetails) {
+    const bn = path.basename(src);
+    ok(src === `qa_images/${bn}`, `record ${id} image src is normalized qa_images/<basename> (got ${src})`);
+    ok(!/[A-Z]/.test(bn), `record ${id} image basename is lowercase (got ${bn})`);
+  }
+} else {
+  ok(false, 'qa_images directory exists');
+}
+
+// ── 8. image_licenses injection + search_text image handling ────────
+section('image_licenses + search_text image alt handling');
+if (data) {
+  const mdReCheck = /!\[([^\]]*)\]\(\s*([^\s)]+)(?:\s+"[^"]*")?\s*\)/g;
+  const htmlReCheck = /<img\b[^>]*>/gi;
+  const fenceReCheck = /```[\s\S]*?```|`[^`]*`/g;
+  function altSrcPairs(answer){
+    if(!answer||typeof answer!=='string') return [];
+    const ranges=[]; let m; const re=new RegExp(fenceReCheck.source,'g'); while((m=re.exec(answer))!==null) ranges.push([m.index,m.index+m[0].length]);
+    const inF=(pos)=>ranges.some(([s,e])=>pos>=s&&pos<e);
+    const out=[];
+    mdReCheck.lastIndex=0; let mm; while((mm=mdReCheck.exec(answer))!==null){ if(inF(mm.index)) continue; out.push({alt:mm[1], src:mm[2]}); }
+    htmlReCheck.lastIndex=0; let hm; while((hm=htmlReCheck.exec(answer))!==null){ if(inF(hm.index)) continue; const tag=hm[0]; const am=tag.match(/alt\s*=\s*(['"])(.*?)\1/i); const alt=am?am[2]:''; const sm=tag.match(/\ssrc\s*=\s*(['"])(.*?)\1/i)||tag.match(/\ssrc\s*=\s*([^\s>]+)/i); const src=sm?(sm[2]||sm[1]):null; if(src) out.push({alt,src}); }
+    return out;
+  }
+  let imageRecords = 0;
+  data.forEach(r=>{
+    const pairs = altSrcPairs(r.answer);
+    const hasQa = pairs.some(p=> p.src.startsWith('qa_images/'));
+    if (hasQa) imageRecords++;
+    if (hasQa) {
+      ok(r.image_licenses && typeof r.image_licenses==='object', `record ${r.id} has image_licenses when qa_images referenced`);
+      if (r.image_licenses) {
+        for(const {src} of pairs.filter(p=>p.src.startsWith('qa_images/'))) {
+          ok(src in r.image_licenses, `record ${r.id} image_licenses contains ${src}`);
+          const lic = r.image_licenses[src];
+          ok(lic && typeof lic.license==='string' && lic.license.length>0, `record ${r.id} image_licenses[${src}].license non-empty`);
+        }
+        // no extra keys that are not referenced
+        for(const k of Object.keys(r.image_licenses)){
+          ok(pairs.some(p=>p.src===k), `record ${r.id} image_licenses key ${k} is actually referenced`);
+        }
+      }
+      // search_text should contain alt but NOT the src (UUID)
+      for(const {alt, src} of pairs.filter(p=>p.src.startsWith('qa_images/'))){
+        if (alt && alt.trim()) {
+          // alt may be morpheme-split, so check case-insensitive substring of search_text (which contains kata/hira variants)
+          const needle = alt.trim().split(/\s+/)[0];
+          if (needle.length >= 2) ok(r.search_text.toLowerCase().includes(needle.toLowerCase()) || r.search_text.includes(needle), `record ${r.id} search_text contains alt "${needle}"`, true);
+        }
+        // strict: src UUID should NOT appear in search_text (would be noise)
+        const bn = path.basename(src);
+        const uuidPart = bn.split('.')[0];
+        ok(!r.search_text.includes(uuidPart), `record ${r.id} search_text does not contain image UUID ${uuidPart}`);
+        ok(!r.search_text.includes('qa_images'), `record ${r.id} search_text does not contain "qa_images" literal`);
+      }
+    } else {
+      ok(!('image_licenses' in r) || !r.image_licenses || Object.keys(r.image_licenses).length===0, `record ${r.id} has no image_licenses when no qa_images ref`);
+    }
+  });
+  // global check: image_licenses must be consistent with licenses.json _default fallback
+  // (already covered by build.js determinism check)
+}
+
+// ── 9. version.json qa_images manifest strict ─────────────────────
+section('version.json qa_images manifest');
+if (ver) {
+  ok('qa_images' in ver, 'version.json has qa_images key (schema v4)');
+  if (ver.qa_images) {
+    const qa = ver.qa_images;
+    ok(typeof qa.hash==='string' && /^[0-9a-f]{64}$/.test(qa.hash), 'qa_images.hash is 64-char hex');
+    ok(typeof qa.count==='number' && Number.isInteger(qa.count) && qa.count>=0, 'qa_images.count is non-negative int');
+    ok(typeof qa.total_bytes==='number' && qa.total_bytes>=0, 'qa_images.total_bytes non-negative');
+    ok(typeof qa.avg_bytes==='number' && qa.avg_bytes>=0, 'qa_images.avg_bytes non-negative');
+    ok(qa.buckets && typeof qa.buckets.lt3==='number' && typeof qa.buckets.btw==='number' && typeof qa.buckets.gte5==='number', 'qa_images.buckets has lt3/btw/gte5');
+    ok(qa.lt3===undefined && qa.btw===undefined, 'qa_images buckets not at top level (nesting correct)');
+    // cross-check with actual files
+    const QA_EXT_RE2 = /\.(jpe?g|png|webp|svg|gif)$/i;
+    const dir = path.join(REPO_ROOT, 'qa_images');
+    if (fs.existsSync(dir)) {
+      const actualFiles = fs.readdirSync(dir).filter(f=> QA_EXT_RE2.test(f) && f!=='licenses.json' && f!=='.gitkeep' && f!=='README.md');
+      ok(qa.count===actualFiles.length, `qa_images.count matches files on disk (${qa.count} vs ${actualFiles.length})`);
+      let total=0; actualFiles.forEach(f=> total+=fs.statSync(path.join(dir,f)).size);
+      ok(qa.total_bytes===total, `qa_images.total_bytes matches disk (${qa.total_bytes} vs ${total})`);
+      const expAvg = actualFiles.length? Math.round(total/actualFiles.length):0;
+      ok(qa.avg_bytes===expAvg, `qa_images.avg_bytes matches (${qa.avg_bytes} vs ${expAvg})`);
+      // combined hash recomputed
+      const hashes = actualFiles.slice().sort().map(f=> crypto.createHash('sha256').update(fs.readFileSync(path.join(dir,f))).digest('hex'));
+      const combined = hashes.length? crypto.createHash('sha256').update(hashes.join('')).digest('hex') : crypto.createHash('sha256').update('').digest('hex');
+      ok(qa.hash===combined, 'qa_images.hash matches recomputed combined hash');
+    }
+    ok(ver.schema_version===4, 'version.json schema_version is 4 (qa_images added)');
+    ok(typeof ver.tokenizer==='string' && ver.tokenizer==='lindera-ipadic', 'version.json tokenizer is lindera-ipadic');
+  } else {
+    ok(false, 'version.json qa_images is missing (expected for schema 4)');
+  }
+}
+
 console.log(`\n${checks} checks, ${warns} warns, ${failures} failures`);
 console.log(failures === 0 ? 'DATA CHECKS PASSED' : 'DATA CHECKS FAILED');
 process.exit(failures === 0 ? 0 : 1);

@@ -313,6 +313,32 @@ detQueries.forEach((q) => {
   ok(typeof item.description === 'string', 'snippet fallback description is a string');
 });
 
+// ── 6. Image markdown & sanitization (strict, XSS) ──────────────────
+section('Image markdown & sanitization (strict)');
+(function(){
+  // Verify search.html's image-related source patterns exist (fail if someone removes DOMPurify hardening)
+  const htmlSrc = html;
+  ok(htmlSrc.includes('renderer.image'), 'search.html has custom renderer.image for loading="lazy"');
+  ok(htmlSrc.includes("ADD_ATTR: ['loading']"), 'DOMPurify allows loading attr');
+  ok(htmlSrc.includes('enhanceImagesWithLicenses'), 'enhanceImagesWithLicenses exists');
+  ok(htmlSrc.includes('img.onerror'), 'img.onerror placeholder exists');
+  // BM25 must not be poisoned by image src / javascript: URLs
+  const imgQueries = [
+    '![attack](javascript:alert(1))',
+    '![x](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)',
+    '![](qa_images/3f9a8c1e-1a2b-4c3d-9e8f-a1b2c3d4e5f6.jpg)',
+    '<img src=x onerror=alert(1) alt="ok">',
+    '<img src="qa_images/a.jpg" alt="回路図">',
+    '<div class="img-row">![](qa_images/a.jpg) ![](qa_images/b.jpg)</div>',
+    '![alt with spaces](qa_images/a.jpg "title with spaces")',
+  ];
+  imgQueries.forEach(q=> assertRun(q, W._buildBM25Index(data), {allowEmpty:true}));
+  // Alt text should be searchable if someone queries the alt (image alt is in search_text)
+  // We simulate a record with alt "回路図" and check that querying "回路図" finds it via BM25 pipeline
+  // (The real check is in data_check.js & qa_images_stress.js; here we just ensure the query engine itself doesn't crash on alt-like terms)
+  ok(W._expandQuery('回路図').words.includes('回路図'), '_expandQuery keeps alt-like CJK term');
+})();
+
 console.log(`\n${checks} checks, ${failures} failures`);
 console.log(failures === 0 ? 'HTML STRESS TESTS PASSED' : `HTML STRESS TESTS FAILED`);
 process.exit(failures === 0 ? 0 : 1);

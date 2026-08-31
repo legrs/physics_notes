@@ -32,11 +32,15 @@ function run(label, cmd, args, opts = {}) {
   return ok;
 }
 
-console.log('=== physics_notes full test suite ===');
+console.log('=== physics_notes full test suite (STRICT) ===');
 
 // Phase 1–2: HTML
 run('html syntax', process.execPath, [path.join('scripts', 'tests', 'html_syntax.js')]);
 run('html stress', process.execPath, [path.join('scripts', 'tests', 'html_stress.js')]);
+
+// Phase 2.5: QA images (UUID / licenses / normalize / search_text invariants)
+run('qa images stress', process.execPath, [path.join('scripts', 'tests', 'qa_images_stress.js')]);
+run('normalize --check', process.execPath, [path.join('scripts', 'normalize-images.js'), '--check']);
 
 // Phase 3: data artifacts
 run('data consistency', process.execPath, [path.join('scripts', 'tests', 'data_check.js')]);

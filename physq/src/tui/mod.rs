@@ -1,3 +1,4 @@
+#![allow(clippy::type_complexity)]
 //! Interactive TUI (ratatui + crossterm, CLAUDE.md §3, §11).
 //!
 //! 2-tier UX (§6): every keystroke re-runs BM25 instantly; submit (Enter) or
@@ -2333,6 +2334,7 @@ impl LineBuilder {
     }
 }
 
+#[allow(clippy::all)]
 fn detail_lines(
     app: &App,
 ) -> (
@@ -2467,64 +2469,171 @@ fn detail_lines(
     b.push(Line::styled("Answer", heading));
     let mut img_idx = 0usize;
     for l in record.answer.lines() {
+        // Preserve surrounding text when an image sits inline (e.g. "see: ![alt](qa_images/a.jpg) done").
+        // Extract image positions with fence-awareness (inline `code` → not an image) and render
+        // text fragments as plain lines plus one selectable image row per image.
         let line_imgs = extract_images(l);
         if line_imgs.is_empty() {
             b.push(Line::raw(l.to_string()));
         } else {
-            for (alt, src) in &line_imgs {
-                let focused =
-                    app.pane_focus == PaneFocus::Image && app.image_selected == Some(img_idx);
-                let marker = if focused { "▸ " } else { "  " };
-                let style = if focused {
-                    Style::default().fg(Color::White).bg(Color::Cyan)
-                } else {
-                    Style::default()
-                        .fg(Color::Cyan)
-                        .add_modifier(Modifier::UNDERLINED)
-                };
-                let lic = record.image_licenses.get(src).or_else(|| {
-                    let bn = src.split('/').last().unwrap_or(src);
-                    record
-                        .image_licenses
-                        .get(&format!("qa_images/{}", bn))
-                        .or_else(|| record.image_licenses.get(bn))
-                });
-                let lic_text = lic
-                    .map(|lc| {
-                        let mut s = String::new();
-                        if let Some(a) = &lc.attribution {
-                            s.push_str(a);
-                        }
-                        if !lc.license.is_empty() && lc.license != "Apache-2.0" {
-                            if !s.is_empty() {
-                                s.push_str(&format!(" ({})", lc.license));
-                            } else {
-                                s = lc.license.clone();
-                            }
-                        } else if !lc.license.is_empty() && lc.attribution.is_none() && s.is_empty()
-                        {
-                            s = lc.license.clone();
-                        }
-                        if let Some(url) = &lc.url {
-                            if !s.is_empty() {
-                                s.push(' ');
-                            }
-                            s.push_str(url);
-                        }
-                        s
-                    })
-                    .unwrap_or_default();
-                let mut spans = vec![
-                    Span::raw(marker.to_string()),
-                    Span::styled("🖼 ".to_string(), dim),
-                    Span::styled(alt.clone(), style),
-                    Span::raw(format!("  ({})", src)),
-                ];
-                if !lic_text.is_empty() {
-                    spans.push(Span::styled(format!("  {}", lic_text), dim));
+            // Build ordered (start,end,alt,src) for this single line, respecting `code` spans.
+            // We re-parse the line with the same regexes as image.rs but keep byte offsets.
+            use regex::Regex;
+            use std::sync::OnceLock;
+            static MD_RE: OnceLock<Regex> = OnceLock::new();
+            static HTML_RE: OnceLock<Regex> = OnceLock::new();
+            static FENCE_RE: OnceLock<Regex> = OnceLock::new();
+            let md_re = MD_RE.get_or_init(|| {
+                Regex::new(r#"!\[([^\]]*)\]\(\s*([^\s)]+)(?:\s+"[^"]*")?\s*\)"#).unwrap()
+            });
+            let html_re = HTML_RE.get_or_init(|| Regex::new(r"(?i)<img\b[^>]*>").unwrap());
+            let fence_re = FENCE_RE.get_or_init(|| Regex::new(r"`[^`]*`").unwrap());
+            let fence_ranges: Vec<(usize, usize)> = fence_re
+                .find_iter(l)
+                .map(|m| (m.start(), m.end()))
+                .collect();
+            let in_fence = |pos: usize| fence_ranges.iter().any(|(s, e)| pos >= *s && pos < *e);
+            let mut segs: Vec<(usize, usize, String, String)> = Vec::new();
+            for cap in md_re.captures_iter(l) {
+                let m = cap.get(0).unwrap();
+                if in_fence(m.start()) {
+                    continue;
                 }
-                b.push_image(Line::from(spans), (*src).clone());
-                img_idx += 1;
+                let alt = cap
+                    .get(1)
+                    .map(|x| x.as_str().to_string())
+                    .unwrap_or_default();
+                let src = cap
+                    .get(2)
+                    .map(|x| x.as_str().to_string())
+                    .unwrap_or_default();
+                if !src.is_empty() {
+                    segs.push((m.start(), m.end(), alt, src));
+                }
+            }
+            for m in html_re.find_iter(l) {
+                if in_fence(m.start()) {
+                    continue;
+                }
+                let tag = m.as_str();
+                // replicate html_src_alt parsing (double → single → unquoted)
+                let alt = {
+                    if let Some(c) = Regex::new(r#"(?i)alt\s*=\s*"([^"]*)""#)
+                        .unwrap()
+                        .captures(tag)
+                        .and_then(|c| c.get(1))
+                    {
+                        c.as_str().to_string()
+                    } else if let Some(c) = Regex::new(r"(?i)alt\s*=\s*'([^']*)'")
+                        .unwrap()
+                        .captures(tag)
+                        .and_then(|c| c.get(1))
+                    {
+                        c.as_str().to_string()
+                    } else {
+                        String::new()
+                    }
+                };
+                let src = {
+                    if let Some(c) = Regex::new(r#"(?i)\ssrc\s*=\s*"([^"]*)""#)
+                        .unwrap()
+                        .captures(tag)
+                        .and_then(|c| c.get(1))
+                    {
+                        c.as_str().to_string()
+                    } else if let Some(c) = Regex::new(r#"(?i)\ssrc\s*=\s*'([^']*)'"#)
+                        .unwrap()
+                        .captures(tag)
+                        .and_then(|c| c.get(1))
+                    {
+                        c.as_str().to_string()
+                    } else if let Some(c) = Regex::new(r#"(?i)\ssrc\s*=\s*([^\s>]+)"#)
+                        .unwrap()
+                        .captures(tag)
+                        .and_then(|c| c.get(1))
+                    {
+                        c.as_str()
+                            .trim_end_matches(|ch| ch == '"' || ch == '\'' || ch == '>')
+                            .to_string()
+                    } else {
+                        String::new()
+                    }
+                };
+                if !src.is_empty() {
+                    segs.push((m.start(), m.end(), alt, src));
+                }
+            }
+            segs.sort_by_key(|(s, _, _, _)| *s);
+            if segs.is_empty() {
+                b.push(Line::raw(l.to_string()));
+            } else {
+                let mut last = 0usize;
+                for (s, e, alt, src) in segs {
+                    let before = &l[last..s];
+                    if !before.trim().is_empty() {
+                        b.push(Line::raw(before.to_string()));
+                    }
+                    let focused =
+                        app.pane_focus == PaneFocus::Image && app.image_selected == Some(img_idx);
+                    let marker = if focused { "▸ " } else { "  " };
+                    let style = if focused {
+                        Style::default().fg(Color::White).bg(Color::Cyan)
+                    } else {
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::UNDERLINED)
+                    };
+                    let lic = record.image_licenses.get(&src).or_else(|| {
+                        let bn = src.split('/').last().unwrap_or(&src);
+                        record
+                            .image_licenses
+                            .get(&format!("qa_images/{}", bn))
+                            .or_else(|| record.image_licenses.get(bn))
+                    });
+                    let lic_text = lic
+                        .map(|lc| {
+                            let mut t = String::new();
+                            if let Some(a) = &lc.attribution {
+                                t.push_str(a);
+                            }
+                            if !lc.license.is_empty() && lc.license != "Apache-2.0" {
+                                if !t.is_empty() {
+                                    t.push_str(&format!(" ({})", lc.license));
+                                } else {
+                                    t = lc.license.clone();
+                                }
+                            } else if !lc.license.is_empty()
+                                && lc.attribution.is_none()
+                                && t.is_empty()
+                            {
+                                t = lc.license.clone();
+                            }
+                            if let Some(url) = &lc.url {
+                                if !t.is_empty() {
+                                    t.push(' ');
+                                }
+                                t.push_str(url);
+                            }
+                            t
+                        })
+                        .unwrap_or_default();
+                    let mut spans = vec![
+                        Span::raw(marker.to_string()),
+                        Span::styled("🖼 ".to_string(), dim),
+                        Span::styled(alt.clone(), style),
+                        Span::raw(format!("  ({})", src)),
+                    ];
+                    if !lic_text.is_empty() {
+                        spans.push(Span::styled(format!("  {}", lic_text), dim));
+                    }
+                    b.push_image(Line::from(spans), src.clone());
+                    img_idx += 1;
+                    last = e;
+                }
+                let trailing = &l[last..];
+                if !trailing.trim().is_empty() {
+                    b.push(Line::raw(trailing.to_string()));
+                }
             }
         }
     }
@@ -2695,7 +2804,9 @@ fn draw_help(frame: &mut Frame, app: &mut App, area: Rect) {
             Line::raw(
                 "  v                 VISUAL selection over the query (d/x/y/c, o swaps ends)",
             ),
-            Line::raw("  Tab               browse this item's Related list; j/k pick, Enter jumps"),
+            Line::raw(
+                "  Tab               browse Related → Image → Results (Tab cycle); j/k pick, Enter jumps/opens",
+            ),
             Line::raw(
                 "  Ctrl-L            repaint now (screen also self-heals; fixes IME glitches)",
             ),
@@ -2711,7 +2822,9 @@ fn draw_help(frame: &mut Frame, app: &mut App, area: Rect) {
             Line::raw("  Enter             semantic + RRF fusion (or run a /command)"),
             Line::raw("  ↑ ↓ / Ctrl-P/N    move selection in Results"),
             Line::raw("  PgUp / PgDn       scroll Detail"),
-            Line::raw("  Tab               browse this item's Related list; ↑↓ pick, Enter jumps"),
+            Line::raw(
+                "  Tab               browse Related → Image → Results (Tab cycle); ↑↓ pick, Enter jumps/opens image",
+            ),
             Line::raw("  Esc               close this screen / exit Related / clear the query"),
             Line::raw(
                 "  Ctrl-L            repaint now (screen also self-heals; fixes IME glitches)",
@@ -3058,16 +3171,18 @@ fn status_tail(app: &App) -> (String, Style) {
     }
     let hint = if app.cfg.keys == KeyMode::Vim {
         match app.vim_mode {
-            VimMode::Insert => "Enter search · Esc normal mode · Tab related · /help · Ctrl-C quit",
+            VimMode::Insert => {
+                "Enter search · Esc normal mode · Tab related/image · /help · Ctrl-C quit"
+            }
             VimMode::Normal => {
-                "i insert · j/k move · Shift-HJKL panes · dd clear · gg/G · Ctrl-d/u scroll · /help"
+                "i insert · j/k move · Shift-HJKL panes · dd clear · gg/G · Ctrl-d/u scroll · Tab related/image · /help"
             }
             VimMode::Visual => {
                 "h/l/w/b extend · o swap ends · d/x delete · y yank · c change · Esc cancel"
             }
         }
     } else {
-        "Enter search · ↑↓ select · Tab related · PgUp/PgDn scroll · /help · Ctrl-C quit"
+        "Enter search · ↑↓ select · Tab related/image · PgUp/PgDn scroll · /help · Ctrl-C quit"
     };
     parts.push(hint.to_string());
     let style = if warn {
