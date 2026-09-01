@@ -1,13 +1,13 @@
 # Strict Test Suite — runs on EVERY push and PR (build.yml とは独立。生成物のコミットはしない)
 #
-# 設計方針（"めっちゃ厳しい"）:
+# 設計方針:
 #   - 正常系だけでなく、極端な入力・XSS・失敗ケース・境界値も自動検証する。
 #   - HTML / data / qa_images / build は並列で走る（needs: なし＝同時起動）。各OSの physq は matrix で並列。
 #   - 最後の `gate` ジョブが `needs: [html,data,qa-images,build,physq]` で全結果を集約し、
 #     1つでも失敗したら CI 全体を赤にする（required check に `gate` を指定する）。
 #   - 負荷の高い physq matrix は他の軽量ジョブと同時起動して待ち時間を最小化する。
 #   - 失敗時の診断を容易にするため、各ジョブは `set -e` と明示的なフェイルメッセージを出す。
-name: Test Suite (Strict)
+name: Test Suite
 
 on:
   push:
