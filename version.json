@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-01T04:58:55.734Z",
+  "generated_at": "2026-09-01T05:55:42.156Z",
   "schema_version": 4,
   "tokenizer": "lindera-ipadic",
   "embedding_model": {
@@ -8,19 +8,19 @@
   },
   "files": {
     "q_and_a_data.json": {
-      "hash": "0b11b067080aada66dd96388dc9156c76f0c704638b97756fb29a65563909124",
-      "size": 890807
+      "hash": "0f1348fb092e9bf0830e2ba0ac02b71214683627e9215753c61b3f126efcd3f6",
+      "size": 897294
     },
     "embeddings.json": {
-      "hash": "c7f1f2ee189f27194443155ab9239a862bda5b12e2c4f2f081dd283b78cad97a",
-      "size": 8297210
+      "hash": "381af6504648de1de9caa49d1125b032b4fddfd489e87da29733f7fef208f1fd",
+      "size": 8416327
     }
   },
   "qa_images": {
-    "hash": "f3302c89229f5d9dc6acc9780e847182311efa6127cdd71c91ae02b1e11e6ac5",
+    "hash": "dd015cbc3d4402d62bd7a8c7888d727b13d0dee093f8c351c91f6246e263122b",
     "count": 1,
-    "total_bytes": 1636430,
-    "avg_bytes": 1636430,
+    "total_bytes": 815429,
+    "avg_bytes": 815429,
     "buckets": {
       "lt3": 1,
       "btw": 0,
