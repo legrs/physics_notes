@@ -1910,6 +1910,272 @@
     html.dark ::-webkit-scrollbar-thumb:hover {
       background: #444;
     }
+
+    /* ── Blur Reveal for images (from docs/blur-reveal-sample.html) ── */
+    :root {
+      --br-c1: #ff5ecb;
+      --br-c2: #5ec8ff;
+      --br-c3: #ffcf5e;
+      --br-c4: #8a6bff;
+      --br-c5: #5effb0;
+      --br-radius: 12px;
+      --br-frame-bg: #16161c;
+      --br-shadow: 0 20px 50px rgba(20, 20, 40, 0.16);
+      --br-glow-op-a-min: 0.55;
+      --br-glow-op-a-max: 0.95;
+      --br-glow-op-b-min: 0.4;
+      --br-glow-op-b-max: 0.72;
+      --br-glow-blur-a: 28px;
+      --br-glow-blur-b: 36px;
+      --br-glow-saturate: 1.65;
+    }
+
+    html.dark {
+      --br-frame-bg: #16161c;
+      --br-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+      --br-glow-op-a-min: 0.5;
+      --br-glow-op-a-max: 0.85;
+      --br-glow-op-b-min: 0.32;
+      --br-glow-op-b-max: 0.6;
+      --br-glow-blur-a: 26px;
+      --br-glow-blur-b: 32px;
+      --br-glow-saturate: 1.4;
+    }
+
+    .br-wrap {
+      position: relative;
+      display: block;
+      width: fit-content;
+      max-width: 100%;
+      margin: 1em auto;
+      border-radius: var(--br-radius);
+    }
+
+    .br-glow {
+      position: absolute;
+      border-radius: calc(var(--br-radius) + 22px);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .br-glow.a {
+      inset: -22px;
+      filter: blur(var(--br-glow-blur-a)) saturate(var(--br-glow-saturate));
+      background: conic-gradient(from 0deg, var(--br-c1), var(--br-c2), var(--br-c3), var(--br-c4), var(--br-c5), var(--br-c1));
+      animation: brSpin 9s linear infinite, brBreatheA 4s ease-in-out infinite;
+    }
+
+    .br-glow.b {
+      inset: -14px;
+      border-radius: calc(var(--br-radius) + 14px);
+      filter: blur(var(--br-glow-blur-b)) saturate(var(--br-glow-saturate));
+      background: conic-gradient(from 180deg, var(--br-c4), var(--br-c1), var(--br-c5), var(--br-c2), var(--br-c4));
+      animation: brSpinRev 13s linear infinite, brBreatheB 5s ease-in-out infinite reverse;
+    }
+
+    @keyframes brSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes brSpinRev {
+      to { transform: rotate(-360deg); }
+    }
+
+    @keyframes brBreatheA {
+      0%, 100% { opacity: var(--br-glow-op-a-min); transform: scale(1); }
+      50% { opacity: var(--br-glow-op-a-max); transform: scale(1.04); }
+    }
+
+    @keyframes brBreatheB {
+      0%, 100% { opacity: var(--br-glow-op-b-min); transform: scale(1); }
+      50% { opacity: var(--br-glow-op-b-max); transform: scale(1.04); }
+    }
+
+    .br-frame {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      border-radius: var(--br-radius);
+      overflow: hidden;
+      isolation: isolate;
+      clip-path: inset(0 round var(--br-radius));
+      background: var(--br-frame-bg);
+      box-shadow: var(--br-shadow);
+    }
+
+    .br-img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: inherit;
+      will-change: filter, transform, opacity;
+      filter: blur(32px) saturate(0.58) brightness(1.13);
+      transform: scale(1.14);
+      opacity: 0.55;
+      animation: brImageReveal 3.8s cubic-bezier(0.16, 0.6, 0.2, 1) forwards;
+    }
+
+    @keyframes brImageReveal {
+      0%   { filter: blur(32px)   saturate(0.58) brightness(1.13); transform: scale(1.14);  opacity: 0.55; }
+      8%   { filter: blur(28px)   saturate(0.61) brightness(1.12); transform: scale(1.128); opacity: 0.60; }
+      16%  { filter: blur(24px)   saturate(0.65) brightness(1.11); transform: scale(1.115); opacity: 0.65; }
+      25%  { filter: blur(19px)   saturate(0.70) brightness(1.09); transform: scale(1.10);  opacity: 0.71; }
+      35%  { filter: blur(14px)   saturate(0.76) brightness(1.08); transform: scale(1.082); opacity: 0.78; }
+      45%  { filter: blur(10px)   saturate(0.82) brightness(1.06); transform: scale(1.064); opacity: 0.84; }
+      55%  { filter: blur(7px)    saturate(0.88) brightness(1.05); transform: scale(1.048); opacity: 0.89; }
+      65%  { filter: blur(4.5px)  saturate(0.92) brightness(1.035); transform: scale(1.034); opacity: 0.93; }
+      74%  { filter: blur(2.8px)  saturate(0.96) brightness(1.024); transform: scale(1.022); opacity: 0.96; }
+      82%  { filter: blur(1.5px)  saturate(0.98) brightness(1.015); transform: scale(1.013); opacity: 0.98; }
+      90%  { filter: blur(0.6px)  saturate(0.995) brightness(1.006); transform: scale(1.005); opacity: 0.995; }
+      100% { filter: blur(0)      saturate(1)     brightness(1);    transform: scale(1);     opacity: 1;    }
+    }
+
+    .br-haze {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 45%, rgba(255,255,255,0.18), rgba(255,255,255,0.5));
+      backdrop-filter: blur(5px);
+      opacity: 1;
+      animation: brHazeFade 3.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    @keyframes brHazeFade {
+      0%   { opacity: 1;    }
+      20%  { opacity: 0.82; }
+      40%  { opacity: 0.6;  }
+      60%  { opacity: 0.38; }
+      80%  { opacity: 0.16; }
+      100% { opacity: 0;    }
+    }
+
+    .br-noise {
+      position: absolute;
+      inset: -50%;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0.24;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.8'/%3E%3C/svg%3E");
+      mix-blend-mode: overlay;
+      animation: brNoiseMove 0.18s steps(2) infinite, brNoiseFade 3.8s ease-out forwards;
+    }
+
+    @keyframes brNoiseMove {
+      0%   { transform: translate(0, 0); }
+      20%  { transform: translate(3%, -4%); }
+      40%  { transform: translate(-4%, 3%); }
+      60%  { transform: translate(5%, 5%); }
+      80%  { transform: translate(-3%, -5%); }
+      100% { transform: translate(0, 0); }
+    }
+
+    @keyframes brNoiseFade {
+      0%   { opacity: 0.28; }
+      30%  { opacity: 0.2;  }
+      60%  { opacity: 0.1;  }
+      85%  { opacity: 0.03; }
+      100% { opacity: 0;    }
+    }
+
+    .br-light {
+      position: absolute;
+      top: -30%;
+      left: -60%;
+      width: 70%;
+      height: 160%;
+      z-index: 4;
+      pointer-events: none;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent);
+      transform: rotate(15deg);
+      filter: blur(22px);
+      opacity: 0;
+      animation: brLightSweep 2.9s cubic-bezier(0.4, 0, 0.2, 1) 0.15s forwards;
+    }
+
+    @keyframes brLightSweep {
+      0%   { left: -70%; opacity: 0;   }
+      10%  { opacity: 0.5;  }
+      50%  { opacity: 0.35; }
+      90%  { opacity: 0.1;  }
+      100% { left: 120%; opacity: 0; }
+    }
+
+    .br-shimmer {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+      background: linear-gradient(115deg,
+        transparent 20%,
+        rgba(255,255,255,0.12) 40%,
+        rgba(255,255,255,0.2) 50%,
+        rgba(255,255,255,0.12) 60%,
+        transparent 80%);
+      background-size: 250% 250%;
+      opacity: 0;
+      animation: brShimmer 2.5s ease-in-out 0.35s forwards;
+    }
+
+    @keyframes brShimmer {
+      0%   { background-position: 180% 50%; opacity: 0;    }
+      15%  { opacity: 0.8;  }
+      60%  { opacity: 0.35; }
+      100% { background-position: -80% 50%; opacity: 0;    }
+    }
+
+    .br-finish {
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      pointer-events: none;
+      background: white;
+      opacity: 0;
+      animation: brFinishFade 0.5s ease-out 3.2s forwards;
+    }
+
+    @keyframes brFinishFade {
+      0%   { opacity: 0.08; }
+      100% { opacity: 0;    }
+    }
+
+    /* prose 内でのブラー画像の調整 */
+    .prose .br-wrap,
+    .ai-prose .br-wrap,
+    .chat-prose .br-wrap {
+      margin: 1em auto;
+    }
+
+    .prose .br-wrap img,
+    .ai-prose .br-wrap img,
+    .chat-prose .br-wrap img {
+      margin: 0;
+      max-width: none;
+    }
+
+    .prose figure .br-wrap {
+      margin: 0 auto;
+    }
+
+    .prose .img-row .br-wrap {
+      margin: 0;
+      flex: 1 1 200px;
+      max-width: calc(50% - 6px);
+      width: auto;
+    }
+
+    /* 中の画像は従来の prose img の border-radius/margin を打ち消す */
+    .br-frame .br-img {
+      max-width: 100%;
+      border-radius: 0;
+      margin: 0;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .br-img { animation: none; filter: none; transform: none; opacity: 1; }
+      .br-glow { animation: none; }
+      .br-haze, .br-noise, .br-light, .br-shimmer, .br-finish { display: none; }
+    }
   </style>
 </head>
 
@@ -2302,9 +2568,117 @@
       return sanitizeHtml(marked.parse(formatMath(text || '')));
     }
 
+    /* ── Blur Reveal: 全画像をサンプルアニメーションでラップ ── */
+    function applyBlurReveal(container) {
+      if (!container) return;
+      const imgs = container.querySelectorAll('img');
+      imgs.forEach(img => {
+        if (img.closest('.br-frame')) return;
+        if (img.dataset.brWrapped === '1') return;
+        if (img.id === 'ai-chat-icon') return;
+        const wrap = document.createElement('div');
+        wrap.className = 'br-wrap';
+        const glowA = document.createElement('div');
+        glowA.className = 'br-glow a';
+        const glowB = document.createElement('div');
+        glowB.className = 'br-glow b';
+        const frame = document.createElement('div');
+        frame.className = 'br-frame';
+        const parent = img.parentNode;
+        if (!parent) return;
+        parent.insertBefore(wrap, img);
+        wrap.appendChild(glowA);
+        wrap.appendChild(glowB);
+        wrap.appendChild(frame);
+        frame.appendChild(img);
+        const haze = document.createElement('div'); haze.className = 'br-haze';
+        const noise = document.createElement('div'); noise.className = 'br-noise';
+        const light = document.createElement('div'); light.className = 'br-light';
+        const shimmer = document.createElement('div'); shimmer.className = 'br-shimmer';
+        const finish = document.createElement('div'); finish.className = 'br-finish';
+        frame.appendChild(haze);
+        frame.appendChild(noise);
+        frame.appendChild(light);
+        frame.appendChild(shimmer);
+        frame.appendChild(finish);
+        img.dataset.brWrapped = '1';
+        img.classList.add('br-img');
+        // エラー時のフォールバック（既存の onerror があれば保持）
+        if (!img.dataset.brErrorBound) {
+          img.dataset.brErrorBound = '1';
+          const prevErr = img.onerror;
+          img.onerror = function (e) {
+            try { if (typeof prevErr === 'function') prevErr.call(this, e); } catch (_) {}
+            this.style.display = 'none';
+            const fr = this.closest('.br-frame');
+            if (fr) {
+              fr.querySelectorAll('.br-haze,.br-noise,.br-light,.br-shimmer,.br-finish,.br-glow').forEach(el => el.style.display = 'none');
+              if (!fr.querySelector('.br-error')) {
+                const ph = document.createElement('div');
+                ph.className = 'br-error';
+                ph.textContent = '⚠ 画像を読み込めません: ' + (this.getAttribute('src') || '');
+                ph.style.cssText = 'font-size:12px;color:var(--text-muted);padding:12px;text-align:center;background:var(--bg-surface);border-radius:8px;margin:8px;';
+                fr.appendChild(ph);
+              }
+            }
+          };
+          // すでにエラー状態（complete だが naturalWidth 0）の場合は即時発火
+          if (img.complete && img.naturalWidth === 0 && img.getAttribute('src')) {
+            // 画像がまだ読み込まれていない小さなプレースホルダを除外（data: URL等）
+            const src = img.getAttribute('src') || '';
+            if (src && !src.startsWith('data:')) {
+              setTimeout(() => { if (img.naturalWidth === 0) img.dispatchEvent(new Event('error')); }, 0);
+            }
+          }
+        }
+        void img.offsetWidth;
+      });
+    }
+
+    function observeBlurReveal(container) {
+      if (!container || typeof MutationObserver === 'undefined') return;
+      const obs = new MutationObserver(muts => {
+        for (const m of muts) {
+          if (m.type === 'childList') {
+            const added = [...m.addedNodes].filter(n => n.nodeType === 1);
+            if (added.some(n => n.tagName === 'IMG' || n.querySelector?.('img'))) {
+              applyBlurReveal(container);
+            }
+          }
+        }
+      });
+      obs.observe(container, { childList: true, subtree: true });
+    }
+
+    // 全画像を自動で Blur Reveal 化（将来の動的挿入にも対応）
+    (function setupBlurRevealObserver() {
+      const go = () => {
+        const ids = ['modal-content', 'ai', 'chat-scroll-container', 'results', 'modal-body'];
+        ids.forEach(id => { const el = document.getElementById(id); if (el) observeBlurReveal(el); });
+        // 念のための body 全体監視（上記コンテナ外への挿入にも対応、負荷は軽微）
+        if (typeof MutationObserver !== 'undefined' && document.body) {
+          const bodyObs = new MutationObserver(muts => {
+            for (const m of muts) {
+              const added = [...m.addedNodes].filter(n => n.nodeType === 1);
+              if (added.some(n => n.tagName === 'IMG' || n.querySelector?.('img'))) {
+                added.forEach(n => {
+                  if (n.tagName === 'IMG') applyBlurReveal(n.parentNode || document.body);
+                  else applyBlurReveal(n);
+                });
+              }
+            }
+          });
+          bodyObs.observe(document.body, { childList: true, subtree: true });
+        }
+      };
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go);
+      else go();
+    })();
+
     /* 画像のライセンスを <figcaption> として付与（build.js の image_licenses 埋め込みを利用） */
     function enhanceImagesWithLicenses(container, imageLicenses) {
-      if (!container || !imageLicenses) return;
+      if (!container) return;
+      if (!imageLicenses) { applyBlurReveal(container); return; }
       const imgs = container.querySelectorAll('img');
       imgs.forEach(img => {
         const src = img.getAttribute('src') || '';
@@ -2346,6 +2720,7 @@
           figure.appendChild(ph);
         };
       });
+      applyBlurReveal(container);
     }
 
     /* ── 数式変換（KaTeX） ── $$...$$ ブロック → $...$ インライン の順に処理 */
@@ -3840,7 +4215,8 @@
 
         if (_animMode === 'instant') {
           renderMarkdown(contentEl, fullText);
-          if (typeof enhanceImagesWithLicenses === 'function' && imageLicenses) enhanceImagesWithLicenses(contentEl, imageLicenses);
+          if (typeof enhanceImagesWithLicenses === 'function') enhanceImagesWithLicenses(contentEl, imageLicenses);
+          else if (typeof applyBlurReveal === 'function') applyBlurReveal(contentEl);
           if (onDone) onDone();
           return;
         }
@@ -3851,7 +4227,8 @@
           function nextLine() {
             if (lineIdx >= lines.length) {
               renderMarkdown(contentEl, fullText);
-              if (typeof enhanceImagesWithLicenses === 'function' && imageLicenses) enhanceImagesWithLicenses(contentEl, imageLicenses);
+              if (typeof enhanceImagesWithLicenses === 'function') enhanceImagesWithLicenses(contentEl, imageLicenses);
+          else if (typeof applyBlurReveal === 'function') applyBlurReveal(contentEl);
               if (onDone) onDone();
               return;
             }
@@ -3878,7 +4255,8 @@
             setTimeout(tick, Math.random() * 20 + 8);
           } else {
             renderMarkdown(contentEl, fullText);
-            if (typeof enhanceImagesWithLicenses === 'function' && imageLicenses) enhanceImagesWithLicenses(contentEl, imageLicenses);
+            if (typeof enhanceImagesWithLicenses === 'function') enhanceImagesWithLicenses(contentEl, imageLicenses);
+          else if (typeof applyBlurReveal === 'function') applyBlurReveal(contentEl);
             if (onDone) onDone();
           }
         }
