@@ -3815,6 +3815,7 @@
         const LINE_HEIGHT = 15 * 1.8;
         const THRESHOLD = LINE_HEIGHT * 10; // ≈270px
         let overflowShown = false;
+        let aiExpanded = false;
 
         function checkOverflow() {
           if (overflowShown) return;
@@ -3825,14 +3826,42 @@
           }
         }
 
+        function scheduleOverflowCheck() {
+          requestAnimationFrame(() => checkOverflow());
+          setTimeout(() => checkOverflow(), 120);
+        }
+
+        function bindImageOverflowWatchers() {
+          aiProse.querySelectorAll('img').forEach(img => {
+            if (img.dataset.overflowBound) return;
+            img.dataset.overflowBound = '1';
+            img.addEventListener('load', scheduleOverflowCheck);
+            img.addEventListener('error', scheduleOverflowCheck);
+            if (img.complete) scheduleOverflowCheck();
+          });
+        }
+
         // expand / collapse トグル
-        let aiExpanded = false;
         aiExpandBtn.addEventListener('click', () => {
           aiExpanded = !aiExpanded;
           aiCollapse.classList.toggle('expanded', aiExpanded);
           aiFade.style.opacity = aiExpanded ? '0' : '1';
           aiExpandBtn.textContent = aiExpanded ? '折りたたむ ▴' : '続きを読む ▾';
         });
+
+        if (typeof ResizeObserver !== 'undefined') {
+          const ro = new ResizeObserver(() => scheduleOverflowCheck());
+          ro.observe(aiProse);
+          ro.observe(aiCollapse);
+        }
+        if (typeof MutationObserver !== 'undefined') {
+          const mo = new MutationObserver(() => {
+            bindImageOverflowWatchers();
+            scheduleOverflowCheck();
+          });
+          mo.observe(aiProse, { childList: true, subtree: true });
+        }
+        window.addEventListener('resize', scheduleOverflowCheck);
 
         // ストリーミング
         let aiStreamTimer = null;
@@ -3842,19 +3871,23 @@
 
         function aiTick() {
           if (_animMode === 'instant') {
-            // 即時表示
+            // fastモード: 最初から全文表示。枠をはみ出すなら最初の時点でボタンを出す
             aiProse.innerHTML = mdToSafeHtml(fullText);
             enhanceImagesWithLicenses(aiProse, topLicenses);
+            bindImageOverflowWatchers();
             checkOverflow();
+            scheduleOverflowCheck();
           } else if (_animMode === 'line') {
-            // 行単位：改行ごとに一括表示
+            // 行単位ストリーミング: はみ出した時点でボタンを出す
             const lines = fullText.split('\n');
             let lineIdx = 0;
             function nextLine() {
               if (lineIdx >= lines.length) {
                 aiProse.innerHTML = mdToSafeHtml(fullText);
                 enhanceImagesWithLicenses(aiProse, topLicenses);
+                bindImageOverflowWatchers();
                 checkOverflow();
+                scheduleOverflowCheck();
                 return;
               }
               aiBuf += (lineIdx > 0 ? '\n' : '') + lines[lineIdx++];
@@ -3864,7 +3897,7 @@
             }
             nextLine();
           } else {
-            // 文字単位（デフォルト）
+            // 文字単位ストリーミング（デフォルト）: はみ出した時点でボタンを出す
             if (aiIdx < fullText.length) {
               const chunk = Math.floor(Math.random() * 3) + 1;
               aiBuf += fullText.slice(aiIdx, aiIdx + chunk);
@@ -3875,7 +3908,9 @@
             } else {
               aiProse.innerHTML = mdToSafeHtml(fullText);
               enhanceImagesWithLicenses(aiProse, topLicenses);
+              bindImageOverflowWatchers();
               checkOverflow();
+              scheduleOverflowCheck();
             }
           }
         }
