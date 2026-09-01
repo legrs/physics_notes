@@ -1,5 +1,5 @@
 /*
-   Copyright 2026 Igarin & Legrs
+   Copyright 2026 legrs4073
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -16,8 +16,9 @@
 
 #import "@preview/physica:0.9.5": *
 #import "@preview/unify:0.7.1": *
-#import "@preview/cetz:0.4.2"
+#import "@preview/cetz:0.5.2": canvas, draw
 #import "phy.typ": *
+#import "@preview/cetz-plot:0.1.4": plot
 
 #set page(
   paper: "a4",
@@ -2704,23 +2705,106 @@ $M$ is called *matural inductance*.
     #cetz.canvas({
       import cetz.draw: *
 
-      rect((-2,6),(2,2))
-      rect((-2,-2),(2,-6))
+      //rect((-2,6),(2,2))
+      //rect((-2,-2),(2,-6))
 
-      line((-1,-2),(-1,2),mark:(end:">",fill:blue),stroke:(paint:blue))
-      line((0,-2),(0,2),mark:(end:">",fill:blue),stroke:(paint:blue))
-      line((1,-2),(1,2),mark:(end:">",fill:blue),stroke:(paint:blue))
+      //line((-1,-2),(-1,2),mark:(end:">",fill:blue),stroke:(paint:blue))
+      //line((0,-2),(0,2),mark:(end:">",fill:blue),stroke:(paint:blue))
+      //line((1,-2),(1,2),mark:(end:">",fill:blue),stroke:(paint:blue))
 
-      circle((0,0),radius:0.1)
-      line((-1.4,-1.4),(1.4,1.4),stroke:(paint:gray,thickness:0.1))
+      //circle((0,0),radius:0.1)
+      //line((-1.4,-1.4),(1.4,1.4),stroke:(paint:gray,thickness:0.1))
 
-      content((5,0),[←rotate this])
+      //content((5,0),[←rotate this])
+
+      line((-2,-2),(-2,2),stroke:(paint:gray,thickness:0.1))
+      line((-2,2),(2,2),stroke:(paint:gray,thickness:0.1))
+      line((-2,-2),(2,-2),stroke:(paint:gray,thickness:0.1))
+
+      line((2,-2),(2,-0.3),stroke:(paint:gray,thickness:0.1))
+      line((2,2),(2,0.3),stroke:(paint:gray,thickness:0.1))
+
+      line((3,-0.3),(2,-0.3),stroke:(paint:gray,thickness:0.1))
+      line((3,0.3),(2,0.3),stroke:(paint:gray,thickness:0.1))
+
+      line((4,0),(-3,0),mark:(end:">",fill:black))
+      content((-3.5,0.5),[rotate $bold(omega)$])
+
+      circle((-4,2),radius:0.2,fill:white,stroke:(paint:blue,thickness:0.05))
+      circle((-4,2),radius:0.1,fill:blue,stroke:(paint:blue,thickness:0))
+      content((-4,1.5),text(fill:blue)[$bold(B)$])
+
+      line((-1.5,2),(-1.5,0),mark:(start:">",end:">",fill:black))
+      content((-1.5,1),highlight(fill:white)[　])
+      content((-1.5,1),[$bold(r)$])
+
+      line((-2,2.5),(2,2.5),mark:(start:">",end:">",fill:black))
+      content((0,2.5),highlight(fill:white)[　])
+      content((0,2.5),[$bold(l)$])
     })
   ]
 ])
+$V = 2 v B l sin theta , v = r omega$　Thus,
+$
+  bold(V = 2 r omega B l dot sin omega t)
+$
+
+#pagebreak()
+== Effective value
+#text(size:10pt)[( かなり遅れてるので図はスキップ．ごめんなさいにょ )]\
+$I = V/R = I_0 sin omega t) $
+($I_0$ is max current)
+
+$P = I V = I_0 V_0 sin^2 omega t = (I_0 V_0)/2 ( 1 - 2 cos omega t )\
+$\
+Therefore, mean power(effective power) $macron(P) = 1/2 I_0 V_0$\
+effective voltage and current is 
+$
+  bold(V_e = 1/sqrt(2) V_0),\
+  bold(I_e = 1/sqrt(2) I_0),\
+  bold((  macron(P) = I_e V_e))\
+  bold(V_e = R I_e)
+$
+
 
 
 == Transformer
+
+== A.C and Coil
+
+
+#align(center)[
+  #canvas({
+    import draw: *
+  
+    // Set-up a thin axis style
+    //set-style(axes: (stroke: .5pt, tick: (stroke: .5pt)),
+    //          legend: (stroke: none, orientation: ttb, item: (spacing: .3), scale: 80%))
+
+    let sin_p(x) = 0.6 * calc.sin(x + calc.pi/2)
+  
+    plot.plot(size: (12, 8),
+      x-tick-step: calc.pi/2,
+      x-format: plot.formats.multiple-of,
+      y-tick-step: 2, y-min: -2.5, y-max: 2.5,
+      legend: "inner-north",
+      {
+        plot.add(calc.sin, domain: (0, +2.5 * calc.pi), style: (stroke: black))
+        plot.add(sin_p, domain: (0, +2.5 * calc.pi), style: (stroke: red))
+      })
+  })
+]
+#text(size:10pt)[( cetz-plotとかいうものを入れてみたが，カスタマイズ性がない )]
+
+== A.C and Capacitor
+$V_C = V_0 sin omega t\
+I_C = (d Q)/(d t) = C dot (d V_C)/(d t) = C omega V_0 cos omega t$
+
+( phase shift $-pi / 2$ )
+
+
+
+
 
 
 
