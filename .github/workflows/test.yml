@@ -435,7 +435,17 @@ jobs:
           # The rustc invocation hard-codes -L .../clang/21/lib/darwin but the 20260901 image
           # is missing that directory (ld: library 'clang_rt.osx' not found). Repair by
           # symlinking the actual clang version's darwin libs to the expected 21 path.
-          CLANG_BASE="/Applications/Xcode_27_beta_4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang"
+          # Detect installed Xcode 27 app dynamically (beta_4, beta_6, or future) instead of hard-coding.
+          XCODE_APP=$(ls -d /Applications/Xcode_27*.app 2>/dev/null | head -n1)
+          if [ -z "$XCODE_APP" ]; then
+            XCODE_APP=$(dirname $(dirname $(xcode-select -p 2>/dev/null || echo "/Applications/Xcode.app")))
+            echo "Fallback XCODE_APP from xcode-select: $XCODE_APP"
+          fi
+          if [ -z "$XCODE_APP" ] || [ ! -d "$XCODE_APP" ]; then
+            XCODE_APP="/Applications/Xcode_27_beta_4.app"
+          fi
+          CLANG_BASE="$XCODE_APP/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang"
+          echo "Using CLANG_BASE=$CLANG_BASE (XCODE_APP=$XCODE_APP)"
           echo "Listing $CLANG_BASE:"
           ls -la "$CLANG_BASE" 2>&1 | head -n 100 || true
           find "$CLANG_BASE" -maxdepth 2 -type d -name "darwin" 2>/dev/null | head -n 20 || true

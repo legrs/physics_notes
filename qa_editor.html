@@ -1314,11 +1314,78 @@
       'id', 'questions', 'answer', 'description',
       'keywords', 'synonyms', 'category', 'difficulty',
       'priority', 'related', 'updated_at', 'search_text', '_note',
+      'image_licenses',
     ];
 
     // search_text は node scripts/build.js が自動生成するため、リモートとの
     // 差分判定・「差分のみ表示」フィルタの対象からは除外する。
     const DIFF_FIELDS = FIELD_ORDER.filter(f => f !== 'search_text');
+
+    // answer から qa_images 参照を抽出（build.js の extractImageSrcsForLicenses と同ロジック）
+    function extractImageSrcs(answer) {
+      if (!answer || typeof answer !== 'string') return [];
+      const fenceRe = /```[\s\S]*?```|`[^`]*`/g;
+      const ranges = [];
+      let m;
+      while ((m = fenceRe.exec(answer)) !== null) ranges.push([m.index, m.index + m[0].length]);
+      const inFence = (pos) => ranges.some(([s, e]) => pos >= s && pos < e);
+      const srcs = [];
+      const mdRe = /!\[([^\]]*)\]\(\s*([^\s)]+)(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)/g;
+      while ((m = mdRe.exec(answer)) !== null) {
+        if (inFence(m.index)) continue;
+        const src = m[2];
+        if (src.startsWith('qa_images/')) srcs.push(src);
+      }
+      const htmlRe = /<img\b[^>]*>/gi;
+      while ((m = htmlRe.exec(answer)) !== null) {
+        if (inFence(m.index)) continue;
+        const tag = m[0];
+        const sm = tag.match(/\ssrc\s*=\s*(['"])(.*?)\1/i) || tag.match(/\ssrc\s*=\s*([^\s>]+)/i);
+        const src = sm ? (sm[2] || sm[1]) : null;
+        if (src && src.startsWith('qa_images/')) srcs.push(src);
+      }
+      return [...new Set(srcs)];
+    }
+
+    function normalizeImageLicenses(raw) {
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+      const out = {};
+      for (const [k, v] of Object.entries(raw)) {
+        if (!k || typeof k !== 'string') continue;
+        if (v == null || typeof v !== 'object' || Array.isArray(v)) {
+          if (typeof v === 'string' && v) out[k] = { license: String(v) };
+          continue;
+        }
+        const lic = {};
+        if (v.license != null && String(v.license)) lic.license = String(v.license);
+        if (v.attribution != null && String(v.attribution)) lic.attribution = String(v.attribution);
+        if (v.url != null && String(v.url)) lic.url = String(v.url);
+        if (Object.keys(lic).length) out[k] = lic;
+        else out[k] = { license: '' };
+      }
+      return Object.keys(out).length ? out : undefined;
+    }
+
+    function syncImageLicenses(item) {
+      if (!item) return;
+      const srcs = extractImageSrcs(item.answer || '');
+      if (!srcs.length) {
+        if ('image_licenses' in item) delete item.image_licenses;
+        return;
+      }
+      if (!item.image_licenses || typeof item.image_licenses !== 'object' || Array.isArray(item.image_licenses)) {
+        item.image_licenses = {};
+      }
+      for (const k of Object.keys(item.image_licenses)) {
+        if (!srcs.includes(k)) delete item.image_licenses[k];
+      }
+      for (const src of srcs) {
+        if (!(src in item.image_licenses)) {
+          item.image_licenses[src] = { license: '2026 © Igarin & Legrs. All rights reserved.' };
+        }
+      }
+      if (!Object.keys(item.image_licenses).length) delete item.image_licenses;
+    }
 
     let allData = [];
     let selectedId = null;
@@ -1337,7 +1404,7 @@
 
     function normalizeItem(raw) {
       raw = raw || {};
-      return {
+      const item = {
         id: raw.id != null ? String(raw.id) : '',
         questions: Array.isArray(raw.questions) ? raw.questions.slice()
           : (raw.questions ? [String(raw.questions)] : []),
@@ -1354,6 +1421,9 @@
         search_text: raw.search_text != null ? String(raw.search_text) : '',
         _note: raw._note != null ? String(raw._note) : '',
       };
+      const il = normalizeImageLicenses(raw.image_licenses);
+      if (il) item.image_licenses = il;
+      return item;
     }
 
     function getSelectedItem() {
@@ -1786,7 +1856,14 @@
     document.getElementById('answer-input').addEventListener('input', e => {
       const item = getSelectedItem();
       if (!item) return;
+      const prevSrcs = extractImageSrcs(item.answer || '');
       item.answer = e.target.value;
+      const nextSrcs = extractImageSrcs(item.answer || '');
+      const srcsChanged = JSON.stringify(prevSrcs) !== JSON.stringify(nextSrcs);
+      if (srcsChanged) {
+        syncImageLicenses(item);
+        if (rightTab === 'detail') renderDetailForm();
+      }
       markDirty();
       scheduleLiveRender();
     });
@@ -1807,7 +1884,13 @@
         const pos = start + template.length;
         input.selectionStart = input.selectionEnd = pos;
       }
+      const prevSrcs = extractImageSrcs(item.answer || '');
       item.answer = input.value;
+      const nextSrcs = extractImageSrcs(item.answer || '');
+      if (JSON.stringify(prevSrcs) !== JSON.stringify(nextSrcs)) {
+        syncImageLicenses(item);
+        if (rightTab === 'detail') renderDetailForm();
+      }
       markDirty();
       scheduleLiveRender();
       input.focus();
@@ -1838,7 +1921,13 @@
 
     function orderFields(item) {
       const ordered = {};
-      FIELD_ORDER.forEach(k => { ordered[k] = item[k]; });
+      FIELD_ORDER.forEach(k => {
+        // image_licenses は画像がある場合のみ出力（undefined は JSON.stringify で自動省略されるが明示的に除外して順序を安定させる）
+        if (k === 'image_licenses' && !item[k]) return;
+        ordered[k] = item[k];
+      });
+      // 後方互換: FIELD_ORDER に無い image_licenses が残っている場合も拾う
+      if (item.image_licenses && !('image_licenses' in ordered)) ordered.image_licenses = item.image_licenses;
       return ordered;
     }
 
@@ -1848,9 +1937,14 @@
 
       if (codeMode === 'all') {
         codeOut.textContent = JSON.stringify(allData.map(orderFields), null, 4);
-        hint.textContent = allData.length
+        const totalImages = allData.reduce((sum, it) => sum + extractImageSrcs(it.answer || '').length, 0);
+        const withImages = allData.filter(it => extractImageSrcs(it.answer || '').length).length;
+        const base = allData.length
           ? `全 ${allData.length} 件。q_and_a_data.json をこの内容でそのまま置き換えられます`
           : 'データがありません';
+        hint.textContent = totalImages
+          ? `${base}（画像: ${totalImages}枚 / ${withImages}件）`
+          : base;
         return;
       }
 
@@ -1861,9 +1955,14 @@
         return;
       }
       codeOut.textContent = JSON.stringify(orderFields(item), null, 4);
-      hint.textContent = newIds.has(item.id)
+      const imgSrcs = extractImageSrcs(item.answer || '');
+      const imgInfo = imgSrcs.length
+        ? `（画像: ${imgSrcs.length}枚 — ${imgSrcs.map(s => s.split('/').pop()).join(', ')}）`
+        : '（画像なし）';
+      const baseHint = newIds.has(item.id)
         ? '新規項目: q_and_a_data.json 配列の末尾に貼り付けてください'
         : '既存項目: 同じ id を持つオブジェクトを置き換えてください';
+      hint.textContent = `${baseHint} ${imgInfo}`;
     }
 
     // ── 詳細タブ ────────────────────────────────────────────
@@ -2224,6 +2323,117 @@
       stNote.className = 'field-hint search-text-hint';
       stNote.textContent = 'search_text は node scripts/build.js が自動生成するため、ここでは編集しません（コードタブの値は貼り付け後に自動で上書きされます）。';
       container.appendChild(stNote);
+
+      // ── 画像ライセンス（answer 内の qa_images 参照ごとに編集欄） ──
+      syncImageLicenses(item);
+      const imgSrcs = extractImageSrcs(item.answer || '');
+      const imgWrap = document.createElement('div');
+      imgWrap.className = 'field';
+      imgWrap.style.marginTop = '18px';
+      imgWrap.style.paddingTop = '14px';
+      imgWrap.style.borderTop = '1px solid var(--border)';
+      const imgLabel = document.createElement('label');
+      imgLabel.textContent = `画像ライセンス (image_licenses) — ${imgSrcs.length}枚`;
+      imgWrap.appendChild(imgLabel);
+      const imgHint = document.createElement('div');
+      imgHint.className = 'field-hint';
+      if (imgSrcs.length) {
+        imgHint.textContent = 'この質問の answer 内で参照されている画像ごとにライセンス情報を編集できます。空欄の attribution/url は省略されます。';
+      } else {
+        imgHint.textContent = 'answer 内に qa_images/ 参照がありません。画像を追加するとここにライセンス欄が表示されます。記法例: ![説明](qa_images/<uuid>.jpg)';
+      }
+      imgWrap.appendChild(imgHint);
+
+      if (imgSrcs.length) {
+        imgSrcs.forEach(src => {
+          const entry = document.createElement('div');
+          entry.style.cssText = 'border:1px solid var(--border-mid); border-radius:8px; padding:10px 12px; margin-bottom:10px; background:var(--bg-surface)';
+          const srcLabel = document.createElement('div');
+          srcLabel.style.cssText = 'font-size:11px; font-family:ui-monospace, monospace; color:var(--text-secondary); word-break:break-all; margin-bottom:8px; font-weight:600';
+          srcLabel.textContent = src;
+          entry.appendChild(srcLabel);
+
+          const lic = (item.image_licenses && item.image_licenses[src]) || { license: '' };
+
+          // license
+          const licField = document.createElement('div');
+          licField.style.marginBottom = '8px';
+          const licLab = document.createElement('label');
+          licLab.textContent = 'license';
+          licLab.style.cssText = 'font-size:11px; font-weight:700; display:block; margin-bottom:3px; color:var(--text-primary)';
+          licField.appendChild(licLab);
+          const licInput = document.createElement('input');
+          licInput.type = 'text';
+          licInput.className = 'field-input';
+          licInput.placeholder = '例: CC BY-SA 4.0 / 2026 © Igarin & Legrs. All rights reserved.';
+          licInput.value = lic.license || '';
+          licInput.addEventListener('input', () => {
+            if (!item.image_licenses) item.image_licenses = {};
+            if (!item.image_licenses[src]) item.image_licenses[src] = {};
+            const v = licInput.value.trim();
+            if (v) item.image_licenses[src].license = v;
+            else item.image_licenses[src].license = '';
+            // 空の license は許容するが、完全に空なら削除はしない（データ整合性のため残す）
+            markDirty();
+            renderCode();
+            if (rightTab === 'preview') renderPreview();
+          });
+          licField.appendChild(licInput);
+          entry.appendChild(licField);
+
+          // attribution
+          const attrField = document.createElement('div');
+          attrField.style.marginBottom = '8px';
+          const attrLab = document.createElement('label');
+          attrLab.textContent = 'attribution';
+          attrLab.style.cssText = 'font-size:11px; font-weight:700; display:block; margin-bottom:3px; color:var(--text-primary)';
+          attrField.appendChild(attrLab);
+          const attrInput = document.createElement('input');
+          attrInput.type = 'text';
+          attrInput.className = 'field-input';
+          attrInput.placeholder = '例: 出典: 教科書p42 / 撮影: Igarin';
+          attrInput.value = lic.attribution || '';
+          attrInput.addEventListener('input', () => {
+            if (!item.image_licenses) item.image_licenses = {};
+            if (!item.image_licenses[src]) item.image_licenses[src] = { license: licInput.value.trim() };
+            const v = attrInput.value.trim();
+            if (v) item.image_licenses[src].attribution = v;
+            else delete item.image_licenses[src].attribution;
+            markDirty();
+            renderCode();
+            if (rightTab === 'preview') renderPreview();
+          });
+          attrField.appendChild(attrInput);
+          entry.appendChild(attrField);
+
+          // url
+          const urlField = document.createElement('div');
+          const urlLab = document.createElement('label');
+          urlLab.textContent = 'url';
+          urlLab.style.cssText = 'font-size:11px; font-weight:700; display:block; margin-bottom:3px; color:var(--text-primary)';
+          urlField.appendChild(urlLab);
+          const urlInput = document.createElement('input');
+          urlInput.type = 'text';
+          urlInput.className = 'field-input';
+          urlInput.placeholder = '例: https://example.com';
+          urlInput.value = lic.url || '';
+          urlInput.addEventListener('input', () => {
+            if (!item.image_licenses) item.image_licenses = {};
+            if (!item.image_licenses[src]) item.image_licenses[src] = { license: licInput.value.trim() };
+            const v = urlInput.value.trim();
+            if (v) item.image_licenses[src].url = v;
+            else delete item.image_licenses[src].url;
+            markDirty();
+            renderCode();
+            if (rightTab === 'preview') renderPreview();
+          });
+          urlField.appendChild(urlInput);
+          entry.appendChild(urlField);
+
+          imgWrap.appendChild(entry);
+        });
+      }
+      container.appendChild(imgWrap);
     }
 
     // ── タブ切替（プレビュー / 詳細 / コード） ────────────────

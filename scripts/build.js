@@ -325,9 +325,18 @@ function injectImageLicenses(data) {
     const map = {};
     for (const src of srcs) {
       const bn = path.basename(src);
-      let lic = licenses[src] || licenses[bn] || licenses['qa_images/' + bn];
-      if (!lic) lic = def;
-      map[src] = lic;
+      // licenses.json にファイル固有の明示的エントリがあれば最優先
+      const explicit = licenses[src] || licenses[bn] || licenses['qa_images/' + bn];
+      if (explicit) {
+        map[src] = explicit;
+        continue;
+      }
+      // qa_editor での per-record 編集を保持（_default より優先）
+      if (item.image_licenses && item.image_licenses[src] && item.image_licenses[src].license) {
+        map[src] = item.image_licenses[src];
+        continue;
+      }
+      map[src] = def;
     }
     const newStr = JSON.stringify(map);
     const oldStr = item.image_licenses ? JSON.stringify(item.image_licenses) : null;
