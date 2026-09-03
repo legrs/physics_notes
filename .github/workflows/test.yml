@@ -329,9 +329,6 @@ jobs:
     name: physq (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
-    # xcode-27 beta image is currently broken (clang_rt.osx missing, 20260901.0153).
-    # Don't let a single beta failure block the whole gate, but keep testing it.
-    continue-on-error: ${{ matrix.os == 'xcode-27' }}
     strategy:
       fail-fast: false
       matrix:
@@ -430,6 +427,63 @@ jobs:
           echo "ORT_LIB_LOCATION=$LIB_DIR" >> "$GITHUB_ENV"
           echo "ORT_PREFER_DYNAMIC_LINK=1" >> "$GITHUB_ENV"
           echo "DYLD_LIBRARY_PATH=$LIB_DIR" >> "$GITHUB_ENV"
+      - name: Fix Xcode 27 clang_rt (xcode-27 only)
+        if: matrix.os == 'xcode-27'
+        run: |
+          set -x
+          echo "=== Xcode 27 beta clang fix ==="
+          # The rustc invocation hard-codes -L .../clang/21/lib/darwin but the 20260901 image
+          # is missing that directory (ld: library 'clang_rt.osx' not found). Repair by
+          # symlinking the actual clang version's darwin libs to the expected 21 path.
+          CLANG_BASE="/Applications/Xcode_27_beta_4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang"
+          echo "Listing $CLANG_BASE:"
+          ls -la "$CLANG_BASE" 2>&1 | head -n 100 || true
+          find "$CLANG_BASE" -maxdepth 2 -type d -name "darwin" 2>/dev/null | head -n 20 || true
+          find /Applications -name "libclang_rt.osx.a" 2>/dev/null | head -n 20 || true
+          # Find the actual version that contains darwin libs
+          ACTUAL=""
+          for d in "$CLANG_BASE"/*; do
+            [ -d "$d/lib/darwin" ] && ACTUAL=$(basename "$d") && break
+          done
+          if [ -z "$ACTUAL" ]; then
+            # Fallback: search via xcrun or brew llvm
+            ACTUAL=$(ls "$CLANG_BASE" 2>/dev/null | head -n1)
+          fi
+          echo "ACTUAL clang version: ${ACTUAL:-none}"
+          if [ -n "$ACTUAL" ] && [ "$ACTUAL" != "21" ] && [ -d "$CLANG_BASE/$ACTUAL/lib/darwin" ]; then
+            echo "Symlinking $ACTUAL -> 21"
+            sudo mkdir -p "$CLANG_BASE/21/lib"
+            sudo ln -sfn "$CLANG_BASE/$ACTUAL/lib/darwin" "$CLANG_BASE/21/lib/darwin"
+            ls -la "$CLANG_BASE/21/lib/darwin" 2>&1 | head -n 20 || true
+          elif [ ! -d "$CLANG_BASE/21/lib/darwin" ]; then
+            echo "21 darwin still missing, trying alternative locations"
+            # Check CommandLineTools
+            CLT_BASE="/Library/Developer/CommandLineTools/usr/lib/clang"
+            if [ -d "$CLT_BASE" ]; then
+              ls -la "$CLT_BASE" 2>&1 | head -n 20 || true
+              CLT_ACTUAL=$(ls "$CLT_BASE" 2>/dev/null | head -n1)
+              if [ -n "$CLT_ACTUAL" ] && [ -d "$CLT_BASE/$CLT_ACTUAL/lib/darwin" ]; then
+                sudo mkdir -p "$CLANG_BASE/21/lib"
+                sudo ln -sfn "$CLT_BASE/$CLT_ACTUAL/lib/darwin" "$CLANG_BASE/21/lib/darwin"
+                echo "Symlinked from CLT $CLT_ACTUAL"
+              fi
+            fi
+            # Last resort: brew llvm
+            if [ ! -d "$CLANG_BASE/21/lib/darwin" ]; then
+              echo "Installing llvm via brew as last resort"
+              brew install llvm 2>&1 | tail -n 20 || true
+              BREW_CLANG=$(ls /opt/homebrew/opt/llvm/lib/clang/ 2>/dev/null | head -n1)
+              if [ -n "$BREW_CLANG" ] && [ -d "/opt/homebrew/opt/llvm/lib/clang/$BREW_CLANG/lib/darwin" ]; then
+                sudo mkdir -p "$CLANG_BASE/21/lib"
+                sudo ln -sfn "/opt/homebrew/opt/llvm/lib/clang/$BREW_CLANG/lib/darwin" "$CLANG_BASE/21/lib/darwin"
+                echo "Symlinked from brew llvm $BREW_CLANG"
+              fi
+            fi
+          fi
+          echo "Final check:"
+          ls -la "$CLANG_BASE/21/lib/darwin/libclang_rt.osx.a" 2>&1 | head -n 5 || echo "still missing"
+          xcrun --show-sdk-path 2>&1 | head -n 5 || true
+          clang --version 2>&1 | head -n 5 || true
       - name: Dependency versions (proof of pin)
         working-directory: physq
         run: cargo tree -p fastembed -p ort -p ort-sys
