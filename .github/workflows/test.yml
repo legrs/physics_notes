@@ -492,6 +492,16 @@ jobs:
           fi
           echo "Final check:"
           ls -la "$CLANG_BASE/21/lib/darwin/libclang_rt.osx.a" 2>&1 | head -n 5 || echo "still missing"
+          # Also ensure the hard-coded beta_4 path that rustc still references is fixed (may differ from detected XCODE_APP)
+          BETA4_BASE="/Applications/Xcode_27_beta_4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang"
+          if [ "$CLANG_BASE" != "$BETA4_BASE" ] && [ -d "$CLANG_BASE/21/lib/darwin" ] && [ ! -d "$BETA4_BASE/21/lib/darwin" ]; then
+            echo "Also fixing hard-coded beta_4 path from $CLANG_BASE"
+            sudo mkdir -p "$BETA4_BASE/21/lib"
+            sudo ln -sfn "$CLANG_BASE/21/lib/darwin" "$BETA4_BASE/21/lib/darwin"
+            ls -la "$BETA4_BASE/21/lib/darwin" 2>&1 | head -n 5 || true
+          fi
+          echo "Final check beta_4:"
+          ls -la "$BETA4_BASE/21/lib/darwin/libclang_rt.osx.a" 2>&1 | head -n 5 || echo "beta_4 still missing"
           xcrun --show-sdk-path 2>&1 | head -n 5 || true
           clang --version 2>&1 | head -n 5 || true
       - name: Dependency versions (proof of pin)
