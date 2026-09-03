@@ -329,6 +329,9 @@ jobs:
     name: physq (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    # xcode-27 beta image is currently broken (clang_rt.osx missing, 20260901.0153).
+    # Don't let a single beta failure block the whole gate, but keep testing it.
+    continue-on-error: ${{ matrix.os == 'xcode-27' }}
     strategy:
       fail-fast: false
       matrix:
