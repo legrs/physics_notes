@@ -1905,7 +1905,9 @@ $
   bold(F = k_m dot (m_1 m_2) / r^2)
 $
 
-$m_1$,$m_2$ is *magnetic charge*.
+$m_1$,$m_2$ is *magnetic charge*.\
+#text(size:10pt)[($"磁力" = m H$この式はかなり微妙らしいので書かなかった．どちらかというと$"磁力" = m B$らしい．
+そもそも磁荷という存在が嘘みらしい)]
 
 === Magnetization
 - *magnetization* 磁化 - the phenomen of being polarized into N ans S by magnetic field.
@@ -2097,14 +2099,16 @@ $<solenoid>
   ]
 ])
 $
-  bb(F) = mu bb(I) times bb(H) dot l
+  bb(F) = bb(I) times mu bb(H) dot l
 $
 
 $bb(F)$ is force.
 The force depends on constant $mu$.
 
-$mu$ is *permeability*, which depends on substances.
-In vacuum, $mu = num("1.26e-6")  unit("N/A^2")$
+$mu$ is *permeability*, which depends on substances.\
+In vacuum, $mu = num("1.26e-6")  unit("N/A^2")$\
+*In ferromagnet, spin of electrons become aligned and amplify magnetic field* → $bold(mu bb(H))$.
+#text(size:10pt)[つまり実際に磁場は強くなっている．]
 
 In a uniform substance space, Let
 $bb(B) := mu bb(H)$
@@ -2708,17 +2712,6 @@ $M$ is called *matural inductance*.
     #cetz.canvas({
       import cetz.draw: *
 
-      //rect((-2,6),(2,2))
-      //rect((-2,-2),(2,-6))
-
-      //line((-1,-2),(-1,2),mark:(end:">",fill:blue),stroke:(paint:blue))
-      //line((0,-2),(0,2),mark:(end:">",fill:blue),stroke:(paint:blue))
-      //line((1,-2),(1,2),mark:(end:">",fill:blue),stroke:(paint:blue))
-
-      //circle((0,0),radius:0.1)
-      //line((-1.4,-1.4),(1.4,1.4),stroke:(paint:gray,thickness:0.1))
-
-      //content((5,0),[←rotate this])
 
       line((-2,-2),(-2,2),stroke:(paint:gray,thickness:0.1))
       line((-2,2),(2,2),stroke:(paint:gray,thickness:0.1))
@@ -2775,6 +2768,50 @@ $
 
 
 == Transformer
+#align(center,box(width:15cm, height:6cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      //変圧器って，コイルの鉄芯がループを描いていますが，絵を見ると
+      //磁束線？がそのループに沿って伸びているように描かれています．
+      //磁束密度は透磁率*磁場で表されると習いました．つまり鉄芯内部の磁束は単純に磁場のμ倍ということですよね．
+      //ならば鉄芯に沿って磁束密度ができるのは変ではないですか
+
+      //鉄は透磁率が大きいですが，これはつまり鉄の中の電荷はローレンツ力を受けやすい，ということですか？
+
+
+
+      line((-2,-2),(-2,2),stroke:(paint:gray,thickness:0.1))
+      line((-2,2),(2,2),stroke:(paint:gray,thickness:0.1))
+      line((-2,-2),(2,-2),stroke:(paint:gray,thickness:0.1))
+
+      line((2,-2),(2,-0.3),stroke:(paint:gray,thickness:0.1))
+      line((2,2),(2,0.3),stroke:(paint:gray,thickness:0.1))
+
+      line((3,-0.3),(2,-0.3),stroke:(paint:gray,thickness:0.1))
+      line((3,0.3),(2,0.3),stroke:(paint:gray,thickness:0.1))
+
+      line((4,0),(-3,0),mark:(end:">",fill:black))
+      content((-3.5,0.5),[rotate $bold(omega)$])
+
+      circle((-4,2),radius:0.2,fill:white,stroke:(paint:blue,thickness:0.05))
+      circle((-4,2),radius:0.1,fill:blue,stroke:(paint:blue,thickness:0))
+      content((-4,1.5),text(fill:blue)[$bold(B)$])
+
+      line((-1.5,2),(-1.5,0),mark:(start:">",end:">",fill:black))
+      content((-1.5,1),highlight(fill:white)[　])
+      content((-1.5,1),[$bold(r)$])
+
+      line((-2,2.5),(2,2.5),mark:(start:">",end:">",fill:black))
+      content((0,2.5),highlight(fill:white)[　])
+      content((0,2.5),[$bold(l)$])
+
+      line((3,0.3),(3,-0.3),mark:(start:">",end:">",fill:black))
+      content((3.5,0.3),[$bold(V)$])
+    })
+  ]
+])
 
 
 == A.C and Coil
@@ -2791,7 +2828,11 @@ $
 $
 
 $X_L = V_(L 0) / I_(L 0) = omega L$ is called *reactance*.
-the same unit $[Omega]$ is used for this.
+the same unit $[Omega]$ is used for this.\
+*This is not resistance,* bacause no energy is consumed in A.C. current.
+#text(size:10pt)[( Joule heatが発生しない上に，coiilにたまるenergyは平均的に0だから．reactanceは電圧から電流への応答性であって，energyを逃がすresistanceとは本質的に異なる )]
+
+
 
 
 #align(center)[
@@ -2833,6 +2874,9 @@ $
   bold(I_C = I_(C 0) sin omega t quad <=> quad V_C = - I_(C 0) X_C cos omega t)
 $
 reactance of capacitor $bold(X_C = 1 / (omega C))$
+
+== Impedance
+#text(size:10pt)[( cetz-plotとかいうものを入れてみたが，ややカスタマイズ性がないな　軸の変数がかえれらなーい )]
 
 
 
