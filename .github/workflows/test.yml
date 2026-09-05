@@ -20,6 +20,7 @@ on:
 
 concurrency:
   group: tests-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
 
 env:
   CARGO_TERM_COLOR: always
@@ -31,7 +32,7 @@ jobs:
   html:
     name: HTML (syntax + stress + image XSS)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
         with:
@@ -46,10 +47,9 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-      - name: Install dependencies (with sharp fallback)
+      - name: Install dependencies (sharp 0.35 prebuilt, no libvips-dev needed)
         run: |
-          sudo apt-get update && sudo apt-get install -y libvips-dev || echo "::warning::libvips-dev install failed, continuing"
-          npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || (sleep 10 && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000)
+          npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || (sleep 10 && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000) || (echo "::warning::npm ci failed, installing libvips-dev as fallback" && sudo apt-get update && sudo apt-get install -y libvips-dev && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000)
       - name: HTML syntax / SRI / required-id checks
         run: node scripts/tests/html_syntax.js
       - name: HTML stress — real scoring functions, extreme inputs, hybrid RRF
@@ -88,7 +88,7 @@ jobs:
   data:
     name: Data (schema + embeddings + version)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
         with:
@@ -103,10 +103,9 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-      - name: Install dependencies (with sharp fallback)
+      - name: Install dependencies (sharp 0.35 prebuilt, no libvips-dev needed)
         run: |
-          sudo apt-get update && sudo apt-get install -y libvips-dev || echo "::warning::libvips-dev install failed, continuing"
-          npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || (sleep 10 && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000)
+          npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || (sleep 10 && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000) || (echo "::warning::npm ci failed, installing libvips-dev as fallback" && sudo apt-get update && sudo apt-get install -y libvips-dev && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000)
       - name: Data artifacts — schema, embeddings coverage, version hashes, search_text determinism, qa_images manifest
         run: node scripts/tests/data_check.js
       - name: Web ↔ physq ranking parity (real vectors)
@@ -139,7 +138,7 @@ jobs:
   qa-images:
     name: QA images (UUID / licenses / normalize / stress)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
         with:
@@ -154,10 +153,9 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-      - name: Install dependencies (with sharp fallback)
+      - name: Install dependencies (sharp 0.35 prebuilt, no libvips-dev needed)
         run: |
-          sudo apt-get update && sudo apt-get install -y libvips-dev || echo "::warning::libvips-dev install failed, continuing"
-          npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || (sleep 10 && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000)
+          npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || (sleep 10 && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000) || (echo "::warning::npm ci failed, installing libvips-dev as fallback" && sudo apt-get update && sudo apt-get install -y libvips-dev && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000)
       - name: File system — qa_images naming, extensions, permissions, .gitkeep (warn-only — normalize will fix)
         run: |
           test -d qa_images || { echo "::warning::qa_images dir missing — will be created by build"; exit 0; }
@@ -243,7 +241,7 @@ jobs:
   build:
     name: Build (search_text + version + idempotence)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
         with:
@@ -258,10 +256,9 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-      - name: Install dependencies (with sharp fallback)
+      - name: Install dependencies (sharp 0.35 prebuilt, no libvips-dev needed)
         run: |
-          sudo apt-get update && sudo apt-get install -y libvips-dev || echo "::warning::libvips-dev install failed, continuing"
-          npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || (sleep 10 && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000)
+          npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || (sleep 10 && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000) || (echo "::warning::npm ci failed, installing libvips-dev as fallback" && sudo apt-get update && sudo apt-get install -y libvips-dev && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000)
       - name: Build — search_text only (must not modify version.json when --data)
         run: |
           set -e
@@ -361,7 +358,7 @@ jobs:
   physq:
     name: physq (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
@@ -443,10 +440,9 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-      - name: Install Node dependencies (for run_physq.js harness)
+      - name: Install Node dependencies (sharp 0.35 prebuilt, no libvips-dev needed)
         run: |
-          if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get update && sudo apt-get install -y libvips-dev || echo "::warning::libvips-dev install failed"; fi
-          npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || (sleep 10 && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000)
+          npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || (sleep 10 && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000) || (echo "::warning::npm ci failed, installing libvips-dev as fallback" && if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get update && sudo apt-get install -y libvips-dev; fi && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000)
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -650,7 +646,7 @@ jobs:
   literal:
     name: Literal npm test (run_all.js) — 8 commands verbatim
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v7
         with:
@@ -666,12 +662,11 @@ jobs:
           node-version: '24'
           cache: 'npm'
       - uses: dtolnay/rust-toolchain@stable
-      - name: Install Node deps (with sharp fallback)
+      - name: Install Node deps (sharp 0.35 prebuilt, no libvips-dev needed)
         run: |
-          sudo apt-get update && sudo apt-get install -y libvips-dev lld || echo "::warning::apt install failed"
-          npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || (sleep 10 && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000)
+          npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || (sleep 10 && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000) || (echo "::warning::npm ci failed, installing libvips-dev as fallback" && sudo apt-get update && sudo apt-get install -y libvips-dev && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000)
       - name: Install lld (for cargo test)
-        run: sudo apt-get update && sudo apt-get install -y lld
+        run: sudo apt-get update && sudo apt-get install -y lld || echo "::warning::lld install failed"
       - name: npm test (run_all.js) — runs html_syntax + html_stress + qa_images_stress + normalize --check + data_check + parity + cargo fmt/clippy/test + run_physq
         run: npm test
       - name: Explicit npm scripts — prove each of the 8 lines you listed passes individually

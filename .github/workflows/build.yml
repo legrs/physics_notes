@@ -57,12 +57,9 @@ jobs:
           restore-keys: |
             hf-models-${{ runner.os }}-
 
-      - name: Install dependencies (with sharp fallback)
+      - name: Install dependencies (sharp 0.35 prebuilt, no libvips-dev needed)
         run: |
-          # sharp 0.32.6 needs libvips headers if prebuild download times out (Node 24 + network flake).
-          # Install libvips-dev so the fallback `node-gyp rebuild` can succeed, and retry fetch.
-          sudo apt-get update && sudo apt-get install -y libvips-dev || echo "::warning::libvips-dev install failed, continuing"
-          npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || (sleep 10 && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000)
+          npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || (sleep 10 && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000) || (echo "::warning::npm ci failed, installing libvips-dev as fallback" && sudo apt-get update && sudo apt-get install -y libvips-dev && npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000)
 
       - name: Normalize qa_images filenames
         run: node scripts/normalize-images.js || { echo "::warning::normalize failed, skipping commit"; exit 0; }
