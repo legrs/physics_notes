@@ -2107,7 +2107,7 @@ The force depends on constant $mu$.
 
 $mu$ is *permeability*, which depends on substances.\
 In vacuum, $mu = num("1.26e-6")  unit("N/A^2")$\
-*In ferromagnet, spin of electrons become aligned and amplify magnetic field* → $bold(mu bb(H))$.
+*In ferromagnet, spin of electrons become aligned and amplify magnetic field* → $bold(~mu bb(H))$.
 #text(size:10pt)[つまり実際に磁場は強くなっている．]
 
 In a uniform substance space, Let
@@ -2116,7 +2116,7 @@ $bb(B) := mu bb(H)$
 
 $
   bb(F) = bb(I) times bb(B) l
-$
+$<magnetic_flux>
 
 $bb(B)$ is called *magnetic flux density*.\
 ( unit : Tesla $"[T] = [N / (A m)] = [Wb/""m"^2"]"$ )
@@ -2776,49 +2776,89 @@ $
       //変圧器って，コイルの鉄芯がループを描いていますが，絵を見ると
       //磁束線？がそのループに沿って伸びているように描かれています．
       //磁束密度は透磁率*磁場で表されると習いました．つまり鉄芯内部の磁束は単純に磁場のμ倍ということですよね．
-      //ならば鉄芯に沿って磁束密度ができるのは変ではないですか
 
-      //鉄は透磁率が大きいですが，これはつまり鉄の中の電荷はローレンツ力を受けやすい，ということですか？
+      rect((-3,-3),(3,3))
+      rect((-2,-2),(2,2))
+
+
+      line((-2.5,-2.5),(-2.5,0),stroke:(thickness:0.1,paint:blue),mark:(end:">",fill:blue))
+      line((-2.5,-1),(-2.5,2.5),stroke:(thickness:0.1,paint:blue))
+
+      line((-2.5,2.5),(0,2.5),stroke:(thickness:0.1,paint:blue),mark:(end:">",fill:blue))
+      line((-1,2.5),(2.5,2.5),stroke:(thickness:0.1,paint:blue))
+
+      line((2.5,2.5),(2.5,-0.0),stroke:(thickness:0.1,paint:blue),mark:(end:">",fill:blue))
+      line((2.5,1),(2.5,-2.5),stroke:(thickness:0.1,paint:blue))
+      
+      line((2.5,-2.5),(0,-2.5),stroke:(thickness:0.1,paint:blue),mark:(end:">",fill:blue))
+      line((1,-2.5),(-2.5,-2.5),stroke:(thickness:0.1,paint:blue))
+
+      let step = 0.4
+      let k = 0.8
+      for i in range(10){
+        line((-3.1,-1.8 + i*step),(-3 + k,-1.8 + (i+0.5*k)*step),stroke:(thickness:0.1,paint:red),mark:(end:">",fill:red))
+        line((-3 + (k -0.1),-1.8 + (i+0.5*(k -0.1))*step),(-1.9,-1.8 + (i+0.5)*step),stroke:(thickness:0.1,paint:red))
+      }
+      line((-3,-1.8),(-5.5,-1.8),stroke:(thickness:0.1,paint:red))
+      line((-3,2),(-5.5,2),stroke:(thickness:0.1,paint:red))
+
+      line((-5.5,-1.8),(-5.5,-0.5),stroke:(thickness:0.1,paint:red),mark:(end:"<",fill:red))
+      line((-5.5,2),(-5.5,0.5),stroke:(thickness:0.1,paint:red),mark:(end:">",fill:red))
+
+      circle((-5.5,0),radius:0.5,stroke:(thickness:0.05))
+      content((-5.5,0),text(size:25pt,weight:100)[〜])
+      content((-6.5,0),text(fill:black)[$bold(V_0)$])
 
 
 
-      line((-2,-2),(-2,2),stroke:(paint:gray,thickness:0.1))
-      line((-2,2),(2,2),stroke:(paint:gray,thickness:0.1))
-      line((-2,-2),(2,-2),stroke:(paint:gray,thickness:0.1))
 
-      line((2,-2),(2,-0.3),stroke:(paint:gray,thickness:0.1))
-      line((2,2),(2,0.3),stroke:(paint:gray,thickness:0.1))
+      for i in range(5){
+        line((1.9,-1.8+ 2.5*step + (i)*step),(3.1,-1.8 + 2.5*step + (i+0.5)*step),stroke:(thickness:0.1))
+      }
+      line((3,-1.8+2.5*step),(5,-1.8+2.5*step),stroke:(thickness:0.1))
+      line((3,-1.8 + 2.5*step + 4.5*step),(5,-1.8 + 2.5*step + 4.5*step),stroke:(thickness:0.1))
 
-      line((3,-0.3),(2,-0.3),stroke:(paint:gray,thickness:0.1))
-      line((3,0.3),(2,0.3),stroke:(paint:gray,thickness:0.1))
+      content((-1.5,0),text(fill:black)[$bold(N_1)$])
+      content((1.5,0),text(fill:black)[$bold(N_2)$])
 
-      line((4,0),(-3,0),mark:(end:">",fill:black))
-      content((-3.5,0.5),[rotate $bold(omega)$])
+      line((-4.5,-1.5),(-3.5,-1.5),stroke:(thickness:0.05,paint:red),mark:(end:">",fill:red))
+      content((-4,-1.0),text(fill:red)[$bold(I_1)$])
 
-      circle((-4,2),radius:0.2,fill:white,stroke:(paint:blue,thickness:0.05))
-      circle((-4,2),radius:0.1,fill:blue,stroke:(paint:blue,thickness:0))
-      content((-4,1.5),text(fill:blue)[$bold(B)$])
+      line((-4.8,2),(-4.8,-1.8),stroke:(thickness:0.05,paint:black),mark:(end:">",fill:black))
+      content((-4.5,0),text(fill:black)[$bold(V_1)$])
 
-      line((-1.5,2),(-1.5,0),mark:(start:">",end:">",fill:black))
-      content((-1.5,1),highlight(fill:white)[　])
-      content((-1.5,1),[$bold(r)$])
 
-      line((-2,2.5),(2,2.5),mark:(start:">",end:">",fill:black))
-      content((0,2.5),highlight(fill:white)[　])
-      content((0,2.5),[$bold(l)$])
+      line((4.4,-0.6),(3.3,-0.6),mark:(end:">",fill:black))
+      content((3.8,-0.2),text(fill:black)[$I_2$])
 
-      line((3,0.3),(3,-0.3),mark:(start:">",end:">",fill:black))
-      content((3.5,0.3),[$bold(V)$])
+      line((4.8,1.0),(4.8,-0.8),stroke:(thickness:0.05,paint:black),mark:(start:">",fill:black))
+      content((4.4,0),text(fill:black)[$bold(V_2)$])
+
+
+
+
+
     })
   ]
 ])
+#text(size:10pt)[( 鉄芯に沿って磁束がループを描くことが前提．$bb(B)$は厳密に$bb(H)$のscalar倍ではなく，鉄の強い磁化によってvectorが歪められる．ってことは@magnetic_flux のあたり嘘か… )]\
+#text(size:10pt)[ coilのまく向き注意！このnoteに書いたFaradayの法則は左回転(巻く過程での全体的な進行方向を回転ベクトルとした巻き方)でのもの． ]
+
+$V_1 = - N_1 dot (Delta Phi)/(Delta t),quad
+V_2 = - N_2 dot (Delta Phi)/(Delta t)
+$\
+Therefore,
+$
+  bold(V_1 : V_2 = N_1 : N_2)
+$
+
 
 
 == A.C and Coil
 When $I_L = I_(L 0) sin omega t$,
 
 #v(1em)
-$V_L = L dot d I_(L 0) / (d t) quad ( because $@self-induction$)$
+$V_L = L dot (d I_(L 0)) / (d t) quad ( because $@self-induction$)$
 #v(0.7em)
 $quad med med = L dot I_(L 0) omega cos omega t\
 quad med med = I_(L 0) X_L cos omega t
@@ -2835,28 +2875,28 @@ the same unit $[Omega]$ is used for this.\
 
 
 
-#align(center)[
-  #canvas({
-    import draw: *
-  
-    // Set-up a thin axis style
-    //set-style(axes: (stroke: .5pt, tick: (stroke: .5pt)),
-    //          legend: (stroke: none, orientation: ttb, item: (spacing: .3), scale: 80%))
-
-    let sin_p(x) = 0.6 * calc.sin(x + calc.pi/2)
-  
-    plot.plot(size: (12, 8),
-      x-tick-step: calc.pi/2,
-      x-format: plot.formats.multiple-of,
-      y-tick-step: 2, y-min: -2.5, y-max: 2.5,
-      legend: "inner-north",
-      {
-        plot.add(calc.sin, domain: (0, +2.5 * calc.pi), style: (stroke: black))
-        plot.add(sin_p, domain: (0, +2.5 * calc.pi), style: (stroke: red))
-      })
-  })
-]
-#text(size:10pt)[( cetz-plotとかいうものを入れてみたが，ややカスタマイズ性がないな　軸の変数がかえれらなーい )]
+//#align(center)[
+//  #canvas({
+//    import draw: *
+//  
+//    // Set-up a thin axis style
+//    //set-style(axes: (stroke: .5pt, tick: (stroke: .5pt)),
+//    //          legend: (stroke: none, orientation: ttb, item: (spacing: .3), scale: 80%))
+//
+//    let sin_p(x) = 0.6 * calc.sin(x + calc.pi/2)
+//  
+//    plot.plot(size: (12, 8),
+//      x-tick-step: calc.pi/2,
+//      x-format: plot.formats.multiple-of,
+//      y-tick-step: 2, y-min: -2.5, y-max: 2.5,
+//      legend: "inner-north",
+//      {
+//        plot.add(calc.sin, domain: (0, +2.5 * calc.pi), style: (stroke: black))
+//        plot.add(sin_p, domain: (0, +2.5 * calc.pi), style: (stroke: red))
+//      })
+//  })
+//]
+//#text(size:10pt)[( cetz-plotとかいうものを入れてみたが，ややカスタマイズ性がないな　軸の変数がかえれらなーい )]
 
 == A.C and Capacitor
 When$V_C = V_(C 0) sin omega t$,
@@ -2876,7 +2916,6 @@ $
 reactance of capacitor $bold(X_C = 1 / (omega C))$
 
 == Impedance
-#text(size:10pt)[( cetz-plotとかいうものを入れてみたが，ややカスタマイズ性がないな　軸の変数がかえれらなーい )]
 
 
 
