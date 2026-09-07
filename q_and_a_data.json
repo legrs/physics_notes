@@ -6978,10 +6978,10 @@
         "answer": "bee。\n\nbeatlesはカブトムシ。",
         "description": "",
         "keywords": [],
-        "synonyms": [
+        "synonyms": [],
+        "category": [
             "英語"
         ],
-        "category": [],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -6999,10 +6999,10 @@
         "answer": "ハチの種類による。\n\nbeeはミツバチ。\n\nここに入ってくる（人を刺す系の）やつはアシナガバチ・スズメバチであり、**wasp**である。\n\nオオスズメバチ（黄色？真っ黒？）はhornet。",
         "description": "",
         "keywords": [],
-        "synonyms": [
+        "synonyms": [],
+        "category": [
             "英語"
         ],
-        "category": [],
         "difficulty": "",
         "priority": 2,
         "related": [
@@ -7021,7 +7021,9 @@
         "description": "直列・交流それぞれのインピーダンスZの式。",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "電磁気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -7038,7 +7040,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "電磁気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -7055,7 +7059,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "電磁気"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
