@@ -2833,11 +2833,6 @@ $
 
       line((4.8,1.0),(4.8,-0.8),stroke:(thickness:0.05,paint:black),mark:(start:">",fill:black))
       content((4.4,0),text(fill:black)[$bold(V_2)$])
-
-
-
-
-
     })
   ]
 ])
@@ -2915,12 +2910,92 @@ $
 $
 reactance of capacitor $bold(X_C = 1 / (omega C))$
 
+#pagebreak()
 == Impedance
+#grid(
+  columns:(1fr,1.5fr),
+  gutter:1cm,
+  [
+    #align(center,box(width:15cm, height:4cm, clip:true)[
+    #place(center + horizon)[
+      #cetz.canvas({
+        import cetz.draw: *
+
+        line((-2,0),(2,0))
+
+        line((-2,0),(-2,2))
+        line((2,0),(2,2))
+
+        line((-2,2),(-1.8,2))
+        resistor(0.3,(-1.8,2),(-0.8,2),r:(0,0,0))
+        line((-0.8,2),(-0.5,2))
+        coil(0.3,1,(-0.5,2),r:(0,0,0))
+        line((0.5,2),(1,2))
+        line((1,2 + 0.4),(1,2 - 0.4))
+        line((1.2,2 + 0.4),(1.2,2 - 0.4))
+
+        content((-1.3,2.6),text(fill:black)[$bold(R)$])
+        content((0,2.6),text(fill:black)[$bold(L)$])
+        content((1.2,2.6),text(fill:black)[$bold(C)$])
+
+        line((2,2),(1.2,2))
+
+        circle((0,0),radius:0.3,fill:white,stroke:(thickness:0.05))
+        content((0,0),text(size:15pt,weight:100)[〜])
+        content((0,-0.7),text(fill:black)[$bold(V_0)$])
 
 
+      })
+    ]
+  ])
+    #align(center,box(width:13cm, height:7cm, clip:true)[
+    #place(center + horizon)[
+      #cetz.canvas({
+        import cetz.draw: *
+        line((0,-3),(0,3),mark:(end:">",fill:black),stroke:(paint:gray))
+        line((-3,0),(3,0),mark:(end:">",fill:black),stroke:(paint:gray))
+        content((3.5,0),text(fill:black)[$"Re"$])
+        content((0,3.5),text(fill:black)[$"Im"$])
+
+        line((0,0),(1,0),mark:(end:">",fill:red),stroke:(paint:red,thickness:0.1))
+        line((0,0),(2,0),mark:(end:">",fill:black),stroke:(paint:black,thickness:0.05))
+        line((0,0),(0,1.5),mark:(end:">",fill:black),stroke:(paint:black,thickness:0.05))
+        line((0,0),(0,-1),mark:(end:">",fill:black),stroke:(paint:black,thickness:0.05))
 
 
+        content((1,0.5),text(fill:red)[$bold(I)$])
+        content((2,0.5),text(fill:black)[$bold(R I)$])
+        content((-0.6,2),text(fill:black)[$bold( i omega L I)$])
+        content((-0.6,-1.5),text(fill:black)[$bold( - i 1 / ( omega C ) I)$])
+      })
+    ]
+  ])
 
+],
+  [
+    Since Current $I$ must not delay,\
+    Let $I = e^(i omega t)$
+
+    $V_R = R e^(i omega t), \
+    V_L = i omega L e^(i omega t),\
+    V_C = -i 1/(omega C) e^(i omega t)
+    $\
+    Thus,\
+    $bold(V_R + V_L + V_C = I dot ( R + i omega L - i 1/(omega C) ) \
+    V_0 = I_0 dot sqrt(R^2 + ( omega L - 1/(omega C))^2 )\
+    quad thick = I_0 Z)$
+
+
+    Let phase difference be $phi$,\
+    $bold(tan phi = (omega L - 1/(omega C))/R)$
+]
+)
+
+Since only resistor create Joule heat , power consumption will be like this:
+
+$macron(P) = R I_e^2$
+
+Here $ R = Z cos phi$
 
 
 
