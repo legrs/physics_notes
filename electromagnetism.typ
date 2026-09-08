@@ -45,7 +45,7 @@
 
 //#set enum(numbering: "1.",)
 #set heading(numbering: "1.1.a ",)
-#set page(numbering: "1")
+#set page(numbering: "- 1 -")
 #set math.equation(numbering:"(1)")
 #show heading : set align(center)
 #show heading.where(level:1) : set text(size: 30pt,font: ("New Computer Modern"))
@@ -2948,7 +2948,9 @@ reactance of capacitor $bold(X_C = 1 / (omega C))$
       })
     ]
   ])
-    #align(center,box(width:13cm, height:7cm, clip:true)[
+  #figure(
+  align(center,box(width:13cm, height:7cm, clip:true)[
+      
     #place(center + horizon)[
       #cetz.canvas({
         import cetz.draw: *
@@ -2969,11 +2971,11 @@ reactance of capacitor $bold(X_C = 1 / (omega C))$
         content((-0.6,-1.5),text(fill:black)[$bold( - i 1 / ( omega C ) I)$])
       })
     ]
-  ])
+  ]))<rlc_circuit>
 
 ],
   [
-    Since Current $I$ must not delay,\
+    Since Current $I$ must not delay in the circuit,\
     Let $I = e^(i omega t)$
 
     $V_R = R e^(i omega t), \
@@ -2988,6 +2990,10 @@ reactance of capacitor $bold(X_C = 1 / (omega C))$
 
     Let phase difference be $phi$,\
     $bold(tan phi = (omega L - 1/(omega C))/R)$
+
+    #text(size:15pt)[
+    By the way, when the connection is parallel, $Z' = 1/sqrt(R^2 + ( omega L - 1/(omega C))^2 ),
+    tan phi = - (omega L - 1/(omega C))/R)$]
 ]
 )
 
@@ -2995,7 +3001,20 @@ Since only resistor create Joule heat , power consumption will be like this:
 
 $macron(P) = R I_e^2$
 
-Here $ R = Z cos phi$
+Here $ R = Z cos phi$,
+$
+  bold(macron(P) = I_e V_e cos phi)
+$
+$cos phi$ is called *power factor*.
+
+== Resonance Circuit
+In RLC-circuit( @rlc_circuit ).
+When $ omega L = 1/(omega C) quad <=> quad bold(omega = 1/sqrt(L C))$,\
+$Z = R$ and impedance will be minimamized. 
+Thus, Huge current flows at specific frequency.
+This frequency is called *resonance frequency*.
+
+
 
 
 
