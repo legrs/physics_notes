@@ -3334,7 +3334,7 @@
         "questions": [
             "加法定理を証明せよ。"
         ],
-        "answer": "教科書には載っていない方法で証明する。\n$$ Z\\left(\\theta\\right)=\\cos\\theta+i\\sin\\theta $$\n$$ Z\\left(\\alpha+\\beta\\right)=Z\\left(\\beta\\right)\\cdot Z\\left(\\alpha\\right) $$\n$$ Z\\left(\\alpha+\\beta\\right)=\\cos\\left(\\alpha+\\beta\\right)+i\\sin\\left(\\alpha+\\beta\\right) $$\n$$ Z\\left(\\beta\\right)\\cdot Z\\left(\\alpha\\right)=\\left(\\cos\\beta+\\imaginaryI\\sin\\beta\\right)\\cdot\\left(\\cos\\alpha+\\imaginaryI\\sin\\alpha\\right)=\\left(\\cos\\alpha\\cos\\beta-\\sin\\alpha\\sin\\beta\\right)+\\imaginaryI\\left(\\sin\\alpha\\cos\\beta+\\cos\\alpha\\sin\\beta\\right) $$\nこれで、$ sin $と$ cos $双方の加法定理が証明された。",
+        "answer": "教科書には載っていない方法で証明する。\n$$ Z\\left(\\theta\\right)=\\cos\\theta+i\\sin\\theta $$\n$$ Z\\left(\\alpha+\\beta\\right)=Z\\left(\\beta\\right)\\cdot Z\\left(\\alpha\\right) $$\n$$ Z\\left(\\alpha+\\beta\\right)=\\cos\\left(\\alpha+\\beta\\right)+i\\sin\\left(\\alpha+\\beta\\right) $$\n$$ Z\\left(\\beta\\right)\\cdot Z\\left(\\alpha\\right)=\\left(\\cos\\beta+i\\sin\\beta\\right)\\cdot\\left(\\cos\\alpha+i\\sin\\alpha\\right)=\\left(\\cos\\alpha\\cos\\beta-\\sin\\alpha\\sin\\beta\\right)+i\\left(\\sin\\alpha\\cos\\beta+\\cos\\alpha\\sin\\beta\\right) $$\nこれで、$ sin $と$ cos $双方の加法定理が証明された。\n\n---\n\n$$ Z\\times1=\\cos\\theta+i\\sin\\theta $$\n$$ Z\\left(\\alpha\\right)=\\cos\\alpha+i\\sin\\alpha $$\n$$ Z\\left(\\beta\\right)=\\cos\\beta+i\\sin\\beta $$\n$$ Z\\left(\\alpha+\\beta\\right)=Z\\left(\\alpha\\right)Z\\left(\\beta\\right) $$\n$$ \\cos\\left(\\alpha+\\beta\\right)+i\\sin\\left(\\alpha+\\beta\\right)=\\left(\\cos\\beta+i\\sin\\beta\\right)\\left(\\cos\\alpha+i\\sin\\alpha\\right)=\\cos\\alpha\\cos\\beta-\\sin\\alpha\\sin\\beta+i\\left(\\sin\\alpha\\cos\\beta+\\cos\\alpha\\sin\\beta\\right) $$",
         "description": "教科書には載っていない方法での証明",
         "keywords": [
             "複素数"
@@ -7086,6 +7086,154 @@
         "related": [],
         "updated_at": "2026-09-07",
         "search_text": "なんでベースの音を再生するには大きなスピーカーを使う？ 鼓笛隊を思い出すとわかるが、その理屈を考える。 ピアノにおいて、低音の弦は長い。 一定の長さの弦を弾くと、弦の両端が固定されているため、どんな波があったとしても # 両端は振幅しない という # 境界条件（boundary条件） が存在する。それで弦全体が波長の基本振動（基本音）が鳴る。 それだけではなく、半分の波長の倍音、 の3倍音も交じる。それが混じり合ったものを、音楽の世界では**音色**という。 それで、低い音の楽器は長い波長が必要だから、大きなスピーカーを要する。 音楽 なんで ベース 再生 する 大きな スピーカー 使う 鼓笛隊 思い出す わかる その 理屈 考える ピアノ において 低音 長い 一定 弾く 両端 固定 いる ため どんな あっ として 両端 振幅 ない という 境界 条件 boundary 条件 存在 する それで 全体 波長 基本 振動 基本 鳴る それ だけ なく 半分 波長 倍音 3 倍音 交じる それ 混じり 合っ もの 音楽 世界 ** 音色 ** いう それで 低い 楽器 長い 波長 必要 から 大きな スピーカー 要する 音楽 ナンデベースノオトヲサイセイスルニハオオキナスピーカーヲツカウ？ コテキタイヲオモイダストワカルガ、ソノリクツヲカンガエル。 ピアノニオイテ、テイオンノツルハナガイ。 イッテイノナガサノツルヲヒクト、ツルノリョウタンガコテイサレテイルタメ、ドンナナミガアッタトシテモ # リョウタンハシンプクシナイ トイウ # キョウカイジョウケン（boundaryジョウケン） ガソンザイスル。ソレデツルゼンタイガハチョウノキホンシンドウ（キホンオン）ガナル。 ソレダケデハナク、ハンブンノハチョウノバイオン、 ノ3バイオンモマジル。ソレガマジリアッタモノヲ、オンガクノセカイデハ**ネイロ**トイウ。 ソレデ、ヒクイオトノガッキハナガイハチョウガヒツヨウダカラ、オオキナスピーカーヲヨウスル。 オンガク なんでべーすのおとをさいせいするにはおおきなすぴーかーをつかう？ こてきたいをおもいだすとわかるが、そのりくつをかんがえる。 ぴあのにおいて、ていおんのつるはながい。 いっていのながさのつるをひくと、つるのりょうたんがこていされているため、どんななみがあったとしても # りょうたんはしんぷくしない という # きょうかいじょうけん（boundaryじょうけん） がそんざいする。それでつるぜんたいがはちょうのきほんしんどう（きほんおん）がなる。 それだけではなく、はんぶんのはちょうのばいおん、 の3ばいおんもまじる。それがまじりあったものを、おんがくのせかいでは**ねいろ**という。 それで、ひくいおとのがっきはながいはちょうがひつようだから、おおきなすぴーかーをようする。 おんがく",
+        "_note": ""
+    },
+    {
+        "id": "9d4305b9-688a-470c-8ac1-b3a4287e0af4",
+        "questions": [
+            "$ \\alpha $が複素数の時、$ \\alpha^3+\\left(\\overline{\\alpha}\\right)^3 $が実数であることにはどんな意味がある？"
+        ],
+        "answer": "$$ \\alpha=\\left|\\alpha\\right|\\left(\\cos\\theta+i\\sin\\theta\\right) $$\n$$ \\alpha^3=\\left|\\alpha\\right|^3\\left(\\cos\\theta+i\\sin\\theta\\right)^3 $$\n$$ \\left(\\cos\\theta+i\\sin\\theta\\right)^3=\\cos3\\theta+i\\sin3\\theta $$\n",
+        "description": "α^3+(α bar)^3が実数であることの意味",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "数学"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-09-08",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "7c4c5ca6-bf60-48e5-a414-95e0b8cbb556",
+        "questions": [
+            "楽器はなぜ固有の音が鳴る？"
+        ],
+        "answer": "一定のモードの音だけが残るから。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "音楽"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-09-08",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "3bec3a6a-d393-4a95-9b19-c4f0f153e46e",
+        "questions": [
+            "弦の線密度$ \\rho $はなぜ音の速さに連動する？"
+        ],
+        "answer": "線密度が大きいと弦が振動しにくくなるから。\n\n$ f\\lambda=v $より$ f=\\frac{v}{\\lambda} $であり、これが結果的に音の周波数を変えることにつながっている。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "波動"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-09-08",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "8ea48f80-3886-4764-8247-2b6606d693a1",
+        "questions": [
+            "$ \\lambda $はどう決まっている？"
+        ],
+        "answer": "弦の両端が固定されていて、弾いたときに本当はいろいろな波長の波が存在するんだけど、**両端が振動しないから**、境界条件を満たすもののみの存在が許される。\n\n進行波は打ち消され、両端を波長とする音やその倍音が許されて、基本音やその倍音だけが残る。",
+        "description": "λはどう決まっている？",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "波動"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-09-08",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "ffc097ab-9ee1-4285-94cf-fe328e7d8397",
+        "questions": [
+            "日常用語で、共鳴するってどういうこと？"
+        ],
+        "answer": "馬が合う・波長が合う\n\nそうすると、お互いが出したエネルギーを受け取ることができて、会話がスムーズになる。\n\nお互いの固有振動数が同じ（or倍）で、お互いの出したエネルギーを受け取ることができる状況を、共鳴するという。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "日本語"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-09-08",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "dba21070-9ffe-4c52-9852-6d68006450c4",
+        "questions": [
+            "最近のビルの地震対策は？"
+        ],
+        "answer": "ビルの上の方におもりを吊るし、リアルタイムで固有振動数を制御する。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "波動"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-09-08",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "9f3a2746-7160-48d0-95f5-3b73f8f2e2c6",
+        "questions": [
+            "インピーダンスを最小にするには？"
+        ],
+        "answer": "$$ \\omega_0=\\frac{1}{\\sqrt{Lc}} $$にすればよい。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-09-08",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "451f39ce-c074-4add-babe-0f4fe6717f38",
+        "questions": [
+            "共鳴が起きている時、エネルギーのやり取りはどうなっている？"
+        ],
+        "answer": "行き渡ったエネルギーはどうなるか。\n\nもらったエネルギーは、行き場がない（コイルやコンデンサーの消費電力は$ 0 $）と、吐き出したいのに出せない。そして電場や磁場に蓄えられる。その値が一致した時、電解電流が流れやすい。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-09-08",
+        "search_text": "",
         "_note": ""
     }
 ]
