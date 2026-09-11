@@ -3015,8 +3015,61 @@ Thus, Huge current flows at specific frequency.
 This frequency is called *resonance frequency*.
 
 
+#text(size:10pt)[( capacitorのreactanceとcoilのreactanceが等しいから，電圧に対する電流の応答の強さが双方で同じで位相差$pi$なため，全energyをやりとりできる？電圧に対する位相差0でピッタリ合った電流変化が得られるのか )]
+
+== Oscillation
+
+#grid(
+  columns:(1fr,1.5fr),
+  gutter:1cm,
+  [
+    #align(center,box(width:15cm, height:4cm, clip:true)[
+    #place(center + horizon)[
+      #cetz.canvas({
+        import cetz.draw: *
 
 
+        line((-1.5,2),(-0.1,2))
+        line((1.5,2),(0.1,2))
+
+        line((-1.5,0),(-0.5,0))
+        line((1.5,0),(0.5,0))
+
+        line((-1.5,2),(-1.5,0))
+        line((1.5,2),(1.5,0))
+
+        coil(0.3,1,(-0.5,0),r:(0,0,0))
+
+        line((-0.1,2 + 0.4),(-0.1,2 - 0.4))
+        line((0.1,2 + 0.4),(0.1,2 - 0.4))
+
+        content((0,0.6),text(fill:black)[$bold(L)$])
+        content((0,2.7),text(fill:black)[$bold(C)$])
+
+
+      })
+    ]
+  ])
+],
+  [
+    The current oscilate at $omega = 1/sqrt(L C)$ in this circuit.
+
+    The energy is exchanged between coil and capacitor.
+    
+    #text(size:10pt)[( 上と同じことが起きているだけ )]
+
+]
+)
+
+= Electromagnetic Waves
+
+
+#text(size:10pt)[( あれ！！電場ってなんだっけ\@\_\@ ; となる．このNoteの内容では電子の存在しない領域を電磁波が伝わる理由を説明できなさそう )]
+
+
+electric field \<\-\> magnetic field
+
+#text(size:10pt)[( 東北大アンテナきた )]
 
 
 //類似性＝アナロジー // 2026-06-29の名言
