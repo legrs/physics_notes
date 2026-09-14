@@ -3067,9 +3067,185 @@ This frequency is called *resonance frequency*.
 #text(size:10pt)[( あれ！！電場ってなんだっけ\@\_\@ ; となる．このNoteの内容では電子の存在しない領域を電磁波が伝わる理由を説明できなさそう )]
 
 
-electric field \<\-\> magnetic field
+//electric field \<\-\> magnetic field
 
-#text(size:10pt)[( 東北大アンテナきた )]
+
+#align(center,box(width:15cm, height:10cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      let current(r1,r2,s,doreverse,color)={
+
+        let fac = 1
+        let thickn = 0.05
+        if doreverse{
+          fac = -1
+          thickn = 0.05
+        }
+
+        group({
+          scale(x:1,y:s)
+          circle((r1,0,0),radius:r2,stroke:(paint:color, thickness:thickn))
+
+          //circle((-r1,0,0),radius:r2,stroke:(paint:color, thickness:thickn))
+        })
+          //line((r1 + r2,0,0),(r1 + r2,fac * 0.3,0),mark:(end:">",fill:color),stroke:(paint:color, thickness:thickn))
+          //line((r1 - r2,0,0),(r1 - r2,fac * -0.3,0),mark:(end:">",fill:color),stroke:(paint:color, thickness:thickn))
+          line((r1,r2,0),(r1 + fac* -0.1,r2,),mark:(end:">",fill:color),stroke:(paint:color, thickness:thickn))
+          line((r1,-r2,0),(r1  + fac* 0.1,-r2,),mark:(end:">",fill:color),stroke:(paint:color, thickness:thickn))
+          //line((-r1 + r2,0,0),(-r1 + r2,fac* -0.3,0),mark:(end:">",fill:color),stroke:(paint:color, thickness:thickn))
+          //line((-r1 - r2,0,0),(-r1 - r2,fac * 0.3,0),mark:(end:">",fill:color),stroke:(paint:color, thickness:thickn))
+      }
+
+      ortho(x:-70deg, y:-00deg,z:-50deg,{
+        //axis(2.5)
+
+        scale(x:2,y:2,z:2)
+
+        line((0,0,0),(9,0,0))
+
+        let i = 0
+        let step = 0.2
+        while (i < 9){
+          line((i,0,0),(i,0,calc.cos(calc.pi * i /2)),mark:(end:">",fill:red),stroke:(paint:red, thickness:0.03))
+          line((i,0,0),(i,calc.sin(calc.pi * i /2),0),mark:(end:">",fill:blue),stroke:(paint:blue, thickness:0.03))
+          i+= step
+        }
+
+
+        current(0,1,1,false,blue)
+        current(2,1,1,true,blue)
+        //current(-2,1,1,true,blue)
+        current(4,1,1,false,blue)
+        //current(-4,1,1,false,blue)
+        current(6,1,1,true,blue)
+
+        group({
+          rotate(x:calc.pi/2,y:0,z:0)
+          current(1,1,1,true,red)
+          //current(-1,1,1,false,red)
+          current(3,1,1,false,red)
+          //current(-3,1,1,true,red)
+          current(5,1,1,true,red)
+        })
+      })
+    })
+  ]
+])
+/*
+#align(center,box(width:15cm, height:10cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      let current(r1,r2,s,doreverse)={
+
+        let fac = 1
+        let thickn = 0.05
+        if doreverse{
+          fac = -1
+          thickn = 0.1
+        }
+
+        group({
+          scale(x:1,y:s)
+          circle((r1,0,0),radius:r2,stroke:(paint:red, thickness:thickn))
+
+          circle((-r1,0,0),radius:r2,stroke:(paint:red, thickness:thickn))
+        })
+          line((r1 + r2,0,0),(r1 + r2,fac * 0.3,0),mark:(end:">",fill:red),stroke:(paint:red, thickness:thickn))
+          line((r1 - r2,0,0),(r1 - r2,fac * -0.3,0),mark:(end:">",fill:red),stroke:(paint:red, thickness:thickn))
+          line((-r1 + r2,0,0),(-r1 + r2,fac* -0.3,0),mark:(end:">",fill:red),stroke:(paint:red, thickness:thickn))
+          line((-r1 - r2,0,0),(-r1 - r2,fac * 0.3,0),mark:(end:">",fill:red),stroke:(paint:red, thickness:thickn))
+      }
+
+      ortho(x:-70deg, y:-00deg,z:-20deg,{
+        //axis(2.5)
+
+
+        line((0,0,-1),(0,0,1),stroke:(paint:red, thickness:0.1))
+        line((0,0,-1),(0,0,0.3),mark:(end:">",fill:red),stroke:(paint:red, thickness:0.1))
+
+        circle((0,0,0),radius:1cm,stroke:(paint:blue, thickness:0.1))
+        line((0,1,0),(-0.1,1,0),mark:(end:">",fill:blue),stroke:(paint:blue, thickness:0.1))
+        line((0,-1,0),(0.1,-1,0),mark:(end:">",fill:blue),stroke:(paint:blue, thickness:0.1))
+
+        group({
+          rotate(x:calc.pi/2,y:0,z:0)
+          //current(1,0.2,1,true)
+          current(1,0.4,1,true)
+        })
+      })
+      content((-4,0),[1])
+      translate((0,-3))
+      ortho(x:-70deg, y:-00deg,z:-20deg,{
+        //axis(2.5)
+
+
+        line((0,0,-1),(0,0,1),stroke:(paint:red, thickness:0.05))
+        line((0,0,1),(0,0,-0.3),mark:(end:">",fill:red),stroke:(paint:red, thickness:0.05))
+
+        circle((0,0,0),radius:1cm,stroke:(paint:blue, thickness:0.05))
+        line((0,1,0),(-0.1,1,0),mark:(end:"<",fill:blue),stroke:(paint:blue, thickness:0.05))
+        line((0,-1,0),(0.1,-1,0),mark:(end:"<",fill:blue),stroke:(paint:blue, thickness:0.05))
+
+        circle((0,0,0),radius:2cm,stroke:(paint:blue, thickness:0.1))
+        line((0,2,0),(-0.1,2,0),mark:(end:">",fill:blue),stroke:(paint:blue, thickness:0.1))
+        line((0,-2,0),(0.1,-2,0),mark:(end:">",fill:blue),stroke:(paint:blue, thickness:0.1))
+
+        group({
+          rotate(x:calc.pi/2,y:0,z:0)
+          //current(1,0.2,1,false)
+          current(1,0.4,1,false)
+
+          //current(2,0.2,1.5,true)
+          current(2,0.4,1.5,true)
+        })
+      })
+      content((-4,0),[2])
+      translate((0,-3))
+      ortho(x:-70deg, y:-00deg,z:-20deg,{
+        //axis(2.5)
+
+
+        line((0,0,-1),(0,0,1),stroke:(paint:red, thickness:0.1))
+        line((0,0,1),(0,0,-0.2),mark:(end:"<",fill:red),stroke:(paint:red, thickness:0.1))
+
+        circle((0,0,0),radius:1cm,stroke:(paint:blue, thickness:0.1))
+        line((0,1,0),(-0.1,1,0),mark:(end:">",fill:blue),stroke:(paint:blue, thickness:0.1))
+        line((0,-1,0),(0.1,-1,0),mark:(end:">",fill:blue),stroke:(paint:blue, thickness:0.05))
+
+        circle((0,0,0),radius:2cm,stroke:(paint:blue, thickness:0.05))
+        line((0,2,0),(-0.1,2,0),mark:(end:"<",fill:blue),stroke:(paint:blue, thickness:0.05))
+        line((0,-2,0),(0.1,-2,0),mark:(end:"<",fill:blue),stroke:(paint:blue, thickness:0.05))
+
+        circle((0,0,0),radius:3cm,stroke:(paint:blue, thickness:0.1))
+        line((0,3,0),(-0.1,3,0),mark:(end:">",fill:blue),stroke:(paint:blue, thickness:0.1))
+        line((0,-3,0),(0.1,-3,0),mark:(end:">",fill:blue),stroke:(paint:blue, thickness:0.1))
+
+        group({
+          rotate(x:calc.pi/2,y:0,z:0)
+          //current(1,0.2,1,false)
+          current(1,0.4,1,true)
+
+          //current(2,0.2,1.5,true)
+          current(2,0.4,1.5,false)
+          current(3,0.4,2,true)
+        })
+      })
+      content((-4,0),[3])
+    })
+  ]
+])
+*/
+
+おおむねこんなイメージらしいです
+
+
+
+//#text(size:10pt)[( 東北大アンテナきた )]
+#text(size:10pt)[( fieldの伝搬速度が光速なので，電磁波は光速で伝搬するのか )]
 
 
 //類似性＝アナロジー // 2026-06-29の名言
