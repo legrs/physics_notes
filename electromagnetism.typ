@@ -3060,6 +3060,10 @@ This frequency is called *resonance frequency*.
 
 ]
 )
+#pagebreak()
+
+#let red = rgb("ff5555")
+#let blue = rgb("5555ff")
 
 = Electromagnetic Waves
 
