@@ -2277,6 +2277,7 @@ the particles experience Lorentz force and move, creating electric field.
 
 Eventually, they get steady state.
 The voltage in this state called *Hall Voltage*.
+Which face becomes a high voltage depends on the sign of the carriers.
 
 === Cyclotron
 #align(center,box(width:15cm, height:12cm, clip:true)[
