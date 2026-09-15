@@ -1605,7 +1605,6 @@
       flex-shrink: 0;
     }
 
-    .cs-row select,
     .cs-row input[type="text"],
     .cs-row input[type="url"],
     .cs-row input[type="password"] {
@@ -1617,6 +1616,28 @@
       color: var(--chat-accent);
       text-align: right;
       min-width: 0;
+    }
+
+    /* ネイティブ<select>を右揃えにする。text-align:right は<select>には
+       効かないブラウザがあるため、direction:rtl + text-align-last:right
+       の組み合わせを使う（ポップアップのドロップダウンも右揃えで開く）。
+       中身はrtlで逆順になってしまうため、option側でltrに戻す。
+       また flex:1 で箱自体を横幅いっぱいに広げるとネイティブの
+       ドロップダウンもその幅で開いてしまうため、幅は内容に合わせ
+       margin-left:auto で右に寄せるだけにする。 */
+    .cs-row select {
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 14px;
+      color: var(--chat-accent);
+      margin-left: auto;
+      direction: rtl;
+      text-align-last: right;
+      cursor: pointer;
+    }
+    .cs-row select option {
+      direction: ltr;
     }
 
     .cs-row input[type="text"]::placeholder,
@@ -1919,7 +1940,7 @@
       --br-c4: #8a6bff;
       --br-c5: #5effb0;
       --br-radius: 12px;
-      --br-frame-bg: #16161c;
+      --br-frame-bg: var(--bg);
       --br-shadow: 0 20px 50px rgba(20, 20, 40, 0.16);
       --br-glow-op-a-min: 0.55;
       --br-glow-op-a-max: 0.95;
@@ -1931,7 +1952,6 @@
     }
 
     html.dark {
-      --br-frame-bg: #16161c;
       --br-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
       --br-glow-op-a-min: 0.5;
       --br-glow-op-a-max: 0.85;
@@ -1960,17 +1980,19 @@
 
     .br-glow.a {
       inset: -22px;
-      filter: blur(var(--br-glow-blur-a)) saturate(var(--br-glow-saturate));
+      filter: blur(var(--br-glow-blur-a)) saturate(var(--br-glow-saturate)) hue-rotate(var(--br-glow-hue-shift, 0deg));
       background: conic-gradient(from 0deg, var(--br-c1), var(--br-c2), var(--br-c3), var(--br-c4), var(--br-c5), var(--br-c1));
       animation: brSpin 9s linear infinite, brBreatheA 4s ease-in-out infinite;
+      transition: filter 1.2s ease;
     }
 
     .br-glow.b {
       inset: -14px;
       border-radius: calc(var(--br-radius) + 14px);
-      filter: blur(var(--br-glow-blur-b)) saturate(var(--br-glow-saturate));
+      filter: blur(var(--br-glow-blur-b)) saturate(var(--br-glow-saturate)) hue-rotate(var(--br-glow-hue-shift, 0deg));
       background: conic-gradient(from 180deg, var(--br-c4), var(--br-c1), var(--br-c5), var(--br-c2), var(--br-c4));
       animation: brSpinRev 13s linear infinite, brBreatheB 5s ease-in-out infinite reverse;
+      transition: filter 1.2s ease;
     }
 
     @keyframes brSpin {
@@ -2001,6 +2023,24 @@
       clip-path: inset(0 round var(--br-radius));
       background: var(--br-frame-bg);
       box-shadow: var(--br-shadow);
+    }
+
+    .br-canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: inherit;
+    }
+
+    /* WebGL経路が使えるときだけ、元の<img>はテクスチャソースとして
+       残しつつ視覚的に隠す（altテキストなどアクセシビリティ情報は保持） */
+    .br-source-hidden {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      overflow: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
     }
 
     .br-img {
@@ -2139,6 +2179,23 @@
       100% { opacity: 0;    }
     }
 
+    /* 縁のグロー反射リング（CSSフォールバック時のみ。WebGL経路はシェーダーで処理） */
+    .br-rim {
+      position: absolute;
+      inset: 0;
+      z-index: 7;
+      pointer-events: none;
+      border-radius: inherit;
+      padding: 2px;
+      background: conic-gradient(from 0deg, var(--br-c1), var(--br-c2), var(--br-c3), var(--br-c4), var(--br-c5), var(--br-c1));
+      filter: hue-rotate(var(--br-glow-hue-shift, 0deg)) blur(2px);
+      opacity: 0.22;
+      animation: brSpin 9s linear infinite;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+    }
+
     /* prose 内でのブラー画像の調整 */
     .prose .br-wrap,
     .ai-prose .br-wrap,
@@ -2173,7 +2230,7 @@
 
     @media (prefers-reduced-motion: reduce) {
       .br-img { animation: none; filter: none; transform: none; opacity: 1; }
-      .br-glow { animation: none; }
+      .br-glow, .br-rim { animation: none; display: none; }
       .br-haze, .br-noise, .br-light, .br-shimmer, .br-finish { display: none; }
     }
   </style>
@@ -2312,6 +2369,19 @@
             <input type="checkbox" id="cs-dark-toggle">
             <span class="cs-toggle-slider"></span>
           </label>
+        </div>
+      </div>
+
+      <!-- 描画 -->
+      <div class="cs-section-label">描画</div>
+      <div class="cs-card">
+        <div class="cs-row">
+          <span class="cs-row-label">画像レンダリング</span>
+          <select id="cs-render-mode">
+            <option value="auto">Auto</option>
+            <option value="cpu">CPU</option>
+            <option value="gpu">GPU</option>
+          </select>
         </div>
       </div>
 
@@ -2568,7 +2638,445 @@
       return sanitizeHtml(marked.parse(formatMath(text || '')));
     }
 
-    /* ── Blur Reveal: 全画像をサンプルアニメーションでラップ ── */
+    /* ══════════════════════════════════════════════════════════════════
+       Blur Reveal v2 — WebGL2 per-image reveal, falls back to the
+       original CSS keyframe version when WebGL2 isn't available.
+       ══════════════════════════════════════════════════════════════════ */
+
+    const BR_WEBGL2_OK = (() => {
+      try { return !!document.createElement('canvas').getContext('webgl2'); }
+      catch (e) { return false; }
+    })();
+    const BR_REDUCED_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // 画像レンダリング設定（設定パネル > 描画 > 画像レンダリング）
+    // 'auto': 既存のフォールバック判定（WebGL2が使えればGPU、使えなければCPU）
+    // 'cpu' : 常にCSS版を使う   'gpu': 常にWebGL2版を試みる（失敗時のみCSSへ）
+    let BR_RENDER_MODE = localStorage.getItem('br_render_mode') || 'auto';
+    (function () {
+      const sel = document.getElementById('cs-render-mode');
+      if (!sel) return;
+      sel.value = BR_RENDER_MODE;
+      sel.addEventListener('change', function () {
+        BR_RENDER_MODE = this.value;
+        localStorage.setItem('br_render_mode', BR_RENDER_MODE);
+        // 既に表示済みの画像には遡って適用しない（次に読み込む画像から反映）
+      });
+    })();
+
+    function brHexToRgb01(hex) {
+      hex = (hex || '').trim();
+      const m = hex.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+      if (!m) return [0.6, 0.6, 0.65];
+      let h = m[1];
+      if (h.length === 3) h = h.split('').map(c => c + c).join('');
+      const num = parseInt(h, 16);
+      return [((num >> 16) & 255) / 255, ((num >> 8) & 255) / 255, (num & 255) / 255];
+    }
+    function brReadCssColor(varName) {
+      return brHexToRgb01(getComputedStyle(document.documentElement).getPropertyValue(varName));
+    }
+    function brRgbToHueDeg(r, g, b) {
+      const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+      if (d === 0) return 0;
+      let h;
+      if (max === r) h = ((g - b) / d) % 6;
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60;
+      return h < 0 ? h + 360 : h;
+    }
+
+    // Shared, theme-reactive state read by every active reveal instance
+    // every frame — updates the moment dark mode or the custom accent
+    // color changes, without each instance needing its own listener.
+    let brPageBg = brReadCssColor('--bg');
+    let brAccent = brReadCssColor('--chat-accent');
+    if (typeof MutationObserver !== 'undefined') {
+      new MutationObserver(() => {
+        brPageBg = brReadCssColor('--bg');
+        brAccent = brReadCssColor('--chat-accent');
+      }).observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
+    }
+
+    function brGetDominantColor(img) {
+      try {
+        const s = 24;
+        const c = document.createElement('canvas');
+        c.width = s; c.height = s;
+        const cx = c.getContext('2d', { willReadFrequently: true });
+        cx.drawImage(img, 0, 0, s, s);
+        const data = cx.getImageData(0, 0, s, s).data;
+        let r = 0, g = 0, b = 0, wsum = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const a = data[i + 3] / 255;
+          if (a < 0.05) continue; // ignore near-transparent pixels (don't let padding skew the color)
+          r += data[i] * a; g += data[i + 1] * a; b += data[i + 2] * a;
+          wsum += a;
+        }
+        if (wsum === 0) return [0.6, 0.6, 0.65];
+        return [r / wsum / 255, g / wsum / 255, b / wsum / 255];
+      } catch (e) {
+        return [0.6, 0.6, 0.65]; // tainted canvas (cross-origin without CORS) — neutral fallback
+      }
+    }
+
+    const BR_QUAD_VS = `#version 300 es
+out vec2 v_uv;
+void main() {
+  vec2 uv = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+  v_uv = uv;
+  gl_Position = vec4(uv * 2.0 - 1.0, 0.0, 1.0);
+}`;
+
+    const BR_QUAD_FS = `#version 300 es
+precision highp float;
+
+uniform sampler2D u_tex;
+uniform float u_time;
+uniform float u_progress;
+uniform vec2  u_resolution;
+uniform vec3  u_tint;         // image color, blended a little with the custom accent — fades with blur
+uniform vec3  u_placeholder;  // theme-matched base for the intro wash
+uniform float u_glowHueShift; // mirrors --br-glow-hue-shift
+uniform vec3  u_pageBg;       // page background — shows through transparent source pixels
+
+in vec2 v_uv;
+out vec4 outColor;
+
+float hash(vec2 p) {
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
+}
+
+const vec3 GC1 = vec3(1.000, 0.369, 0.796);
+const vec3 GC2 = vec3(0.369, 0.784, 1.000);
+const vec3 GC3 = vec3(1.000, 0.812, 0.369);
+const vec3 GC4 = vec3(0.541, 0.420, 1.000);
+const vec3 GC5 = vec3(0.369, 1.000, 0.690);
+
+vec3 hueRotate(vec3 c, float deg) {
+  float a = radians(deg);
+  float cs = cos(a), sn = sin(a);
+  mat3 m = mat3(
+    0.299 + 0.701 * cs + 0.168 * sn, 0.587 - 0.587 * cs + 0.330 * sn, 0.114 - 0.114 * cs - 0.497 * sn,
+    0.299 - 0.299 * cs - 0.328 * sn, 0.587 + 0.413 * cs + 0.035 * sn, 0.114 - 0.114 * cs + 0.292 * sn,
+    0.299 - 0.300 * cs + 1.250 * sn, 0.587 - 0.588 * cs - 1.050 * sn, 0.114 + 0.886 * cs - 0.203 * sn
+  );
+  return clamp(m * c, 0.0, 1.0);
+}
+vec3 conic5(float t, vec3 s0, vec3 s1, vec3 s2, vec3 s3, vec3 s4, vec3 s5) {
+  t = mod(t, 5.0);
+  if (t < 1.0) return mix(s0, s1, t);
+  if (t < 2.0) return mix(s1, s2, t - 1.0);
+  if (t < 3.0) return mix(s2, s3, t - 2.0);
+  if (t < 4.0) return mix(s3, s4, t - 3.0);
+  return mix(s4, s5, t - 4.0);
+}
+vec3 conic4(float t, vec3 s0, vec3 s1, vec3 s2, vec3 s3, vec3 s4) {
+  t = mod(t, 4.0);
+  if (t < 1.0) return mix(s0, s1, t);
+  if (t < 2.0) return mix(s1, s2, t - 1.0);
+  if (t < 3.0) return mix(s2, s3, t - 2.0);
+  return mix(s3, s4, t - 3.0);
+}
+
+void main() {
+  vec2 uv = v_uv;
+
+  float zoom = mix(1.55, 1.0, u_progress);
+  vec2 zuv = (uv - 0.5) / zoom + 0.5;
+
+  vec2 grid = vec2(10.0, 10.0);
+  vec2 cell = floor(uv * grid);
+  float cellDelay = hash(cell) * 0.42;
+  float cellProgress = clamp((u_progress - cellDelay) / (1.0 - cellDelay), 0.0, 1.0);
+
+  float lod = mix(9.0, 0.0, cellProgress);
+
+  float aberr = mix(0.03, 0.0, u_progress);
+  vec2 dir = normalize(zuv - 0.5 + 1e-4);
+  vec4 texR = textureLod(u_tex, zuv + dir * aberr, lod);
+  vec4 texG = textureLod(u_tex, zuv, lod);
+  vec4 texB = textureLod(u_tex, zuv - dir * aberr, lod);
+  vec3 color = vec3(texR.r, texG.g, texB.b);
+  float imgAlpha = texG.a;
+
+  color += u_tint * 0.09 * (1.0 - cellProgress);
+
+  float n = hash(uv * u_resolution.xy * 0.75 + u_time * 60.0);
+  float grainAmt = mix(0.22, 0.0, u_progress);
+  color += (n - 0.5) * grainAmt * mix(vec3(1.0), u_tint, 0.35);
+
+  vec3 bloomSrc = textureLod(u_tex, zuv, 4.0).rgb;
+  vec3 highlight = max(bloomSrc - 0.55, 0.0);
+  float bloomAmt = smoothstep(0.1, 0.55, u_progress) * (1.0 - smoothstep(0.75, 1.0, u_progress) * 0.6);
+  color += highlight * bloomAmt * 1.3;
+
+  float bright = mix(1.14, 1.0, u_progress);
+  color *= bright;
+
+  // rim reflection of the ambient glow, recomputed every frame
+  vec2 centered = uv - 0.5;
+  float ang = degrees(atan(centered.y, centered.x));
+  if (ang < 0.0) ang += 360.0;
+  float rotA = mod(u_time / 9.0 * 360.0, 360.0);
+  float rotB = mod(-u_time / 13.0 * 360.0, 360.0);
+  float tA = mod(ang - rotA, 360.0) / 72.0;
+  float tB = mod(ang - 180.0 - rotB, 360.0) / 90.0;
+  vec3 glowA = conic5(tA, GC1, GC2, GC3, GC4, GC5, GC1);
+  vec3 glowB = conic4(tB, GC4, GC1, GC5, GC2, GC4);
+  vec3 glowColor = hueRotate(glowA * 0.6 + glowB * 0.4, u_glowHueShift);
+  float distToEdge = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+  float edge = (1.0 - smoothstep(0.0, 0.14, distToEdge)) * 0.22;
+  color += glowColor * edge;
+
+  // intro placeholder wash
+  float introMix = 1.0 - smoothstep(0.0, 0.12, u_progress);
+  float rt = fract((uv.x * 0.6 + uv.y * 0.4) + u_time * 0.025);
+  vec3 rainbow = 0.5 + 0.5 * cos(6.28318 * (rt + vec3(0.0, 0.33, 0.67)));
+  vec3 placeholder = u_placeholder + rainbow * 0.12;
+  color = mix(color, placeholder, introMix);
+
+  // composite against the page background wherever the source image
+  // (or its still-resolving blur) is transparent
+  vec3 finalRGB = mix(u_pageBg, color, clamp(imgAlpha, 0.0, 1.0));
+  outColor = vec4(finalRGB, 1.0);
+}`;
+
+    const BR_PARTICLE_VS = `#version 300 es
+precision highp float;
+uniform float u_time;
+uniform float u_progress;
+uniform vec2  u_resolution;
+out vec4 v_color;
+out float v_star;
+out float v_phase;
+float hash1(float n) { return fract(sin(n) * 43758.5453123); }
+vec2 hash2(float n) { return vec2(hash1(n), hash1(n + 17.17)); }
+void main() {
+  float id = float(gl_VertexID);
+  vec2 seed  = hash2(id);
+  vec2 seed2 = hash2(id + 91.7);
+  vec2 startPos  = (seed  - 0.5) * 2.6;
+  vec2 targetPos = (seed2 - 0.5) * 1.9;
+  float delay = hash1(id + 3.3) * 0.5;
+  float speed = 1.0 / max(1.0 - delay, 0.001);
+  float t = clamp((u_progress - delay) * speed, 0.0, 1.0);
+  float eased = t * t * (3.0 - 2.0 * t);
+  vec2 pos = mix(startPos, targetPos, eased);
+  pos += vec2(sin(u_time * 0.6 + id), cos(u_time * 0.5 + id * 1.3)) * 0.01 * eased;
+  gl_Position = vec4(pos, 0.0, 1.0);
+  float isStar = step(0.92, hash1(id + 55.5));
+  v_star = isStar;
+  v_phase = hash1(id + 8.8) * 6.2831853;
+  float sizeBase = mix(4.5, 1.3, eased);
+  sizeBase = mix(sizeBase, sizeBase * 2.4, isStar);
+  gl_PointSize = sizeBase * (u_resolution.x / 700.0);
+  float alpha = mix(0.0, 0.9, smoothstep(0.0, 0.15, t)) * (1.0 - smoothstep(0.85, 1.0, u_progress) * 0.5);
+  vec3 tint = mix(vec3(1.0, 0.78, 0.95), vec3(1.0), eased);
+  v_color = vec4(tint, alpha);
+}`;
+
+    const BR_PARTICLE_FS = `#version 300 es
+precision highp float;
+uniform float u_time;
+in vec4 v_color;
+in float v_star;
+in float v_phase;
+out vec4 outColor;
+void main() {
+  vec2 c = gl_PointCoord - 0.5;
+  float d = length(c);
+  float base = smoothstep(0.5, 0.0, d);
+  float ang = atan(c.y, c.x);
+  float spikes = pow(abs(cos(ang * 2.0)), 6.0) * base;
+  float shape = base + spikes * v_star * 0.9;
+  float twinkle = 0.55 + 0.45 * sin(u_time * 7.0 + v_phase);
+  float a = clamp(shape * v_color.a * twinkle, 0.0, 1.0);
+  outColor = vec4(v_color.rgb, a);
+}`;
+
+    function brCompileShader(gl, type, src) {
+      const sh = gl.createShader(type);
+      gl.shaderSource(sh, src);
+      gl.compileShader(sh);
+      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+        console.error('BlurReveal shader error:', gl.getShaderInfoLog(sh));
+        gl.deleteShader(sh);
+        return null;
+      }
+      return sh;
+    }
+    function brCreateProgram(gl, vsSrc, fsSrc) {
+      const vs = brCompileShader(gl, gl.VERTEX_SHADER, vsSrc);
+      const fs = brCompileShader(gl, gl.FRAGMENT_SHADER, fsSrc);
+      if (!vs || !fs) return null;
+      const p = gl.createProgram();
+      gl.attachShader(p, vs);
+      gl.attachShader(p, fs);
+      gl.linkProgram(p);
+      if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+        console.error('BlurReveal program link error:', gl.getProgramInfoLog(p));
+        return null;
+      }
+      return p;
+    }
+
+    const BR_PARTICLE_COUNT = 10000;
+    const BR_DURATION = 3.8;
+
+    /* Sets up an independent WebGL2 reveal for one image. Returns true on
+       success; the caller falls back to the CSS version on failure. */
+    function brInitWebGLReveal(img, canvas, frame) {
+      let gl;
+      try {
+        gl = canvas.getContext('webgl2', { antialias: true, alpha: false, premultipliedAlpha: false });
+      } catch (e) { gl = null; }
+      if (!gl) return false;
+
+      const quadProgram = brCreateProgram(gl, BR_QUAD_VS, BR_QUAD_FS);
+      const particleProgram = brCreateProgram(gl, BR_PARTICLE_VS, BR_PARTICLE_FS);
+      if (!quadProgram || !particleProgram) return false;
+
+      const qu = {
+        tex: gl.getUniformLocation(quadProgram, 'u_tex'),
+        time: gl.getUniformLocation(quadProgram, 'u_time'),
+        progress: gl.getUniformLocation(quadProgram, 'u_progress'),
+        resolution: gl.getUniformLocation(quadProgram, 'u_resolution'),
+        tint: gl.getUniformLocation(quadProgram, 'u_tint'),
+        placeholder: gl.getUniformLocation(quadProgram, 'u_placeholder'),
+        glowHueShift: gl.getUniformLocation(quadProgram, 'u_glowHueShift'),
+        pageBg: gl.getUniformLocation(quadProgram, 'u_pageBg'),
+      };
+      const pu = {
+        time: gl.getUniformLocation(particleProgram, 'u_time'),
+        progress: gl.getUniformLocation(particleProgram, 'u_progress'),
+        resolution: gl.getUniformLocation(particleProgram, 'u_resolution'),
+      };
+
+      const texture = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      try {
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      } catch (e) {
+        console.error('BlurReveal texture upload failed (CORS?):', e);
+        return false;
+      }
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+      // dominant color of the actual image, blended a *little* with the
+      // site's custom accent color; this only feeds effects that already
+      // fade out as the blur resolves, so the accent's influence fades
+      // out together with the reveal rather than lingering.
+      const dom = brGetDominantColor(img);
+      const tint = [
+        dom[0] * 0.82 + brAccent[0] * 0.18,
+        dom[1] * 0.82 + brAccent[1] * 0.18,
+        dom[2] * 0.82 + brAccent[2] * 0.18,
+      ];
+      const glowHueShift = (() => {
+        const baseHue = 200;
+        const hue = brRgbToHueDeg(dom[0], dom[1], dom[2]);
+        let delta = ((hue - baseHue + 540) % 360) - 180;
+        return Math.max(-30, Math.min(30, delta * 0.3));
+      })();
+      frame.parentElement.style.setProperty('--br-glow-hue-shift', glowHueShift.toFixed(1) + 'deg');
+
+      const placeholderBase = document.documentElement.classList.contains('dark')
+        ? [0.05, 0.05, 0.07] : [0.93, 0.93, 0.96];
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 3);
+        const quality = 1.5;
+        const w = Math.max(1, Math.round(rect.width * dpr * quality));
+        const h = Math.max(1, Math.round(rect.height * dpr * quality));
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w; canvas.height = h;
+          gl.viewport(0, 0, w, h);
+        }
+      }
+      resize();
+      const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
+      if (ro) ro.observe(canvas);
+      window.addEventListener('resize', resize);
+
+      let startTime = null;
+      function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+      function render(now) {
+        if (startTime === null) startTime = now;
+        const elapsed = (now - startTime) / 1000;
+        const rawProgress = Math.min(elapsed / BR_DURATION, 1);
+        const progress = easeOutCubic(rawProgress);
+
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        gl.disable(gl.BLEND);
+        gl.useProgram(quadProgram);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.uniform1i(qu.tex, 0);
+        gl.uniform1f(qu.time, elapsed);
+        gl.uniform1f(qu.progress, progress);
+        gl.uniform2f(qu.resolution, canvas.width, canvas.height);
+        gl.uniform3f(qu.tint, tint[0], tint[1], tint[2]);
+        gl.uniform3f(qu.placeholder, placeholderBase[0], placeholderBase[1], placeholderBase[2]);
+        gl.uniform1f(qu.glowHueShift, glowHueShift);
+        gl.uniform3f(qu.pageBg, brPageBg[0], brPageBg[1], brPageBg[2]);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+        gl.useProgram(particleProgram);
+        gl.uniform1f(pu.time, elapsed);
+        gl.uniform1f(pu.progress, progress);
+        gl.uniform2f(pu.resolution, canvas.width, canvas.height);
+        gl.drawArrays(gl.POINTS, 0, BR_PARTICLE_COUNT);
+
+        // deliberately no "stop once settled" branch — keeps rendering
+        // indefinitely (idle particle drift/twinkle, live theme-toggle
+        // response for the page-bg composite) per product direction.
+        requestAnimationFrame(render);
+      }
+      requestAnimationFrame(render);
+      return true;
+    }
+
+    /* Falls back to the original CSS-keyframe reveal for one image. */
+    function brActivateCSSFallback(img, frame) {
+      const haze = document.createElement('div'); haze.className = 'br-haze';
+      const noise = document.createElement('div'); noise.className = 'br-noise';
+      const light = document.createElement('div'); light.className = 'br-light';
+      const shimmer = document.createElement('div'); shimmer.className = 'br-shimmer';
+      const finish = document.createElement('div'); finish.className = 'br-finish';
+      const rim = document.createElement('div'); rim.className = 'br-rim';
+      frame.append(haze, noise, light, shimmer, finish, rim);
+      img.classList.remove('br-source-hidden');
+      img.classList.add('br-img');
+
+      const applyHueShift = () => {
+        try {
+          const dom = brGetDominantColor(img);
+          const hue = brRgbToHueDeg(dom[0], dom[1], dom[2]);
+          let delta = ((hue - 200 + 540) % 360) - 180;
+          const shift = Math.max(-30, Math.min(30, delta * 0.3));
+          frame.parentElement.style.setProperty('--br-glow-hue-shift', shift.toFixed(1) + 'deg');
+        } catch (e) { /* leave default 0deg */ }
+      };
+      if (img.complete && img.naturalWidth > 0) applyHueShift();
+      else img.addEventListener('load', applyHueShift, { once: true });
+    }
+
+    /* ── Blur Reveal: 全画像を新アニメーションでラップ ── */
     function applyBlurReveal(container) {
       if (!container) return;
       const imgs = container.querySelectorAll('img');
@@ -2591,18 +3099,8 @@
         wrap.appendChild(glowB);
         wrap.appendChild(frame);
         frame.appendChild(img);
-        const haze = document.createElement('div'); haze.className = 'br-haze';
-        const noise = document.createElement('div'); noise.className = 'br-noise';
-        const light = document.createElement('div'); light.className = 'br-light';
-        const shimmer = document.createElement('div'); shimmer.className = 'br-shimmer';
-        const finish = document.createElement('div'); finish.className = 'br-finish';
-        frame.appendChild(haze);
-        frame.appendChild(noise);
-        frame.appendChild(light);
-        frame.appendChild(shimmer);
-        frame.appendChild(finish);
         img.dataset.brWrapped = '1';
-        img.classList.add('br-img');
+
         // エラー時のフォールバック（既存の onerror があれば保持）
         if (!img.dataset.brErrorBound) {
           img.dataset.brErrorBound = '1';
@@ -2612,7 +3110,8 @@
             this.style.display = 'none';
             const fr = this.closest('.br-frame');
             if (fr) {
-              fr.querySelectorAll('.br-haze,.br-noise,.br-light,.br-shimmer,.br-finish,.br-glow').forEach(el => el.style.display = 'none');
+              fr.querySelectorAll('.br-haze,.br-noise,.br-light,.br-shimmer,.br-finish,.br-glow,.br-canvas,.br-rim')
+                .forEach(el => el.style.display = 'none');
               if (!fr.querySelector('.br-error')) {
                 const ph = document.createElement('div');
                 ph.className = 'br-error';
@@ -2622,15 +3121,46 @@
               }
             }
           };
-          // すでにエラー状態（complete だが naturalWidth 0）の場合は即時発火
           if (img.complete && img.naturalWidth === 0 && img.getAttribute('src')) {
-            // 画像がまだ読み込まれていない小さなプレースホルダを除外（data: URL等）
             const src = img.getAttribute('src') || '';
             if (src && !src.startsWith('data:')) {
               setTimeout(() => { if (img.naturalWidth === 0) img.dispatchEvent(new Event('error')); }, 0);
             }
           }
         }
+
+        if (BR_REDUCED_MOTION) {
+          // アニメーションなし: フレームの角丸/影だけ適用した通常表示
+          void img.offsetWidth;
+          return;
+        }
+
+        // 'gpu' は常にWebGL2を試みる（失敗時のみ内部でCSSへ自動フォールバック）
+        // 'cpu' は常にCSS版　'auto' は既存の対応状況判定
+        const wantsGPU = BR_RENDER_MODE === 'gpu' || (BR_RENDER_MODE === 'auto' && BR_WEBGL2_OK);
+
+        if (!wantsGPU) {
+          brActivateCSSFallback(img, frame);
+          void img.offsetWidth;
+          return;
+        }
+
+        // WebGL経路: いったんcanvasを用意して隠したimgをテクスチャソースにする
+        const canvas = document.createElement('canvas');
+        canvas.className = 'br-canvas';
+        frame.appendChild(canvas);
+        img.classList.add('br-source-hidden');
+
+        const start = () => {
+          const ok = brInitWebGLReveal(img, canvas, frame);
+          if (!ok) {
+            canvas.remove();
+            brActivateCSSFallback(img, frame);
+          }
+        };
+        if (img.complete && img.naturalWidth > 0) start();
+        else img.addEventListener('load', start, { once: true });
+
         void img.offsetWidth;
       });
     }
