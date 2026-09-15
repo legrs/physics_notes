@@ -2992,12 +2992,38 @@ void main() {
       const placeholderBase = document.documentElement.classList.contains('dark')
         ? [0.05, 0.05, 0.07] : [0.93, 0.93, 0.96];
 
+      // 実画像の縦横比を明示的に指定する。ここを設定しないと、canvasの
+      // 初期の内在比率（デフォルト300x150 = 2:1）のままレイアウトされ、
+      // 直後にその「間違った比率」で書き込んだ getBoundingClientRect() を
+      // 元に canvas.width/height を決めてしまうため、以降ずっとその誤った
+      // 比率が焼き付いて画像が伸び縮みして見える（引き伸ばし問題の本体）。
+      if (img.naturalWidth && img.naturalHeight) {
+        canvas.style.aspectRatio = img.naturalWidth + ' / ' + img.naturalHeight;
+      }
+
+      // GPU（あるいはソフトウェアレンダラ）が実際にサポートする最大サイズ。
+      // Linux上のFirefoxなど、ソフトウェアレンダリング(Mesa llvmpipe等)では
+      // MacのGPUよりずっと小さい上限のことがあり、それを超えて
+      // canvas/viewportを要求すると描画が途中で欠けたり左上だけに
+      // 押し込まれたりする（右半分が見えなくなる不具合の主因）。
+      const brMaxSize = Math.min(
+        gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096,
+        gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) || 4096,
+        4096 // 実用上これで十分すぎるので、念のため絶対的な上限も設ける
+      );
+
       function resize() {
         const rect = canvas.getBoundingClientRect();
         const dpr = Math.min(window.devicePixelRatio || 1, 3);
         const quality = 1.5;
-        const w = Math.max(1, Math.round(rect.width * dpr * quality));
-        const h = Math.max(1, Math.round(rect.height * dpr * quality));
+        let w = Math.max(1, Math.round(rect.width * dpr * quality));
+        let h = Math.max(1, Math.round(rect.height * dpr * quality));
+        const largest = Math.max(w, h);
+        if (largest > brMaxSize) {
+          const scale = brMaxSize / largest;
+          w = Math.max(1, Math.round(w * scale));
+          h = Math.max(1, Math.round(h * scale));
+        }
         if (canvas.width !== w || canvas.height !== h) {
           canvas.width = w; canvas.height = h;
           gl.viewport(0, 0, w, h);
