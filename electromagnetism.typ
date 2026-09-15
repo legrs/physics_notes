@@ -2644,7 +2644,7 @@ Thus, coil softens(impede) rapid current changes and the ability
 #text(size:10pt)[( コイルにエネルギーってあんまり馴染ないけど，超伝導でもないとすぐ消失するもんな．逆に超伝導の違和感がすごい )]
 
 #pagebreak()
-== Mutural Induction 相互誘導
+== Mutual Induction 相互誘導
 
 //id: dd1e3512-b69c-4181-a02a-b1ff54409504参照
 
@@ -2699,12 +2699,13 @@ $B = mu N_1 / l dot I_1 quad <=> quad Delta Phi = mu N_1 / l S dot Delta I_1\
 V_2 = - N_2 mu N_1 / l S dot (Delta I_1) / (Delta t)\
 $
 
-Let $ N_2 mu N_1 / l S = M$,
+Let $ N_2 mu N_1 / l S = bold(N_1 N_2 dot mu / l  S  =  M)$,
 $
   bold(V_2 = -M (Delta I_1) / (Delta t))
 $
+$( V_1 = -M (Delta I_2) / (Delta t) )$
 
-$M$ is called *matural inductance*.
+$M$ is called *mutual inductance*.
 
 = Alternating Current 交流
 
@@ -3251,8 +3252,52 @@ This frequency is called *resonance frequency*.
 
 
 
+#align(center,box(width:16cm, height:6cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+
+      rect((-100,100),(100,-100))
+      content((0.5,-1),[*In the truth..... Light is one of the electromagnetic waves!*])
+
+      content((-7,1),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[電磁波冷静になると謎ですき])
+
+      content((-1,1.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[！？])
+      content((2.5,1.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[！？])
+      content((4.5,0.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[！？])
+      content((2,1),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[え！！])
+      content((1,1.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[おお])
+      content((1,1.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[おお])
+      content((4,2),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[これはおおやね])
+      content((-2,1.8),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[そうなんだ])
+
+      content((-1,0.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[俺もそう思ってた])
+      content((3,0.3),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[おお…])
+      content((2,-0.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[ソースは？])
+
+      content((6.8,0),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[←俺は味ぽん派])
+      content((5.5,1.3),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[光電効果ってそういうこと？])
+      content((6.4,-2.3),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[電磁誘導おきるの？])
+
+      content((4.4,-1.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[これまだ信じてない])
+
+    })
+  ]
+])
+
 //#text(size:10pt)[( 東北大アンテナきた )]
 #text(size:10pt)[( fieldの伝搬速度が光速なので，電磁波は光速で伝搬するのか )]
+
+
+
+#text(size:10pt)[( 教員：分光は面倒だ，普通amateurはどうやって表面温度を推定する )]
+#text(size:10pt)[( えあっ：ワイ )]
+//#text(size:10pt)[( 光の正体は………電子に与える場であった… )]
+//#text(size:10pt)[(  )]
+
+
+
 
 
 //類似性＝アナロジー // 2026-06-29の名言
