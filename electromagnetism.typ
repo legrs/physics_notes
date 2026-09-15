@@ -2644,7 +2644,9 @@ Thus, coil softens(impede) rapid current changes and the ability
 #text(size:10pt)[( コイルにエネルギーってあんまり馴染ないけど，超伝導でもないとすぐ消失するもんな．逆に超伝導の違和感がすごい )]
 
 #pagebreak()
-== Mutural Induction
+== Mutural Induction 相互誘導
+
+//id: dd1e3512-b69c-4181-a02a-b1ff54409504参照
 
 #align(center,box(width:15cm, height:6cm, clip:true)[
   #place(center + horizon)[
@@ -2704,9 +2706,9 @@ $
 
 $M$ is called *matural inductance*.
 
-= Alternating Current
+= Alternating Current 交流
 
-== How to make A.C.
+== How to make A.C. 交流 n分クッ◯ング
 
 #align(center,box(width:15cm, height:6cm, clip:true)[
   #place(center + horizon)[
