@@ -2381,6 +2381,7 @@
             <option value="auto">Auto</option>
             <option value="cpu">CPU</option>
             <option value="gpu">GPU</option>
+            <option value="gpu-v2">GPU-v2</option>
           </select>
         </div>
       </div>
@@ -2650,8 +2651,10 @@
     const BR_REDUCED_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     // 画像レンダリング設定（設定パネル > 描画 > 画像レンダリング）
-    // 'auto': 既存のフォールバック判定（WebGL2が使えればGPU、使えなければCPU）
-    // 'cpu' : 常にCSS版を使う   'gpu': 常にWebGL2版を試みる（失敗時のみCSSへ）
+    // 'auto'  : 既存のフォールバック判定（WebGL2が使えればGPU、使えなければCPU。WebGPUへは自動では回さない）
+    // 'cpu'   : 常にCSS版を使う
+    // 'gpu'   : 常にWebGL2版を試みる（失敗時のみCSSへ）
+    // 'gpu-v2': 常にWebGPU版を試みる（失敗時のみCSSへ）
     let BR_RENDER_MODE = localStorage.getItem('br_render_mode') || 'auto';
     (function () {
       const sel = document.getElementById('cs-render-mode');
@@ -3077,6 +3080,483 @@ void main() {
       return true;
     }
 
+    /* ══════════════════════════════════════════════════════════════════
+       GPU-v2 — WebGPU port of the exact same effect (mip-based blur,
+       chromatic aberration, mosaic reveal, bloom, grain, rim reflection,
+       placeholder wash, particles). Shares ONE GPUDevice + one set of
+       compiled pipelines across every image on the page (unlike WebGL2,
+       WebGPU isn't limited to ~8-16 contexts, so this scales further).
+       ══════════════════════════════════════════════════════════════════ */
+
+    const BR_WGPU_QUAD_SRC = `
+struct Uniforms {
+  timeProgressHue: vec4<f32>, // x=time, y=progress, z=glowHueShift
+  resolution: vec4<f32>,      // xy=resolution
+  tint: vec4<f32>,            // rgb=tint
+  placeholder: vec4<f32>,     // rgb=placeholder
+  pageBg: vec4<f32>,          // rgb=pageBg
+};
+@group(0) @binding(0) var<uniform> u: Uniforms;
+@group(0) @binding(1) var samp: sampler;
+@group(0) @binding(2) var tex: texture_2d<f32>;
+
+struct VOut {
+  @builtin(position) position: vec4<f32>,
+  @location(0) uv: vec2<f32>,
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) vi: u32) -> VOut {
+  var uv = vec2<f32>(f32((vi << 1u) & 2u), f32(vi & 2u));
+  var out: VOut;
+  out.uv = uv;
+  out.position = vec4<f32>(uv * 2.0 - 1.0, 0.0, 1.0);
+  return out;
+}
+
+fn wmod(x: f32, y: f32) -> f32 { return x - y * floor(x / y); }
+
+fn hash(p: vec2<f32>) -> f32 {
+  var p2 = fract(p * vec2<f32>(123.34, 456.21));
+  p2 = p2 + dot(p2, p2 + 45.32);
+  return fract(p2.x * p2.y);
+}
+
+const GC1 = vec3<f32>(1.000, 0.369, 0.796);
+const GC2 = vec3<f32>(0.369, 0.784, 1.000);
+const GC3 = vec3<f32>(1.000, 0.812, 0.369);
+const GC4 = vec3<f32>(0.541, 0.420, 1.000);
+const GC5 = vec3<f32>(0.369, 1.000, 0.690);
+
+fn hueRotate(c: vec3<f32>, deg: f32) -> vec3<f32> {
+  let a = radians(deg);
+  let cs = cos(a);
+  let sn = sin(a);
+  let m = mat3x3<f32>(
+    vec3<f32>(0.299 + 0.701*cs + 0.168*sn, 0.299 - 0.299*cs - 0.328*sn, 0.299 - 0.300*cs + 1.250*sn),
+    vec3<f32>(0.587 - 0.587*cs + 0.330*sn, 0.587 + 0.413*cs + 0.035*sn, 0.587 - 0.588*cs - 1.050*sn),
+    vec3<f32>(0.114 - 0.114*cs - 0.497*sn, 0.114 - 0.114*cs + 0.292*sn, 0.114 + 0.886*cs - 0.203*sn)
+  );
+  return clamp(m * c, vec3<f32>(0.0), vec3<f32>(1.0));
+}
+fn conic5(t_in: f32, s0: vec3<f32>, s1: vec3<f32>, s2: vec3<f32>, s3: vec3<f32>, s4: vec3<f32>, s5: vec3<f32>) -> vec3<f32> {
+  let t = wmod(t_in, 5.0);
+  if (t < 1.0) { return mix(s0, s1, t); }
+  if (t < 2.0) { return mix(s1, s2, t - 1.0); }
+  if (t < 3.0) { return mix(s2, s3, t - 2.0); }
+  if (t < 4.0) { return mix(s3, s4, t - 3.0); }
+  return mix(s4, s5, t - 4.0);
+}
+fn conic4(t_in: f32, s0: vec3<f32>, s1: vec3<f32>, s2: vec3<f32>, s3: vec3<f32>, s4: vec3<f32>) -> vec3<f32> {
+  let t = wmod(t_in, 4.0);
+  if (t < 1.0) { return mix(s0, s1, t); }
+  if (t < 2.0) { return mix(s1, s2, t - 1.0); }
+  if (t < 3.0) { return mix(s2, s3, t - 2.0); }
+  return mix(s3, s4, t - 3.0);
+}
+
+@fragment
+fn fs_main(in: VOut) -> @location(0) vec4<f32> {
+  let uv = in.uv;
+  let time = u.timeProgressHue.x;
+  let progress = u.timeProgressHue.y;
+  let glowHueShift = u.timeProgressHue.z;
+  let resolution = u.resolution.xy;
+  let tint = u.tint.rgb;
+  let placeholderBase = u.placeholder.rgb;
+  let pageBg = u.pageBg.rgb;
+
+  let zoom = mix(1.55, 1.0, progress);
+  var zuv = (uv - vec2<f32>(0.5)) / zoom + vec2<f32>(0.5);
+  zuv = vec2<f32>(zuv.x, 1.0 - zuv.y); // WebGL(Y-up,bottom-left) -> WebGPU(Y-down,top-left) texture space
+
+  let grid = vec2<f32>(10.0, 10.0);
+  let cell = floor(uv * grid);
+  let cellDelay = hash(cell) * 0.42;
+  let cellProgress = clamp((progress - cellDelay) / (1.0 - cellDelay), 0.0, 1.0);
+  let lod = mix(9.0, 0.0, cellProgress);
+
+  let aberr = mix(0.03, 0.0, progress);
+  let dir = normalize(zuv - vec2<f32>(0.5) + vec2<f32>(1e-4));
+  let texR = textureSampleLevel(tex, samp, zuv + dir * aberr, lod);
+  let texG = textureSampleLevel(tex, samp, zuv, lod);
+  let texB = textureSampleLevel(tex, samp, zuv - dir * aberr, lod);
+  var color = vec3<f32>(texR.r, texG.g, texB.b);
+  let imgAlpha = texG.a;
+
+  color = color + tint * 0.09 * (1.0 - cellProgress);
+
+  let n = hash(uv * resolution * 0.75 + vec2<f32>(time * 60.0));
+  let grainAmt = mix(0.22, 0.0, progress);
+  color = color + (n - 0.5) * grainAmt * mix(vec3<f32>(1.0), tint, 0.35);
+
+  let bloomSrc = textureSampleLevel(tex, samp, zuv, 4.0).rgb;
+  let highlight = max(bloomSrc - vec3<f32>(0.55), vec3<f32>(0.0));
+  let bloomAmt = smoothstep(0.1, 0.55, progress) * (1.0 - smoothstep(0.75, 1.0, progress) * 0.6);
+  color = color + highlight * bloomAmt * 1.3;
+
+  let bright = mix(1.14, 1.0, progress);
+  color = color * bright;
+
+  let centered = uv - vec2<f32>(0.5);
+  var ang = degrees(atan2(centered.y, centered.x));
+  if (ang < 0.0) { ang = ang + 360.0; }
+  let rotA = wmod(time / 9.0 * 360.0, 360.0);
+  let rotB = wmod(-time / 13.0 * 360.0, 360.0);
+  let tA = wmod(ang - rotA, 360.0) / 72.0;
+  let tB = wmod(ang - 180.0 - rotB, 360.0) / 90.0;
+  let glowA = conic5(tA, GC1, GC2, GC3, GC4, GC5, GC1);
+  let glowB = conic4(tB, GC4, GC1, GC5, GC2, GC4);
+  let glowColor = hueRotate(glowA * 0.6 + glowB * 0.4, glowHueShift);
+  let distToEdge = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+  let edge = (1.0 - smoothstep(0.0, 0.14, distToEdge)) * 0.22;
+  color = color + glowColor * edge;
+
+  let introMix = 1.0 - smoothstep(0.0, 0.12, progress);
+  let rt = fract((uv.x * 0.6 + uv.y * 0.4) + time * 0.025);
+  let rainbow = vec3<f32>(0.5) + vec3<f32>(0.5) * cos(6.28318 * (vec3<f32>(rt) + vec3<f32>(0.0, 0.33, 0.67)));
+  let placeholderColor = placeholderBase + rainbow * 0.12;
+  color = mix(color, placeholderColor, introMix);
+
+  let finalRGB = mix(pageBg, color, clamp(imgAlpha, 0.0, 1.0));
+  return vec4<f32>(finalRGB, 1.0);
+}`;
+
+    const BR_WGPU_PARTICLE_SRC = `
+struct PUniforms {
+  timeProgress: vec4<f32>, // x=time, y=progress
+  resolution: vec4<f32>,   // xy=resolution
+};
+@group(0) @binding(0) var<uniform> pu: PUniforms;
+
+struct PVOut {
+  @builtin(position) position: vec4<f32>,
+  @location(0) color: vec4<f32>,
+  @location(1) star: f32,
+  @location(2) phase: f32,
+  @location(3) localUV: vec2<f32>,
+};
+
+fn phash1(n: f32) -> f32 { return fract(sin(n) * 43758.5453123); }
+fn phash2(n: f32) -> vec2<f32> { return vec2<f32>(phash1(n), phash1(n + 17.17)); }
+
+@vertex
+fn vs_particle(@builtin(vertex_index) vIdx: u32, @builtin(instance_index) iIdx: u32) -> PVOut {
+  let time = pu.timeProgress.x;
+  let progress = pu.timeProgress.y;
+  let resolution = pu.resolution.xy;
+
+  let id = f32(iIdx);
+  let seed = phash2(id);
+  let seed2 = phash2(id + 91.7);
+  let startPos = (seed - vec2<f32>(0.5)) * 2.6;
+  let targetPos = (seed2 - vec2<f32>(0.5)) * 1.9;
+  let delay = phash1(id + 3.3) * 0.5;
+  let speed = 1.0 / max(1.0 - delay, 0.001);
+  let t = clamp((progress - delay) * speed, 0.0, 1.0);
+  let eased = t * t * (3.0 - 2.0 * t);
+  var centerPos = mix(startPos, targetPos, eased);
+  centerPos = centerPos + vec2<f32>(sin(time * 0.6 + id), cos(time * 0.5 + id * 1.3)) * 0.01 * eased;
+
+  let isStar = step(0.92, phash1(id + 55.5));
+  var sizeBase = mix(4.5, 1.3, eased);
+  sizeBase = mix(sizeBase, sizeBase * 2.4, isStar);
+
+  var corners = array<vec2<f32>, 4>(
+    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0),
+    vec2<f32>(-1.0, 1.0), vec2<f32>(1.0, 1.0)
+  );
+  let corner = corners[vIdx];
+  let sizeNDC = vec2<f32>(sizeBase / resolution.x, sizeBase / resolution.y) * 2.0;
+  let worldPos = centerPos + corner * sizeNDC * 0.5;
+
+  var out: PVOut;
+  out.position = vec4<f32>(worldPos, 0.0, 1.0);
+  out.localUV = corner; // replaces gl_PointCoord (WebGPU has no point-sprite primitive)
+  out.star = isStar;
+  out.phase = phash1(id + 8.8) * 6.2831853;
+  let alpha = mix(0.0, 0.9, smoothstep(0.0, 0.15, t)) * (1.0 - smoothstep(0.85, 1.0, progress) * 0.5);
+  let tint = mix(vec3<f32>(1.0, 0.78, 0.95), vec3<f32>(1.0), eased);
+  out.color = vec4<f32>(tint, alpha);
+  return out;
+}
+
+@fragment
+fn fs_particle(in: PVOut) -> @location(0) vec4<f32> {
+  let time = pu.timeProgress.x;
+  let c = in.localUV * 0.5;
+  let d = length(c);
+  let base = smoothstep(0.5, 0.0, d);
+  let ang = atan2(c.y, c.x);
+  let spikes = pow(abs(cos(ang * 2.0)), 6.0) * base;
+  let shape = base + spikes * in.star * 0.9;
+  let twinkle = 0.55 + 0.45 * sin(time * 7.0 + in.phase);
+  let a = clamp(shape * in.color.a * twinkle, 0.0, 1.0);
+  return vec4<f32>(in.color.rgb, a);
+}`;
+
+    const BR_WGPU_MIP_SRC = `
+struct VOut {
+  @builtin(position) position: vec4<f32>,
+  @location(0) uv: vec2<f32>,
+};
+@vertex
+fn vs_main(@builtin(vertex_index) vi: u32) -> VOut {
+  var uv = vec2<f32>(f32((vi << 1u) & 2u), f32(vi & 2u));
+  var out: VOut;
+  out.uv = uv;
+  out.position = vec4<f32>(uv * 2.0 - 1.0, 0.0, 1.0);
+  return out;
+}
+@group(0) @binding(0) var samp: sampler;
+@group(0) @binding(1) var img: texture_2d<f32>;
+@fragment
+fn fs_main(in: VOut) -> @location(0) vec4<f32> {
+  return textureSample(img, samp, in.uv);
+}`;
+
+    let BR_WGPU_DEVICE_PROMISE = null;
+    function brGetWebGPUDevice() {
+      if (!BR_WGPU_DEVICE_PROMISE) {
+        BR_WGPU_DEVICE_PROMISE = (async () => {
+          if (!navigator.gpu) return null;
+          try {
+            const adapter = await navigator.gpu.requestAdapter();
+            if (!adapter) return null;
+            return await adapter.requestDevice();
+          } catch (e) {
+            console.error('WebGPU device request failed:', e);
+            return null;
+          }
+        })();
+      }
+      return BR_WGPU_DEVICE_PROMISE;
+    }
+
+    let BR_WGPU_ENGINE = null; // object | false(=failed) | null(=not tried yet)
+    async function brGetWebGPUEngine() {
+      if (BR_WGPU_ENGINE) return BR_WGPU_ENGINE;
+      if (BR_WGPU_ENGINE === false) return null;
+      const device = await brGetWebGPUDevice();
+      if (!device) { BR_WGPU_ENGINE = false; return null; }
+      try {
+        const format = navigator.gpu.getPreferredCanvasFormat();
+        const quadModule = device.createShaderModule({ code: BR_WGPU_QUAD_SRC });
+        const particleModule = device.createShaderModule({ code: BR_WGPU_PARTICLE_SRC });
+        const mipModule = device.createShaderModule({ code: BR_WGPU_MIP_SRC });
+
+        const quadPipeline = device.createRenderPipeline({
+          layout: 'auto',
+          vertex: { module: quadModule, entryPoint: 'vs_main' },
+          fragment: { module: quadModule, entryPoint: 'fs_main', targets: [{ format }] },
+          primitive: { topology: 'triangle-list', cullMode: 'none' },
+        });
+        const particlePipeline = device.createRenderPipeline({
+          layout: 'auto',
+          vertex: { module: particleModule, entryPoint: 'vs_particle' },
+          fragment: {
+            module: particleModule, entryPoint: 'fs_particle',
+            targets: [{
+              format,
+              blend: {
+                color: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' },
+                alpha: { srcFactor: 'one', dstFactor: 'one', operation: 'add' },
+              },
+            }],
+          },
+          primitive: { topology: 'triangle-strip', cullMode: 'none' },
+        });
+        const mipPipeline = device.createRenderPipeline({
+          layout: 'auto',
+          vertex: { module: mipModule, entryPoint: 'vs_main' },
+          fragment: { module: mipModule, entryPoint: 'fs_main', targets: [{ format: 'rgba8unorm' }] },
+          primitive: { topology: 'triangle-list', cullMode: 'none' },
+        });
+
+        const runtimeSampler = device.createSampler({
+          minFilter: 'linear', magFilter: 'linear', mipmapFilter: 'linear',
+          addressModeU: 'clamp-to-edge', addressModeV: 'clamp-to-edge',
+        });
+        const mipSampler = device.createSampler({ minFilter: 'linear', magFilter: 'linear' });
+
+        BR_WGPU_ENGINE = { device, format, quadPipeline, particlePipeline, mipPipeline, runtimeSampler, mipSampler };
+        return BR_WGPU_ENGINE;
+      } catch (e) {
+        console.error('WebGPU engine init failed:', e);
+        BR_WGPU_ENGINE = false;
+        return null;
+      }
+    }
+
+    // WebGPUには gl.generateMipmap 相当がないため、各ミップレベルへ
+    // 1段階下からブリットして自前で生成する（よく使われる標準的な手法）
+    function brGenerateMipmapsWGPU(device, mipPipeline, mipSampler, texture, mipLevelCount) {
+      const commandEncoder = device.createCommandEncoder();
+      for (let i = 1; i < mipLevelCount; i++) {
+        const bindGroup = device.createBindGroup({
+          layout: mipPipeline.getBindGroupLayout(0),
+          entries: [
+            { binding: 0, resource: mipSampler },
+            { binding: 1, resource: texture.createView({ baseMipLevel: i - 1, mipLevelCount: 1 }) },
+          ],
+        });
+        const pass = commandEncoder.beginRenderPass({
+          colorAttachments: [{
+            view: texture.createView({ baseMipLevel: i, mipLevelCount: 1 }),
+            loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 },
+          }],
+        });
+        pass.setPipeline(mipPipeline);
+        pass.setBindGroup(0, bindGroup);
+        pass.draw(3);
+        pass.end();
+      }
+      device.queue.submit([commandEncoder.finish()]);
+    }
+
+    /* Sets up an independent WebGPU reveal for one image, sharing the
+       page-wide device/pipelines. Returns a Promise<boolean>. */
+    async function brInitWebGPUReveal(img, canvas, frame) {
+      const engine = await brGetWebGPUEngine();
+      if (!engine) return false;
+      const { device, format, quadPipeline, particlePipeline, mipPipeline, runtimeSampler, mipSampler } = engine;
+
+      let context;
+      try {
+        context = canvas.getContext('webgpu');
+        if (!context) return false;
+        context.configure({ device, format, alphaMode: 'opaque' });
+      } catch (e) {
+        console.error('WebGPU canvas context failed:', e);
+        return false;
+      }
+
+      // 同じ引き伸ばし対策: 実画像の比率を先に確定させてからサイズを読む
+      if (img.naturalWidth && img.naturalHeight) {
+        canvas.style.aspectRatio = img.naturalWidth + ' / ' + img.naturalHeight;
+      }
+
+      let texture;
+      try {
+        const texW = img.naturalWidth, texH = img.naturalHeight;
+        const mipLevelCount = Math.max(1, Math.floor(Math.log2(Math.max(texW, texH))) + 1);
+        texture = device.createTexture({
+          size: [texW, texH],
+          format: 'rgba8unorm',
+          mipLevelCount,
+          usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST,
+        });
+        device.queue.copyExternalImageToTexture({ source: img }, { texture }, [texW, texH]);
+        brGenerateMipmapsWGPU(device, mipPipeline, mipSampler, texture, mipLevelCount);
+      } catch (e) {
+        console.error('WebGPU texture upload failed (CORS?):', e);
+        return false;
+      }
+
+      const dom = brGetDominantColor(img);
+      const tint = [
+        dom[0] * 0.82 + brAccent[0] * 0.18,
+        dom[1] * 0.82 + brAccent[1] * 0.18,
+        dom[2] * 0.82 + brAccent[2] * 0.18,
+      ];
+      const glowHueShift = (() => {
+        const baseHue = 200;
+        const hue = brRgbToHueDeg(dom[0], dom[1], dom[2]);
+        let delta = ((hue - baseHue + 540) % 360) - 180;
+        return Math.max(-30, Math.min(30, delta * 0.3));
+      })();
+      frame.parentElement.style.setProperty('--br-glow-hue-shift', glowHueShift.toFixed(1) + 'deg');
+
+      const placeholderBase = document.documentElement.classList.contains('dark')
+        ? [0.05, 0.05, 0.07] : [0.93, 0.93, 0.96];
+
+      const uniformBuffer = device.createBuffer({
+        size: 80, // 5 x vec4<f32>
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      });
+      const particleUniformBuffer = device.createBuffer({
+        size: 32, // 2 x vec4<f32>
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      });
+      const quadBindGroup = device.createBindGroup({
+        layout: quadPipeline.getBindGroupLayout(0),
+        entries: [
+          { binding: 0, resource: { buffer: uniformBuffer } },
+          { binding: 1, resource: runtimeSampler },
+          { binding: 2, resource: texture.createView() },
+        ],
+      });
+      const particleBindGroup = device.createBindGroup({
+        layout: particlePipeline.getBindGroupLayout(0),
+        entries: [{ binding: 0, resource: { buffer: particleUniformBuffer } }],
+      });
+
+      const maxDim = (device.limits && device.limits.maxTextureDimension2D) || 4096;
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 3);
+        const quality = 1.5;
+        let w = Math.max(1, Math.round(rect.width * dpr * quality));
+        let h = Math.max(1, Math.round(rect.height * dpr * quality));
+        const largest = Math.max(w, h);
+        if (largest > maxDim) {
+          const scale = maxDim / largest;
+          w = Math.max(1, Math.round(w * scale));
+          h = Math.max(1, Math.round(h * scale));
+        }
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w; canvas.height = h;
+        }
+      }
+      resize();
+      if (typeof ResizeObserver !== 'undefined') new ResizeObserver(resize).observe(canvas);
+      window.addEventListener('resize', resize);
+
+      const uniformData = new Float32Array(20);
+      const particleUniformData = new Float32Array(8);
+      let startTime = null;
+      function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+      function render(now) {
+        if (startTime === null) startTime = now;
+        const elapsed = (now - startTime) / 1000;
+        const rawProgress = Math.min(elapsed / BR_DURATION, 1);
+        const progress = easeOutCubic(rawProgress);
+
+        uniformData.set([elapsed, progress, glowHueShift, 0], 0);
+        uniformData.set([canvas.width, canvas.height, 0, 0], 4);
+        uniformData.set([tint[0], tint[1], tint[2], 0], 8);
+        uniformData.set([placeholderBase[0], placeholderBase[1], placeholderBase[2], 0], 12);
+        uniformData.set([brPageBg[0], brPageBg[1], brPageBg[2], 0], 16);
+        device.queue.writeBuffer(uniformBuffer, 0, uniformData);
+
+        particleUniformData.set([elapsed, progress, 0, 0], 0);
+        particleUniformData.set([canvas.width, canvas.height, 0, 0], 4);
+        device.queue.writeBuffer(particleUniformBuffer, 0, particleUniformData);
+
+        const commandEncoder = device.createCommandEncoder();
+        const pass = commandEncoder.beginRenderPass({
+          colorAttachments: [{
+            view: context.getCurrentTexture().createView(),
+            loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 },
+          }],
+        });
+        pass.setPipeline(quadPipeline);
+        pass.setBindGroup(0, quadBindGroup);
+        pass.draw(3);
+        pass.setPipeline(particlePipeline);
+        pass.setBindGroup(0, particleBindGroup);
+        pass.draw(4, BR_PARTICLE_COUNT);
+        pass.end();
+        device.queue.submit([commandEncoder.finish()]);
+
+        // WebGL版と同じく、収束後も止めずに描画し続ける
+        requestAnimationFrame(render);
+      }
+      requestAnimationFrame(render);
+      return true;
+    }
+
     /* Falls back to the original CSS-keyframe reveal for one image. */
     function brActivateCSSFallback(img, frame) {
       const haze = document.createElement('div'); haze.className = 'br-haze';
@@ -3161,28 +3641,36 @@ void main() {
           return;
         }
 
-        // 'gpu' は常にWebGL2を試みる（失敗時のみ内部でCSSへ自動フォールバック）
-        // 'cpu' は常にCSS版　'auto' は既存の対応状況判定
-        const wantsGPU = BR_RENDER_MODE === 'gpu' || (BR_RENDER_MODE === 'auto' && BR_WEBGL2_OK);
+        // 'cpu' は常にCSS版　'gpu' は常にWebGL2を試みる　'gpu-v2' は常にWebGPUを試みる
+        // （いずれも失敗時は内部でCSSへ自動フォールバック）　'auto' は既存のWebGL2対応判定のみ
+        // （WebGPUへは自動では回さない — 明示的に選んだ時だけの実験的経路として扱う）
+        let engine = 'css';
+        if (BR_RENDER_MODE === 'gpu') engine = 'webgl2';
+        else if (BR_RENDER_MODE === 'gpu-v2') engine = 'webgpu';
+        else if (BR_RENDER_MODE === 'auto' && BR_WEBGL2_OK) engine = 'webgl2';
 
-        if (!wantsGPU) {
+        if (engine === 'css') {
           brActivateCSSFallback(img, frame);
           void img.offsetWidth;
           return;
         }
 
-        // WebGL経路: いったんcanvasを用意して隠したimgをテクスチャソースにする
+        // GPU経路（WebGL2 / WebGPU 共通）: canvasを用意して隠したimgをテクスチャソースにする
         const canvas = document.createElement('canvas');
         canvas.className = 'br-canvas';
         frame.appendChild(canvas);
         img.classList.add('br-source-hidden');
 
         const start = () => {
-          const ok = brInitWebGLReveal(img, canvas, frame);
-          if (!ok) {
-            canvas.remove();
-            brActivateCSSFallback(img, frame);
-          }
+          const initPromise = engine === 'webgpu'
+            ? brInitWebGPUReveal(img, canvas, frame)
+            : Promise.resolve(brInitWebGLReveal(img, canvas, frame));
+          initPromise.then(ok => {
+            if (!ok) {
+              canvas.remove();
+              brActivateCSSFallback(img, frame);
+            }
+          });
         };
         if (img.complete && img.naturalWidth > 0) start();
         else img.addEventListener('load', start, { once: true });
