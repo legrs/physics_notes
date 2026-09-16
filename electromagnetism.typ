@@ -2387,12 +2387,16 @@ There are also $r = "const."$ accelarator which is called *synchrotron*.
 #h(1em)
 *Faraday's law of induction* ( rule of thumb )
 $
-  bold(V  = N dot (Delta Phi)/(Delta t))
+  bold(V  = - N dot (Delta Phi)/(Delta t))
 $
+$bold(V)$ is called induced electromotive force( *induced EMF* )\
 $N$ is number of roll of coil(solenoid).\
 direction is such that it cancels out $ Delta Phi$\
 ($Phi = S dot B$)
 ($n$ is number of turns a the coil)
+
+Be careful about sign.
+The coil work as battery, so *electrons gain potential energy* from $(d Phi)/(d t)$
 
 #align(center,box(width:17cm, height:7cm, clip:true)[
   #place(center + horizon)[
@@ -2559,19 +2563,18 @@ $I V_0 t = v t I B l + I^2 R t$
 ])
 $Delta Phi = mu N/l S Delta I quad ( because$ @solenoid $)$
 #v(1em)
-$V = N dot (Delta Phi) / (Delta t)\
-  quad = N dot (mu N/l S Delta I)/(Delta t)\
-therefore V = (mu N^2 S) / l dot (Delta I)/(Delta t)
+$V = - N dot (Delta Phi) / (Delta t)\
+  quad = - N dot (mu N/l S Delta I)/(Delta t)\
+therefore V = - (mu N^2 S) / l dot (Delta I)/(Delta t)
 $
 
-Let $L := (mu N^2 S) / l$,\
+Let $L := - (mu N^2 S) / l$,\
 #text(size:10pt)[( まあまあ複雑なconstantを当然のように置くから困る )]
 
 $
-  bold(V = L (Delta I)/(Delta t))
+  bold(V = L - (Delta I)/(Delta t))
 $<self-induction>
 
-$bold(V)$ is called induced electromotive force( *induced EMF* )\
 $bold(L)$ is called *self inductance*.
 Unit is *H ( henry )*.
 
@@ -2644,9 +2647,7 @@ Thus, coil softens(impede) rapid current changes and the ability
 #text(size:10pt)[( コイルにエネルギーってあんまり馴染ないけど，超伝導でもないとすぐ消失するもんな．逆に超伝導の違和感がすごい )]
 
 #pagebreak()
-== Mutual Induction 相互誘導
-
-//id: dd1e3512-b69c-4181-a02a-b1ff54409504参照
+== Mutual Induction
 
 #align(center,box(width:15cm, height:6cm, clip:true)[
   #place(center + horizon)[
@@ -2707,9 +2708,9 @@ $( V_1 = -M (Delta I_2) / (Delta t) )$
 
 $M$ is called *mutual inductance*.
 
-= Alternating Current 交流
+= Alternating Current
 
-== How to make A.C. 交流 n分クッ◯ング
+== How to make A.C.
 
 #align(center,box(width:15cm, height:6cm, clip:true)[
   #place(center + horizon)[
