@@ -2516,7 +2516,7 @@ $I V_0 t = v t I B l + I^2 R t$
 
 #text(size:10pt)[(わざわざ描くものでもなかったが練習になったのでよし)]
 
-== Self-induction of coil
+=== Self-induction of coil
 
 #align(center,box(width:15cm, height:5cm, clip:true)[
   #place(center + horizon)[
@@ -2589,7 +2589,7 @@ This phenomenon is called *Self-induction*.
 
 Thus, coil softens(impede) rapid current changes and the ability 
 
-== Energy of Coil
+=== Energy of Coil
 #grid(
   columns:(1fr,1fr),
   gutter:1cm,
@@ -2647,7 +2647,7 @@ Thus, coil softens(impede) rapid current changes and the ability
 #text(size:10pt)[( コイルにエネルギーってあんまり馴染ないけど，超伝導でもないとすぐ消失するもんな．逆に超伝導の違和感がすごい )]
 
 #pagebreak()
-== Mutual Induction
+=== Mutual Induction
 
 #align(center,box(width:15cm, height:6cm, clip:true)[
   #place(center + horizon)[
@@ -2708,9 +2708,9 @@ $( V_1 = -M (Delta I_2) / (Delta t) )$
 
 $M$ is called *mutual inductance*.
 
-= Alternating Current
+== Alternating Current
 
-== How to make A.C.
+=== How to make A.C.
 
 #align(center,box(width:15cm, height:6cm, clip:true)[
   #place(center + horizon)[
@@ -2754,7 +2754,7 @@ $
 $
 
 #pagebreak()
-== Effective value
+=== Effective value
 #text(size:10pt)[( かなり遅れてるので図はスキップ．ごめんなさいにょ )]\
 $I = V/R = I_0 sin omega t) $
 ($I_0$ is max current)
@@ -2772,7 +2772,7 @@ $
 
 
 
-== Transformer
+=== Transformer
 #align(center,box(width:15cm, height:6cm, clip:true)[
   #place(center + horizon)[
     #cetz.canvas({
@@ -2854,7 +2854,7 @@ $
 
 
 
-== A.C and Coil
+=== A.C and Coil
 When $I_L = I_(L 0) sin omega t$,
 
 #v(1em)
@@ -2898,7 +2898,7 @@ the same unit $[Omega]$ is used for this.\
 //]
 //#text(size:10pt)[( cetz-plotとかいうものを入れてみたが，ややカスタマイズ性がないな　軸の変数がかえれらなーい )]
 
-== A.C and Capacitor
+=== A.C and Capacitor
 When$V_C = V_(C 0) sin omega t$,
 #v(1em)
 $I_C = (d Q)/(d t) quad (because "difinition of current")\
@@ -2916,7 +2916,7 @@ $
 reactance of capacitor $bold(X_C = 1 / (omega C))$
 
 #pagebreak()
-== Impedance
+=== Impedance
 #grid(
   columns:(1fr,1.5fr),
   gutter:1cm,
@@ -3012,7 +3012,7 @@ $
 $
 $cos phi$ is called *power factor*.
 
-== Resonance Circuit
+=== Resonance Circuit
 In RLC-circuit( @rlc_circuit ).
 When $ omega L = 1/(omega C) quad <=> quad bold(omega = 1/sqrt(L C))$,\
 $Z = R$ and impedance will be minimamized. 
@@ -3022,7 +3022,7 @@ This frequency is called *resonance frequency*.
 
 #text(size:10pt)[( capacitorのreactanceとcoilのreactanceが等しいから，電圧に対する電流の応答の強さが双方で同じで位相差$pi$なため，全energyをやりとりできる？電圧に対する位相差0でピッタリ合った電流変化が得られるのか )]
 
-== Oscillation
+=== Oscillation
 
 #grid(
   columns:(1fr,1.5fr),
@@ -3070,7 +3070,7 @@ This frequency is called *resonance frequency*.
 #let red = rgb("ff5555")
 #let blue = rgb("5555ff")
 
-= Electromagnetic Waves
+== Electromagnetic Waves
 
 
 #text(size:10pt)[( あれ！！電場ってなんだっけ\@\_\@ ; となる．このNoteの内容では電子の存在しない領域を電磁波が伝わる理由を説明できなさそう )]
@@ -3079,7 +3079,7 @@ This frequency is called *resonance frequency*.
 //electric field \<\-\> magnetic field
 
 
-#align(center,box(width:15cm, height:10cm, clip:true)[
+#align(center,box(width:15cm, height:7cm, clip:true)[
   #place(center + horizon)[
     #cetz.canvas({
       import cetz.draw: *
@@ -3283,6 +3283,7 @@ This frequency is called *resonance frequency*.
 
       content((4.4,-1.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[これまだ信じてない])
 
+      content((4,-2.8),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[おまいらBellの不等式が破れたみたいなリアクションするな])
     })
   ]
 ])
@@ -3293,31 +3294,39 @@ This frequency is called *resonance frequency*.
 
 
 #text(size:10pt)[( 教員：分光は面倒だ，普通amateurはどうやって表面温度を推定する )]
-#text(size:10pt)[( えあっ：ワイ )]
-//#text(size:10pt)[( 光の正体は………電子に与える場であった… )]
-//#text(size:10pt)[(  )]
+#text(size:10pt)[( ワイ：えあっ(動悸) )]
+
+//=== Types of Electromagnetic Waves
+
+#align(center,box(width:16cm, height:6cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+      
+      rect((-10,-5),(10,8),fill:rgb("000000"))
+      line((-7,0),(7,0),mark:(end:">",fill:rgb("bbbbbb")),stroke:(paint:rgb("bbbbbb")))
+      content((6.8,0.5),text(fill:rgb("bbbbbb"),size:12pt)[wavelength])
+
+        //#line(length: 150%,stroke: (paint: ,thickness: 2.2mm))
+      content((-4,0.3),angle:90deg,anchor:"west",text(fill:rgb("8888aa"))[Gamma-Ray])
+      content((-3,0.3),angle:90deg,anchor:"west",text(fill:rgb("8888aa"))[X-Ray])
+      content((-1,0.3),angle:90deg,anchor:"west",text(fill:rgb("8800ff"))[Ultra Violet])
+      content((0,0.3),angle:90deg,anchor:"west",text(fill:gradient.linear(rgb("0000ff"),rgb("00ffff"),rgb("00ff00"),rgb("ffff00"), rgb("ff0000"),angle:90deg))[Visible Light])
+      content((1,0.3),angle:90deg,anchor:"west",text(fill:rgb("ff0055"))[Infrared])
+      content((3,0.3),angle:90deg,anchor:"west",text(fill:rgb("aa8888"))[Radio])
+    })
+  ]
+])
+
+= _Atom_
+== Electron and Light
+=== Electron
 
 
 
 
 
-//類似性＝アナロジー // 2026-06-29の名言
-//物理においては、同じ式は同じような扱い方ができる。 // id ce63c80b-db29-4d48-a21a-d900ac79b7ed
-
-
-// 陽イオンの振動→高い温度→熱が高いところ(導線)から低いところ(空気)へ伝わる→うわあっつ!! -> id 7b191f20-ba90-454f-9cb7-78cf2c32d381
-
-// IDE「電位差があることと電場が生まれることの間にはどのような関係があるか？」 -> id 45e72069-e833-4182-b569-9a4d41c3eb48
-// how about this:電位は単位電荷の持つpotential energyなので，電位が位置によって違うということは，そこには力の場が存在する必要があるから
-
-
-// spacing in equation  :  thin med thick quad wide
-// 保存力 -> id 0271b48f-0d66-47be-921e-f6bb8fb2c447
 //#text(size:10pt)[( )]
-
-//高校物理「仕事は保存される」 
-//大学の古典力学「$integral (dt K(t)-U(t))$が停留点となる経路が実現される」
-
 
 /*
 #align(center,box(width:15cm, height:6cm, clip:true)[
@@ -3328,7 +3337,6 @@ This frequency is called *resonance frequency*.
   ]
 ])
 */
-//#text(size:10pt)[( 電気力線ってsuperpositionできるの？uniformであることは積分で証明？)]
 
 /*
 
