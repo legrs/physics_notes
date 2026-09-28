@@ -3362,18 +3362,19 @@ align(center,box(width:16cm, height:6cm, clip:true)[
       line((-5.5,0),(5,2),mark:(end:">"),stroke: (paint: yellow))
       line((-5.5,0),(5,1.5),mark:(end:">"),stroke: (paint: yellow))
       line((-5.5,0),(5,1),mark:(end:">"),stroke: (paint: yellow))
-      line((-5.5,0),(0,0),mark:(end:">"),stroke: (paint: yellow))
+      line((-5.5,0),(0,0.2),mark:(end:">"),stroke: (paint: yellow))
+      line((-5.5,0),(0,-0.2),mark:(end:">"),stroke: (paint: yellow))
       line((-5.5,0),(5,-1),mark:(end:">"),stroke: (paint: yellow))
       line((-5.5,0),(5,-1.5),mark:(end:">"),stroke: (paint: yellow))
       line((-5.5,0),(5,-2),mark:(end:">"),stroke: (paint: yellow))
 
-      line((5,-2),(5,-1),stroke: (paint: yellow))
-      line((5,2),(5,1),stroke: (paint: yellow))
+      line((5,-2),(5,-1),stroke: (paint: yellow, thickness:0.1))
+      line((5,2),(5,1),stroke: (paint: yellow, thickness:0.1))
 
     })
   ]
 ])
-,caption:[when cathode rays collide 蛍光物質, it emit light.]
+,caption:[when a cathode-ray collides fluorescent material, it emit light.]
 )
 #figure(
 align(center,box(width:16cm, height:6cm, clip:true)[
@@ -3406,9 +3407,9 @@ align(center,box(width:16cm, height:6cm, clip:true)[
       let a = 0.01
       for i in range(9){
         if(i==8){
-          line((-5 + i , a * i*i),(-5 + (i+1) , a * calc.pow(i+1,2)),stroke: (paint: rgb("ffff00bb")),mark:(end:">"))
+          line((-5.5 + i , a * i*i),(-5.5 + (i+1) , a * calc.pow(i+1,2)),stroke: (paint: rgb("ffff00bb")),mark:(end:">"))
         }else{
-          line((-5 + i , a * i*i),(-5 + (i+1) , a * calc.pow(i+1,2)),stroke: (paint: yellow))
+          line((-5.5 + i , a * i*i),(-5.5 + (i+1) , a * calc.pow(i+1,2)),stroke: (paint: yellow))
 
         }
       }
@@ -3453,15 +3454,18 @@ align(center,box(width:16cm, height:6cm, clip:true)[
       line((1,1),(1,-1),mark:(end:">",fill:red),stroke:(paint:red))
       line((0.5,1),(0.5,-1),mark:(end:">",fill:red),stroke:(paint:red))
 
+      line((-2,0),(-1,0),mark:(end:">",fill:black))
+      content(( -2 -0.3,0.4),$bold(v)$)
+
       let a = 0.03
       for i in range(4){
         line((-1 + i/2 , a * calc.pow(i,2)),(-1 + (i+1)/2 , a * calc.pow(i+1,2)),stroke:(paint:blue))
       }
       line((1,0.48),(6,3),mark:(end:">",fill:blue),stroke:(paint:blue))
-      circle((-1,0),radius:0.1,stroke:(paint:blue))
-      content((-1,0.05),text(fill:blue)[-])
+      circle((-2,0),radius:0.1,stroke:(paint:blue))
+      content((-2,0.05),text(fill:blue)[-])
 
-      content((6.4,3),$y$)
+      content((6.4,3),$bold(y)$)
 
     })
   ]
