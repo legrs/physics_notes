@@ -3425,7 +3425,7 @@ align(center,box(width:16cm, height:6cm, clip:true)[
 
 
 #pagebreak()
-*Measuring of Specific Charge of Electron*
+#h(2em)*How to measure the specific charge*
 
 *1.*
 
@@ -3455,7 +3455,11 @@ align(center,box(width:16cm, height:6cm, clip:true)[
       line((0.5,1),(0.5,-1),mark:(end:">",fill:red),stroke:(paint:red))
 
       line((-2,0),(-1,0),mark:(end:">",fill:black))
-      content(( -2 -0.3,0.4),$bold(v)$)
+      content(( -1 -0.3,0.4),$bold(v)$)
+
+      line((-1,1.1),(1,1.1),mark:(start:">",end:">",fill:black))
+      content(( 0.1,1.4),highlight(fill:white)[　])
+      content(( 0.1,1.4),$bold(l)$)
 
       let a = 0.03
       for i in range(4){
@@ -3466,10 +3470,101 @@ align(center,box(width:16cm, height:6cm, clip:true)[
       content((-2,0.05),text(fill:blue)[-])
 
       content((6.4,3),$bold(y)$)
+      content((0,0.5),$bold(E)$)
 
     })
   ]
 ])
+
+$y = 1/2 (e E)/m l^2/v^2 + (L - l/2) dot (e E)/m l/v^2 = (e E l)/(m v^2) dot (1/2 l + L - 1/2 l)\
+bold(y = e/m (E l L)/v^2)$
+
+*2.*
+#grid(
+  columns:2,
+  gutter:10mm,
+  [
+    #align(center,box(width:16cm, height:6cm, clip:true)[
+      #place(center + horizon)[
+        #cetz.canvas({
+          import cetz.draw: *
+    
+    
+          line((-4,0),(4,0),mark:(end:">",fill:blue),stroke:(paint:blue))
+    
+          rect((-2,2.1),(2,1.9))
+          rect((-2,-2.1),(2,-1.9))
+    
+          line((-2,2),(-2,-2),mark:(end:">",fill:red),stroke:(paint:red))
+          line((-1,2),(-1,-2),mark:(end:">",fill:red),stroke:(paint:red))
+          line((0,2),(0,-2),mark:(end:">",fill:red),stroke:(paint:red))
+          line((2,2),(2,-2),mark:(end:">",fill:red),stroke:(paint:red))
+          line((1,2),(1,-2),mark:(end:">",fill:red),stroke:(paint:red))
+    
+          content((0,2.3),[+])
+          content((0,-2.3),[-])
+    
+          circle((-0.5,0),radius:0.1,stroke:(paint:blue))
+          content((-0.5,0.05),text(fill:blue)[-])
+          line((-0.5,0),(0.5,0),mark:(end:">",fill:black),stroke:(paint:black))
+          content((0.2,0.4),$bold(v)$)
+          line((-0.5,0),(-0.5,1),mark:(end:">",fill:black),stroke:(paint:black))
+          line((-0.5,0),(-0.5,-1),mark:(end:">",fill:black),stroke:(paint:black))
+    
+          content((-1,0.5),$bold(e E)$)
+          content((-1.15,-0.5),$bold(e v B)$)
+    
+          circle((3,-2),radius:0.2,stroke: (paint: blue,thickness:0.05))
+          circle((3,-2),radius:0.1,fill:blue,stroke: (paint: blue))
+    
+          content((3,-1.5),$bold(B)$)
+          
+    
+        })
+      ]
+    ])
+  ],
+  [
+    When $v = "const."$,
+    
+    $e E = e v B quad <=> quad v = E / B$
+
+    We got $v$.
+
+
+  ]
+)
+Therefoer $bold(e/m = (y E)/(B^2 l L))$
+
+$bold(e/m)$ is called *specific charge*.
+
+#pagebreak()
+#h(2em)*Let's measure the value of $bold(e)$*
+
+Method : Let $m$ as measurable(large).
+
++ By irradiating X-ray at molecule of air, make ion.
++ attach the ion to particle of oil.
++ measure the mass of oil ( utilize terminal velocity in air )
++ measure the charge of oil $q$ ( utilize electric field )
++ do 1 -- 4 a lot.
++ find the minimum difference of $q$  --> *elementary charge*
+
+=== Particle-likeness of Light
+#v(2em)
+$
+  bold(E = h nu)
+$
+$bold(h)$ is *Planck Constant* $ approx 6.63 dot 10^(-34) "J s"$\
+$bold(nu)$ is frequency of light.
+
+
+
+
+
+
+
+
 
 
 
