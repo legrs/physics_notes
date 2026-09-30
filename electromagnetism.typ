@@ -2573,16 +2573,16 @@ Let $L := - (mu N^2 S) / l$,\
 #text(size:10pt)[( まあまあ複雑なconstantを当然のように置くから困る )]
 
 $
-  bold(V = L - (Delta I)/(Delta t))
+  bold(V = - L (Delta I)/(Delta t))
 $<self-induction>
 
 $bold(L)$ is called *self inductance*.
 Unit is *H ( henry )*.
 
-$
-  L = (mu N^2 S)/l\
+$L = (mu N^2 S)/l\
     quad = mu n^2 S l
 $
+
 ($n = N/l$ is number of roll per unit length of coil)
 
 This voltage $bold(V)$ acts as a potential slope that impedes changes in current ($bold(Delta I)$).
@@ -3321,8 +3321,8 @@ This frequency is called *resonance frequency*.
 ])
 
 = _Atom_
-== Electron and Light
-=== Electron
+== Electron
+=== Cathode-Rays
 
 *Gas Discharge* -- phenomenon of electrons flowing in gas.
 When pressure of gas is low, the entire gas emit light.
@@ -3425,7 +3425,7 @@ align(center,box(width:16cm, height:6cm, clip:true)[
 
 
 #pagebreak()
-#h(2em)*How to measure the specific charge*
+=== How to measure the specific charge
 
 *1.*
 
@@ -3539,7 +3539,7 @@ Therefoer $bold(e/m = (y E)/(B^2 l L))$
 $bold(e/m)$ is called *specific charge*.
 
 #pagebreak()
-#h(2em)*Let's measure the value of $bold(e)$*
+=== Measuring the value of $bold(e)$
 
 Method : Let $m$ as measurable(large).
 
@@ -3550,29 +3550,39 @@ Method : Let $m$ as measurable(large).
 + do 1 -- 4 a lot.
 + find the minimum difference of $q$  --> *elementary charge*
 
-=== Particle-likeness of Light
+== Particle-likeness of Light
+=== Photoelectric Effect
+When a light is irradiated to metal, if it's frequency of the light is over a threshold, 
+electrons fly out from the metal.\
+(*not depend it's amplitude and irradiating time*)
+
+
+=== Light quantum Hypothesis
+
+
+
 #v(2em)
 $
   bold(E = h nu)
 $
+#v(1em)
+$bold(E)$ is Energy\
 $bold(h)$ is *Planck Constant* $ approx 6.63 dot 10^(-34) "J s"$\
 $bold(nu)$ is frequency of light.
 
+If light consists of particles  which has only parameter energy \
+( *photon* )
+and the energy depends on only it's frequency,
+we can explain the Photoelectric Effect.
+
+( if light is patricle , the probability of "Two photon colide to an electron almost simultaneously." is nealy zero. 
+Thus, if energy of electron is lower than a threshold , no electrons fly out.)
 
 
+//#text(size:10pt)[( )]
 
-
-
-
-
-
-
-
-
-
-
-
-
+//光電効果の限界振動数がわかりません．もし1つあたりのphotonのエネルギーが小さくても，
+//1回目で電子を1段高いエネルギー準位にして，2回目で無限遠まで飛ばす，とすれば光電効果起きるんじゃないんですか
 
 //#text(size:10pt)[( )]
 
