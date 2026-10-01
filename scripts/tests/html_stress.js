@@ -352,6 +352,11 @@ section('Image markdown & sanitization (strict)');
   ok(htmlSrc.includes("ADD_ATTR: ['loading']"), 'DOMPurify allows loading attr');
   ok(htmlSrc.includes('enhanceImagesWithLicenses'), 'enhanceImagesWithLicenses exists');
   ok(htmlSrc.includes('img.onerror'), 'img.onerror placeholder exists');
+  // Transparent PNG/SVG: the Blur Reveal frame behind the image must follow
+  // the theme surface (it used to be a fixed near-black #16161c in both themes).
+  const frameCss = (htmlSrc.match(/\.br-frame \{[\s\S]*?\n    \}/) || [''])[0];
+  ok(/background: var\(--br-frame-bg, var\(--bg-card\)\)/.test(frameCss) && !/--br-frame-bg:\s*#/.test(htmlSrc),
+    'Blur Reveal frame background follows the theme (no fixed dark color)');
   // License caption links are built with the DOM (not via DOMPurify), so the
   // data-provided url must be restricted to http(s) in both pages.
   const editorSrc = fs.readFileSync(path.join(REPO_ROOT, 'qa_editor.html'), 'utf-8');

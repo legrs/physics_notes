@@ -1942,7 +1942,6 @@
       --br-c4: #8a6bff;
       --br-c5: #5effb0;
       --br-radius: 12px;
-      --br-frame-bg: #16161c;
       --br-shadow: 0 20px 50px rgba(20, 20, 40, 0.16);
       --br-glow-op-a-min: 0.55;
       --br-glow-op-a-max: 0.95;
@@ -1954,7 +1953,6 @@
     }
 
     html.dark {
-      --br-frame-bg: #16161c;
       --br-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
       --br-glow-op-a-min: 0.5;
       --br-glow-op-a-max: 0.85;
@@ -2022,8 +2020,17 @@
       overflow: hidden;
       isolation: isolate;
       clip-path: inset(0 round var(--br-radius));
-      background: var(--br-frame-bg);
+      /* 透過 PNG / SVG の透明部分に見える色。以前は明暗どちらのテーマでも
+         #16161c（ほぼ黒）固定で、透過画像が常に黒背景になり、黒い線や文字の
+         図が読めなかった。置かれている面と同じ色にする（透明にすると背後の
+         虹色グローが透けるので不透明のまま）。 */
+      background: var(--br-frame-bg, var(--bg-card));
       box-shadow: var(--br-shadow);
+    }
+
+    /* AI Answer の枠は --bg-surface 上にある */
+    .ai-prose .br-frame {
+      --br-frame-bg: var(--bg-surface);
     }
 
     .br-img {
@@ -2649,7 +2656,10 @@
           if (img.complete && img.naturalWidth === 0 && img.getAttribute('src')) {
             // 画像がまだ読み込まれていない小さなプレースホルダを除外（data: URL等）
             const src = img.getAttribute('src') || '';
-            if (src && !src.startsWith('data:')) {
+            // SVG は width/height 無し（viewBox のみ）だとブラウザによって
+            // naturalWidth が 0 のまま正常表示されるので、この判定から外す
+            // （本当に読めない SVG は通常の error イベントで拾える）
+            if (src && !src.startsWith('data:') && !/\.svg(?:[?#]|$)/i.test(src)) {
               setTimeout(() => { if (img.naturalWidth === 0) img.dispatchEvent(new Event('error')); }, 0);
             }
           }
