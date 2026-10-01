@@ -2797,6 +2797,27 @@
       return text;
     }
 
+    /* 質問タイトル・スニペット等の1行テキスト用。$…$ / $$…$$ を KaTeX の
+       インライン数式で描画し、それ以外は renderPlain（既定 escHtml。検索結果では
+       ハイライト付き）で HTML 化する。以前はタイトルに textContent / escHtml を
+       使っていたため、43件ほどの質問で "$ \omega $" 等が生のまま表示されていた。 */
+    function inlineMathHtml(text, renderPlain = escHtml) {
+      const s = String(text || '');
+      if (typeof katex === 'undefined') return renderPlain(s);
+      const re = /\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$/g;
+      let out = '', last = 0, m;
+      while ((m = re.exec(s)) !== null) {
+        out += renderPlain(s.slice(last, m.index));
+        try {
+          out += katex.renderToString((m[1] ?? m[2]).trim(), { throwOnError: false, displayMode: false });
+        } catch (_) {
+          out += renderPlain(m[0]);
+        }
+        last = re.lastIndex;
+      }
+      return sanitizeHtml(out + renderPlain(s.slice(last)));
+    }
+
     /* ── モーダル制御 ────────────────────────────────────────────── */
     const modalOverlay = document.getElementById('modal-overlay');
     const modalHeader = document.getElementById('modal-header');
@@ -2906,13 +2927,13 @@
         card.setAttribute('tabindex', '0');
         card.setAttribute('role', 'button');
         card.innerHTML = `
-          <div class="related-card-title">${escHtml(ri.questions[0])}</div>
-          <div class="related-card-desc">${escHtml(ri.description)}</div>
+          <div class="related-card-title">${inlineMathHtml(ri.questions[0])}</div>
+          <div class="related-card-desc">${inlineMathHtml(ri.description)}</div>
         `;
         const openRelated = () => {
           stopStreaming();
           _currentModalLicenses = ri.image_licenses || null;
-          modalTitle.textContent = ri.questions[0];
+          modalTitle.innerHTML = inlineMathHtml(ri.questions[0]);
           modalContent.innerHTML = '';
           modalRelated.innerHTML = '';
           modalBody.scrollTop = 0;
@@ -2940,7 +2961,7 @@
     height: ${rect.height}px;
   `;
 
-      modalTitle.textContent = item.questions[0];
+      modalTitle.innerHTML = inlineMathHtml(item.questions[0]);
       modalContent.innerHTML = '';
       modalRelated.innerHTML = '';
       modalHeader.style.opacity = '0';
@@ -3600,7 +3621,9 @@
               seen.add(q);
               // ハイライト
               const idx = ql.indexOf(v);
-              const label = idx >= 0
+              // 数式を含む質問は KaTeX 表示を優先（ハイライト位置が数式と重なりうるため）
+              const label = q.includes('$') ? inlineMathHtml(q)
+                : idx >= 0
                 ? `${escHtml(q.slice(0, idx))}<mark>${escHtml(q.slice(idx, idx + v.length))}</mark>${escHtml(q.slice(idx + v.length))}`
                 : escHtml(q);
               items.push({ q, label, category: (item.category || []).join(' / ') });
@@ -3976,8 +3999,8 @@
           el.setAttribute('role', 'button');
           const snippet = _extractSnippet(item, words);
           el.innerHTML = `
-          <div class="result-title">${highlight(item.questions[0], words)}</div>
-          <div class="result-desc">${highlight(snippet, words)}</div>
+          <div class="result-title">${inlineMathHtml(item.questions[0], t => highlight(t, words))}</div>
+          <div class="result-desc">${inlineMathHtml(snippet, t => highlight(t, words))}</div>
           <div class="result-hint">クリックして詳細を見る →</div>
         `;
           el.addEventListener('click', () => openModal(el, item));

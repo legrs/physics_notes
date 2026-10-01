@@ -326,6 +326,23 @@ detQueries.forEach((q) => {
   }
 });
 
+// Titles/snippets: inline LaTeX is rendered (not shown as raw "$…$"), the
+// rest goes through the plain renderer (escaping/highlight). KaTeX and
+// DOMPurify are stubbed — this checks the segmentation, not KaTeX itself.
+section('Inline math in titles');
+(function () {
+  const fn = new Function('katex', 'sanitizeHtml', 'escHtml',
+    `${extractFunction(html, 'inlineMathHtml')}; return inlineMathHtml;`)(
+    { renderToString: (e) => `<K>${e}</K>` }, (h) => h, (t) => t.replace(/</g, '&lt;'));
+  ok(fn('$ \\omega^2 $の値は？') === '<K>\\omega^2</K>の値は？', 'single inline math rendered');
+  ok(fn('$$ \\Delta q $$を移動<b>') === '<K>\\Delta q</K>を移動&lt;b>', '$$ block rendered inline, rest escaped');
+  ok(fn('a $x$ b $y$ c', (t) => `[${t}]`) === '[a ]<K>x</K>[ b ]<K>y</K>[ c]', 'plain renderer applied between math segments');
+  ok(fn('値段は$5') === '値段は$5', 'lone $ left as text');
+  const titles = data.map((d) => (d.questions || [])[0] || '').filter((t) => t.includes('$'));
+  ok(titles.length > 0 && titles.every((t) => !/\$[^$\n]+?\$/.test(fn(t).replace(/<K>[\s\S]*?<\/K>/g, ''))),
+    `no raw $…$ left in ${titles.length} real titles`);
+})();
+
 // ── 6. Image markdown & sanitization (strict, XSS) ──────────────────
 section('Image markdown & sanitization (strict)');
 (function(){
