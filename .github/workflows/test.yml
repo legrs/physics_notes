@@ -54,6 +54,8 @@ jobs:
         run: node scripts/tests/html_syntax.js
       - name: HTML stress — real scoring functions, extreme inputs, hybrid RRF
         run: node scripts/tests/html_stress.js
+      - name: media_editor.html license logic (parity with build.js)
+        run: node scripts/tests/media_editor_check.js
       - name: Image XSS source-level guards (renderer/DOMPurify)
         run: |
           set -e
