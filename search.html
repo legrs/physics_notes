@@ -828,6 +828,30 @@
       margin: 1em auto;
     }
 
+    .prose video,
+    .ai-prose video,
+    .chat-prose video {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      max-height: 70vh;
+      height: auto;
+      margin: 1em auto;
+      border-radius: 8px;
+      background: #000;
+    }
+
+    .media-error {
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 12px;
+      margin: 0.5em 0;
+      text-align: center;
+      border: 1px dashed var(--border-mid);
+      border-radius: 8px;
+      word-break: break-all;
+    }
+
     .prose .img-row {
       display: flex;
       gap: 12px;
@@ -2565,6 +2589,29 @@
        エスケープ」は <iframe srcdoc>・javascript: URL 等で回避可能だった。
        DOMPurify が未ロードの場合は生HTMLを全てエスケープするフェイル
        クローズ（その場合 KaTeX も未ロードのはずで数式HTMLは存在しない）。 */
+    /* 動画の判定。画像と同じ ![説明](qa_images/clip.mp4) 記法で書き、拡張子で
+       <video> として描画する（クエリ文字列・#t=… 等のフラグメントは無視）。
+       scripts/build.js・normalize-images.js・physq の VIDEO_EXTS と揃えること。 */
+    function isVideoSrc(src) {
+      const path = String(src || '').split(/[?#]/)[0];
+      return /\.(mp4|m4v|webm|ogv|mov)$/i.test(path);
+    }
+
+    /* ストリーミング表示中か（mdToSafeHtml の opts.streaming）。数ms ごとに
+       innerHTML を作り直すので、その間に生成される <video> がそのたびに
+       メタデータを取りに行かないよう preload="none" にする。 */
+    let _mdStreaming = false;
+
+    function videoHtml(href, label, title) {
+      const src = escHtml(href);
+      const name = escHtml(label || '');
+      const preload = _mdStreaming ? 'none' : 'metadata';
+      // 中身の <a> は <video> 非対応ブラウザ向けのフォールバック
+      return `<video src="${src}" controls playsinline preload="${preload}"` +
+        (name ? ` aria-label="${name}"` : '') + title + `>` +
+        `<a href="${src}">${name || '動画を開く'}</a></video>`;
+    }
+
     (function configureMark() {
       if (typeof marked === 'undefined') return;
       const renderer = new marked.Renderer();
@@ -2577,10 +2624,22 @@
         const href = token.href || '';
         const text = token.text || '';
         const title = token.title ? ` title="${escHtml(token.title)}"` : '';
+        if (isVideoSrc(href)) return videoHtml(href, text, title);
         return `<img src="${escHtml(href)}" alt="${escHtml(text)}"${title} loading="lazy">`;
       };
       marked.use({ renderer });
     })();
+
+    // answer に生の <video> を書いた場合も、ストリーミング中は読み込みを抑止する
+    // （autoplay もストリーミング中に何度も再生が始まるので外す）
+    if (typeof DOMPurify !== 'undefined' && DOMPurify.addHook) {
+      DOMPurify.addHook('afterSanitizeAttributes', node => {
+        if (_mdStreaming && node.nodeName === 'VIDEO') {
+          node.setAttribute('preload', 'none');
+          node.removeAttribute('autoplay');
+        }
+      });
+    }
 
     /* 最終HTMLのサニタイズ。KaTeX が生成する HTML/MathML/SVG は許可しつつ、
        script / iframe / イベントハンドラ / javascript: URL 等を除去する。 */
@@ -2593,9 +2652,15 @@
     }
 
     /* Markdown + 数式 → 安全なHTML。innerHTML への代入は必ずこれを通すこと。 */
-    function mdToSafeHtml(text) {
+    // opts.streaming: 途中経過の描画（動画を読み込ませない。上の _mdStreaming 参照）
+    function mdToSafeHtml(text, opts) {
       if (typeof marked === 'undefined') return '<p>' + escHtml(text || '') + '</p>';
-      return sanitizeHtml(marked.parse(formatMath(text || '')));
+      _mdStreaming = !!(opts && opts.streaming);
+      try {
+        return sanitizeHtml(marked.parse(formatMath(text || '')));
+      } finally {
+        _mdStreaming = false;
+      }
     }
 
     /* ── Blur Reveal: 全画像をサンプルアニメーションでラップ ── */
@@ -2708,13 +2773,43 @@
       else go();
     })();
 
-    /* 画像のライセンスを <figcaption> として付与（build.js の image_licenses 埋め込みを利用） */
+    /* 画像・動画のライセンスを <figcaption> として付与（build.js の image_licenses 埋め込みを利用） */
+    function mediaSrcOf(el) {
+      if (el.tagName === 'VIDEO' && !el.getAttribute('src')) {
+        const source = el.querySelector('source[src]');
+        return source ? source.getAttribute('src') || '' : '';
+      }
+      return el.getAttribute('src') || '';
+    }
+
+    /* 動画の読み込み失敗時のプレースホルダ（画像は applyBlurReveal 側が担当） */
+    function bindVideoErrors(container) {
+      container.querySelectorAll('video').forEach(video => {
+        if (video.dataset.errBound) return;
+        video.dataset.errBound = '1';
+        const showError = () => {
+          if (video.dataset.errShown) return;
+          video.dataset.errShown = '1';
+          video.style.display = 'none';
+          const ph = document.createElement('div');
+          ph.className = 'media-error';
+          ph.textContent = '⚠ 動画を読み込めません: ' + mediaSrcOf(video);
+          video.insertAdjacentElement('afterend', ph);
+        };
+        video.addEventListener('error', showError);
+        // <source> 子要素の失敗は video ではなく最後の source で error になる
+        const sources = video.querySelectorAll('source');
+        if (sources.length) sources[sources.length - 1].addEventListener('error', showError);
+      });
+    }
+
     function enhanceImagesWithLicenses(container, imageLicenses) {
       if (!container) return;
+      bindVideoErrors(container);
       if (!imageLicenses) { applyBlurReveal(container); return; }
-      const imgs = container.querySelectorAll('img');
+      const imgs = container.querySelectorAll('img, video');
       imgs.forEach(img => {
-        const src = img.getAttribute('src') || '';
+        const src = mediaSrcOf(img);
         // qa_images/ 相対のみ対象、外部URLは手書き運用
         if (!src.startsWith('qa_images/')) return;
         const lic = imageLicenses[src] || imageLicenses['qa_images/' + src.split('/').pop()] || imageLicenses[src.split('/').pop()];
@@ -3045,7 +3140,7 @@
             return;
           }
           buf += (lineIdx > 0 ? '\n' : '') + lines[lineIdx++];
-          modalContent.innerHTML = mdToSafeHtml(buf) + '<span class="cursor-blink"></span>';
+          modalContent.innerHTML = mdToSafeHtml(buf, { streaming: true }) + '<span class="cursor-blink"></span>';
           if (!isUserScrolling) modalBody.scrollTop = modalBody.scrollHeight;
           streamTimer = setTimeout(nextLine, 60);
         }
@@ -3061,7 +3156,7 @@
           const chunk = Math.floor(Math.random() * 3) + 1;
           buf += fullText.slice(idx, idx + chunk);
           idx += chunk;
-          modalContent.innerHTML = mdToSafeHtml(buf) + '<span class="cursor-blink"></span>';
+          modalContent.innerHTML = mdToSafeHtml(buf, { streaming: true }) + '<span class="cursor-blink"></span>';
           if (!isUserScrolling) modalBody.scrollTop = modalBody.scrollHeight;
           streamTimer = setTimeout(tick, Math.random() * 20 + 8);
         } else {
@@ -3921,6 +4016,13 @@
             img.addEventListener('error', scheduleOverflowCheck);
             if (img.complete) scheduleOverflowCheck();
           });
+          // 動画もメタデータ読み込みで高さが決まる
+          aiProse.querySelectorAll('video').forEach(v => {
+            if (v.dataset.overflowBound) return;
+            v.dataset.overflowBound = '1';
+            v.addEventListener('loadedmetadata', scheduleOverflowCheck);
+            v.addEventListener('error', scheduleOverflowCheck, true);
+          });
         }
 
         // expand / collapse トグル
@@ -3973,7 +4075,7 @@
                 return;
               }
               aiBuf += (lineIdx > 0 ? '\n' : '') + lines[lineIdx++];
-              aiProse.innerHTML = mdToSafeHtml(aiBuf) + '<span class="cursor-blink"></span>';
+              aiProse.innerHTML = mdToSafeHtml(aiBuf, { streaming: true }) + '<span class="cursor-blink"></span>';
               checkOverflow();
               aiStreamTimer = setTimeout(nextLine, 60);
             }
@@ -3984,7 +4086,7 @@
               const chunk = Math.floor(Math.random() * 3) + 1;
               aiBuf += fullText.slice(aiIdx, aiIdx + chunk);
               aiIdx += chunk;
-              aiProse.innerHTML = mdToSafeHtml(aiBuf) + '<span class="cursor-blink"></span>';
+              aiProse.innerHTML = mdToSafeHtml(aiBuf, { streaming: true }) + '<span class="cursor-blink"></span>';
               checkOverflow();
               aiStreamTimer = setTimeout(aiTick, Math.random() * 20 + 8);
             } else {
@@ -4294,8 +4396,8 @@
 
       // ── Markdown rendering ────────────────────────────────────────────
       // グローバルの mdToSafeHtml（marked + KaTeX + DOMPurify）に委譲する
-      function safeMarkdown(text) {
-        return mdToSafeHtml(text);
+      function safeMarkdown(text, opts) {
+        return mdToSafeHtml(text, opts);
       }
 
       function renderMarkdown(el, text) {
@@ -4359,7 +4461,7 @@
               return;
             }
             buf += (lineIdx > 0 ? '\n' : '') + lines[lineIdx++];
-            contentEl.innerHTML = safeMarkdown(buf) + '<span class="chat-cursor-blink"></span>';
+            contentEl.innerHTML = safeMarkdown(buf, { streaming: true }) + '<span class="chat-cursor-blink"></span>';
             contentEl.classList.add('chat-prose');
             scrollChatBottom();
             setTimeout(nextLine, 60);
@@ -4375,7 +4477,7 @@
             const chunk = Math.floor(Math.random() * 3) + 1;
             buf += fullText.slice(idx, idx + chunk);
             idx += chunk;
-            contentEl.innerHTML = safeMarkdown(buf) + '<span class="chat-cursor-blink"></span>';
+            contentEl.innerHTML = safeMarkdown(buf, { streaming: true }) + '<span class="chat-cursor-blink"></span>';
             contentEl.classList.add('chat-prose');
             scrollChatBottom();
             setTimeout(tick, Math.random() * 20 + 8);
