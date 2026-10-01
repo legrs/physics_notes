@@ -1,6 +1,8 @@
 # qa_images
 
-QAコーパス由来の写真専用フォルダ。`q_and_a_data.json` の `answer` から `![](qa_images/<uuid>.<ext>)` で参照する。
+QAコーパスの写真・動画のフォルダ。`q_and_a_data.json` の `answer` から `![](qa_images/<uuid>.<ext>)` で参照する。
+
+動画も同じ記法で、拡張子で判別される（`![振り子の実験](qa_images/<uuid>.mp4)` → `<video controls>`）。HTML の `<video src>` / `<source src>` / `<video poster>` も可。
 
 ## 運用
 
@@ -10,7 +12,12 @@ QAコーパス由来の写真専用フォルダ。`q_and_a_data.json` の `answe
 ## 推奨
 
 - WebP 推奨 (サイズ削減) だが強制しない。対応拡張子: `jpg/jpeg/png/webp/svg/gif`
-- 5MB超は警告のみ (reject しない)。CIで `0<=x<3MB / 3<=x<5MB / 5MB<=` の統計と平均を出力。
+- 透過 PNG / SVG は、透明部分が表示場所の背景色（ライト=白 / ダーク=黒系）になる。ダークモードでは黒い線の図が見えにくくなるので、白背景が必要な図は背景を塗った画像にしておく。SVG は `viewBox` だけでも表示されるが、`width`/`height` を付けると表示サイズが安定する
+- **HEIC / HEIF（iPhone の写真）もそのまま置いてよい**。Chrome/Firefox では表示できないため、`normalize-images.js`（CI）が `<uuid>.jpg` に変換し、元ファイルは削除、`answer` の参照と `licenses.json` のキーも追従する。変換時に位置情報などの EXIF は削除される
+- 動画の対応拡張子: `mp4/m4v/webm/ogv/mov`。**H.264 の `.mp4` を推奨**（全ブラウザで再生可）。iPhone の `.mov`（HEVC）は Chrome/Firefox で再生できないことがあるので変換推奨。
+- 動画はリポジトリにそのまま入るため、短く圧縮して **20MB 未満** を目安に（超えると `normalize-images.js` と CI が警告。GitHub は 100MB 超のファイルを拒否）。長い動画は YouTube 等に置いてリンクする方がよい。
+- physq（CLI）では Detail の 🎬 行から既定のブラウザ/プレイヤーで開く（`search --plain` では `video\t<ラベル>\t<URL>` 行）。
+- 5MB超は警告のみ (reject しない)。CIで `0<=x<3MB / 3<=x<5MB / 5MB<=` の統計と平均を出力（動画は 20MB 以上で警告）。
 
 ## ライセンス
 

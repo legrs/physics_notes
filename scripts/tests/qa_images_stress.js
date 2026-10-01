@@ -142,6 +142,7 @@ const sample = [
   { id:'test-uuid-1', questions:['Q1'], answer:'Text ![回路](qa_images/3f9a8c1e-1a2b-4c3d-9e8f-a1b2c3d4e5f6.jpg) end', description:'desc', keywords:[], synonyms:[], category:[], difficulty:'1', priority:1, related:[], updated_at:'2026-01-01', search_text:'' },
   { id:'test-uuid-2', questions:['Q2'], answer:'```\n![ignore](qa_images/ignore.jpg)\n```\nreal ![keep](qa_images/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.jpg)', description:'', keywords:[], synonyms:[], category:[], difficulty:'1', priority:1, related:[], updated_at:'2026-01-01', search_text:'' },
   { id:'test-uuid-3', questions:['Q3'], answer:'<img alt="html alt" src="qa_images/bbbbbbbb-cccc-dddd-eeee-ffffffffffff.jpg">', description:'', keywords:[], synonyms:[], category:[], difficulty:'1', priority:1, related:[], updated_at:'2026-01-01', search_text:'' },
+  { id:'test-uuid-4', questions:['Q4'], answer:'動画 ![振り子の動画](qa_images/cccccccc-dddd-eeee-ffff-000000000000.mp4) と <video controls title="斜面の動画" poster="qa_images/dddddddd-eeee-ffff-0000-111111111111.jpg"><source src="qa_images/eeeeeeee-ffff-0000-1111-222222222222.webm" type="video/webm"></video>', description:'', keywords:[], synonyms:[], category:[], difficulty:'1', priority:1, related:[], updated_at:'2026-01-01', search_text:'' },
 ];
 fs.writeFileSync(tmpData, JSON.stringify(sample, null, 2));
 const run = spawnSync(process.execPath, [path.join(REPO_ROOT,'scripts/build.js'),'--data', tmpData], { encoding:'utf-8', timeout: 120000 });
@@ -159,6 +160,12 @@ if (run.status===0){
   ok(r3 && !r3.search_text.includes('bbbbbbbb'), 'html UUID not in search_text');
   // image_licenses should be injected
   ok(r1 && r1.image_licenses && r1.image_licenses['qa_images/3f9a8c1e-1a2b-4c3d-9e8f-a1b2c3d4e5f6.jpg'], 'image_licenses injected for r1');
+  // videos: label text searchable, file names / tags not; every referenced file licensed
+  const r4 = out.find(r=>r.id==='test-uuid-4');
+  ok(r4 && r4.search_text.includes('振り子の動画'), 'markdown video label in search_text');
+  ok(r4 && r4.search_text.includes('斜面の動画'), '<video title> in search_text');
+  ok(r4 && !/qa_images|cccccccc|eeeeeeee|video|source|poster/i.test(r4.search_text), 'video src/tags not in search_text');
+  ok(r4 && r4.image_licenses && ['qa_images/cccccccc-dddd-eeee-ffff-000000000000.mp4', 'qa_images/dddddddd-eeee-ffff-0000-111111111111.jpg', 'qa_images/eeeeeeee-ffff-0000-1111-222222222222.webm'].every(k => r4.image_licenses[k]), 'image_licenses injected for markdown video, <source> and poster');
 }
 fs.rmSync(tmpDir, { recursive:true, force:true });
 
@@ -194,6 +201,64 @@ section('normalize-images.js temp dir (ext normalize, UUID generation, collision
   fs.rmSync(td, {recursive:true, force:true});
 })();
 
+section('normalize-images.js real run (--root, images + videos)');
+(function(){
+  const td = fs.mkdtempSync(path.join(os.tmpdir(), 'qa-norm-run-'));
+  const qa = path.join(td, 'qa_images'); fs.mkdirSync(qa);
+  for (const f of ['photo_001.JPG', 'clip_one.MP4', 'side.webm', 'poster.png']) fs.writeFileSync(path.join(qa, f), 'x' + f);
+  fs.writeFileSync(path.join(qa, 'licenses.json'), JSON.stringify({ _default: { license: 'Apache-2.0' }, 'side.webm': { license: 'CC BY 4.0' } }));
+  const answer = '![a](qa_images/photo_001.JPG) ![v](qa_images/clip_one.MP4)\n' +
+    '<video controls poster="qa_images/poster.png"><source src="qa_images/side.webm" type="video/webm"></video>\n' +
+    '```\n![keep](qa_images/side.webm)\n```';
+  fs.writeFileSync(path.join(td, 'q_and_a_data.json'), JSON.stringify([{ id: 'r1', questions: ['q'], answer }]));
+  const script = path.join(REPO_ROOT, 'scripts/normalize-images.js');
+  const chk = spawnSync(process.execPath, [script, '--root', td, '--check'], { encoding: 'utf-8' });
+  ok(chk.status === 1, `--check exits 1 when files need renaming (got ${chk.status})`);
+  ok(/side\.webm/.test(chk.stdout) && /poster\.png/.test(chk.stdout), '--check lists video and poster files');
+  const run = spawnSync(process.execPath, [script, '--root', td], { encoding: 'utf-8' });
+  ok(run.status === 0, `normalize run exits 0 (got ${run.status}) ${run.stderr.slice(0, 200)}`);
+  const files = fs.readdirSync(qa).filter(f => f !== 'licenses.json').sort();
+  const uuidFile = ext => files.find(f => UUID_RE.test(f) && f.endsWith(ext));
+  ok(uuidFile('.jpg') && uuidFile('.mp4') && uuidFile('.webm') && uuidFile('.png'), `images, videos and poster renamed to UUIDs (ext lowercased): ${files.join(', ')}`);
+  const out = JSON.parse(fs.readFileSync(path.join(td, 'q_and_a_data.json'), 'utf-8'))[0].answer;
+  ok(out.includes(`![a](qa_images/${uuidFile('.jpg')})`), 'markdown image ref rewritten');
+  ok(out.includes(`![v](qa_images/${uuidFile('.mp4')})`), 'markdown video ref rewritten');
+  ok(out.includes(`<source src="qa_images/${uuidFile('.webm')}"`), '<source src> ref rewritten');
+  ok(out.includes(`poster="qa_images/${uuidFile('.png')}"`), '<video poster> ref rewritten');
+  ok(out.includes('```\n![keep](qa_images/side.webm)\n```'), 'fenced ref untouched');
+  const lic = JSON.parse(fs.readFileSync(path.join(qa, 'licenses.json'), 'utf-8'));
+  ok(lic[uuidFile('.webm')] && lic[uuidFile('.webm')].license === 'CC BY 4.0', 'licenses.json key follows the renamed video');
+  const again = spawnSync(process.execPath, [script, '--root', td, '--check'], { encoding: 'utf-8' });
+  ok(again.status === 0, `second --check is clean (got ${again.status})`);
+  fs.rmSync(td, { recursive: true, force: true });
+})();
+
+section('normalize-images.js HEIC/HEIF → JPEG');
+(function(){
+  const fixture = path.join(REPO_ROOT, 'scripts/tests/fixtures/tiny.heic');
+  const td = fs.mkdtempSync(path.join(os.tmpdir(), 'qa-heic-'));
+  const qa = path.join(td, 'qa_images'); fs.mkdirSync(qa);
+  fs.copyFileSync(fixture, path.join(qa, 'IMG_0001.HEIC'));
+  fs.copyFileSync(fixture, path.join(qa, 'scan.heif'));
+  fs.writeFileSync(path.join(qa, 'licenses.json'), JSON.stringify({ _default: { license: 'Apache-2.0' }, 'IMG_0001.HEIC': { license: 'CC BY 4.0' } }));
+  fs.writeFileSync(path.join(td, 'q_and_a_data.json'), JSON.stringify([{ id: 'r1', questions: ['q'],
+    answer: '![iPhone](qa_images/IMG_0001.HEIC) <img src="qa_images/scan.heif" alt="s">' }]));
+  const script = path.join(REPO_ROOT, 'scripts/normalize-images.js');
+  const chk = spawnSync(process.execPath, [script, '--root', td, '--check'], { encoding: 'utf-8' });
+  ok(chk.status === 1 && /Would convert IMG_0001\.HEIC/.test(chk.stdout), '--check reports HEIC needing conversion');
+  ok(fs.existsSync(path.join(qa, 'IMG_0001.HEIC')), '--check does not touch files');
+  const run = spawnSync(process.execPath, [script, '--root', td], { encoding: 'utf-8', timeout: 120000 });
+  ok(run.status === 0, `normalize converts HEIC (exit ${run.status}) ${(run.stderr || '').slice(0, 200)}`);
+  const files = fs.readdirSync(qa).filter(f => f !== 'licenses.json');
+  ok(files.length === 2 && files.every(f => UUID_RE.test(f) && f.endsWith('.jpg')), `HEIC/HEIF became <uuid>.jpg: ${files.join(', ')}`);
+  ok(files.every(f => fs.readFileSync(path.join(qa, f)).subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))), 'converted files are real JPEGs');
+  const out = JSON.parse(fs.readFileSync(path.join(td, 'q_and_a_data.json'), 'utf-8'))[0].answer;
+  ok(!/heic|heif/i.test(out) && files.every(f => out.includes('qa_images/' + f)), 'markdown and <img> refs point at the JPEGs');
+  const lic = JSON.parse(fs.readFileSync(path.join(qa, 'licenses.json'), 'utf-8'));
+  ok(Object.entries(lic).some(([k, v]) => k.endsWith('.jpg') && v.license === 'CC BY 4.0'), 'licenses.json key follows the conversion');
+  fs.rmSync(td, { recursive: true, force: true });
+})();
+
 // ---- 5. version.json qa_images manifest ----
 section('version.json qa_images manifest (if exists)');
 const ver = JSON.parse(fs.readFileSync(path.join(REPO_ROOT,'version.json'),'utf-8'));
@@ -223,6 +288,35 @@ ok(qaEditor.includes('renderer.image'), 'qa_editor.html has renderer.image');
 ok(qaEditor.includes('insert-image-btn'), 'qa_editor has insert-image button');
 ok(qaEditor.includes('setRangeText'), 'insert uses setRangeText');
 ok(qaEditor.includes('qa_images/'), 'insert template uses qa_images/');
+
+// ---- 7. video rendering helpers (search.html ⇄ qa_editor.html parity) ----
+section('video rendering (isVideoSrc parity, renderer)');
+const { extractFunction } = require('./_extract');
+const isVideoSearch = new Function(`${extractFunction(searchHtml, 'isVideoSrc')}; return isVideoSrc;`)();
+const isVideoEditor = new Function(`${extractFunction(qaEditor, 'isVideoSrc')}; return isVideoSrc;`)();
+const vidCases = {
+  'qa_images/a.mp4': true, 'qa_images/a.MP4': true, 'qa_images/a.webm': true, 'qa_images/a.m4v': true,
+  'qa_images/a.mov': true, 'qa_images/a.ogv': true, 'https://ex.com/v.mp4?x=1': true, 'qa_images/a.mp4#t=5': true,
+  'qa_images/a.jpg': false, 'qa_images/a.png': false, 'qa_images/mp4': false, 'qa_images/a.mp4.jpg': false,
+  '': false, 'javascript:alert(1)//.mp4x': false,
+};
+for (const [src, want] of Object.entries(vidCases)) {
+  ok(isVideoSearch(src) === want, `search isVideoSrc(${JSON.stringify(src)}) === ${want}`);
+  ok(isVideoEditor(src) === want, `editor isVideoSrc(${JSON.stringify(src)}) === ${want}`);
+}
+for (const [name, html] of [['search.html', searchHtml], ['qa_editor.html', qaEditor]]) {
+  ok(/if \(isVideoSrc\(href\)\) return videoHtml\(href, text, title\);/.test(html), `${name}: renderer.image renders videos`);
+  ok(/function videoHtml[\s\S]*?escHtml\(href\)[\s\S]*?escHtml\(label/.test(html), `${name}: videoHtml escapes src and label`);
+}
+// build.js / normalize-images.js / physq must accept the same video extensions
+const VIDEO_EXTS = ['mp4', 'm4v', 'webm', 'ogv', 'mov'];
+const normSrc = fs.readFileSync(path.join(REPO_ROOT, 'scripts/normalize-images.js'), 'utf-8');
+const physqImage = fs.readFileSync(path.join(REPO_ROOT, 'physq/src/image.rs'), 'utf-8');
+for (const ext of VIDEO_EXTS) {
+  ok(new RegExp(`MEDIA_EXT_RE = /[^\n]*\\b${ext}\\b`).test(buildSrc), `build.js MEDIA_EXT_RE has .${ext}`);
+  ok(new RegExp(`VIDEO_EXT_RE = /[^\n]*\\b${ext}\\b`).test(normSrc), `normalize-images.js VIDEO_EXT_RE has .${ext}`);
+  ok(new RegExp(`VIDEO_EXTS[^\n]*"${ext}"`).test(physqImage), `physq VIDEO_EXTS has .${ext}`);
+}
 
 console.log(`\n${checks} checks, ${failures} failures`);
 console.log(failures===0 ? 'QA IMAGES STRESS PASSED' : 'QA IMAGES STRESS FAILED');

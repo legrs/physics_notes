@@ -56,7 +56,7 @@ physics_notes/
 ├── q_and_a.txt                        # 先生の質問の模範解答テキスト集
 ├── q_and_a_data.json                  # メインの Q&A コーパス（Google Sheets から書き出し・264 件）
 ├── q_and_a_data_handcrafted.json      # 手作業で整えたデータセット案（パイプライン未接続）
-├── qa_images/                         # QA写真専用（`![](qa_images/<uuid>.jpg)` で answer から参照、CIがUUID正規化）
+├── qa_images/                         # QAの写真・動画（`![](qa_images/<uuid>.jpg)` / `![](qa_images/<uuid>.mp4)` で answer から参照、CIがUUID正規化）
 │   ├── licenses.json                  # 個別ライセンス上書き（未記載は Apache-2.0）
 │   └── <uuid>.jpg                     # 実体はUUIDファイル名のみ（手元では雑な名前で置いてpushすればCIが直す）
 ├── qa_editor.html                     # Q&A データの編集ツール（<title>Q&A Editor</title>）
@@ -248,11 +248,12 @@ query.split(" ").every(word => item.search_text.includes(word))
 
 ---
 
-## QA画像（qa_images/）
+## QA画像・動画（qa_images/）
 
-`answer` は Markdown の画像記法 `![alt](qa_images/<uuid>.jpg)` で写真を埋め込めます。1レコードに複数枚可（縦積み）。横並びが必要な場合のみ `<div class="img-row">![](qa_images/a.jpg) ![](qa_images/b.jpg)</div>` を使えます。`alt` は検索対象（BM25）になりますが `src`（URL）は語彙にしません。
+`answer` は Markdown の画像記法 `![alt](qa_images/<uuid>.jpg)` で写真を埋め込めます。**動画も同じ記法**で、拡張子が `.mp4` / `.webm` / `.m4v` / `.mov` / `.ogv` なら `<video controls>` として表示されます（例: `![振り子の実験](qa_images/<uuid>.mp4)`。`alt` 部分は動画のラベルになり、画像の alt と同様に検索対象）。HTML で `<video controls poster="qa_images/p.jpg"><source src="qa_images/v.webm" type="video/webm"></video>` のように書くこともできます（`src` / `<source src>` / `poster` すべてリネーム・ライセンスの対象）。1レコードに複数枚可（縦積み）。横並びが必要な場合のみ `<div class="img-row">![](qa_images/a.jpg) ![](qa_images/b.jpg)</div>` を使えます。`alt` は検索対象（BM25）になりますが `src`（URL）は語彙にしません。
 
 * **手元では雑な名前でOK** — `photo_001.JPG` のような名前で `qa_images/` に置き、`answer` に `![](qa_images/photo_001.JPG)` と書いて push するだけで、CI（`.github/workflows/build.yml`）が `qa_images/<uuid>.jpg` にリネームし、`q_and_a_data.json` 内参照も `qa_images/licenses.json` のキーも追従して `[skip ci]` で再pushします。
 * **ライセンス** — デフォルトは `LICENSE` の Apache-2.0。例外のみ `qa_images/licenses.json` に記載します。`scripts/build.js` が `licenses.json` を読み、各レコードに `image_licenses` として埋め込むため、Web は `<figcaption>`、physq は Detail で自動表示されます。
 * **ローカルで正規化** — `npm run normalize:images`（実行） / `npm run normalize:images:check`（dry-run）。
-* **サイズ** — `webp` 推奨ですが強制しません。CI は `<3MB / 3-5MB / ≥5MB` の統計を出力し、5MB超は警告のみです。詳細は `qa_images/README.md` を参照。
+* **形式** — `jpg/jpeg/png/webp/svg/gif` はそのまま、**HEIC/HEIF（iPhone の写真）は CI が JPEG に自動変換**します（Chrome/Firefox が HEIC を表示できないため。位置情報などの EXIF も除去）。透過 PNG/SVG の透明部分は表示場所の背景色になります。
+* **サイズ** — `webp` 推奨ですが強制しません。CI は `<3MB / 3-5MB / ≥5MB` の統計を出力し、5MB超は警告のみです。動画は git にそのまま入るので短く圧縮したもの（H.264 の `.mp4`、目安 20MB 未満）を推奨し、それを超えると警告します（GitHub は 100MB 超のファイルを拒否）。詳細は `qa_images/README.md` を参照。

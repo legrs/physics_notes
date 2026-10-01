@@ -213,7 +213,7 @@ jobs:
         run: |
           if command -v file >/dev/null 2>&1; then
             warned=0
-            for f in qa_images/*.{jpg,jpeg,png,webp,svg,gif}; do
+            for f in qa_images/*.{jpg,jpeg,png,webp,svg,gif,mp4,m4v,webm,ogv,mov}; do
               [ -e "$f" ] || continue
               file "$f" | cat
               if file "$f" | grep -qi "empty"; then echo "::warning::$f is empty (file magic)"; warned=1; fi
@@ -228,7 +228,7 @@ jobs:
           node -e "
           const fs=require('fs'),p=require('path');
           const dir='qa_images'; if(!fs.existsSync(dir)) process.exit(0);
-          const files=fs.readdirSync(dir).filter(f=>/\.(jpe?g|png|webp|svg|gif)$/i.test(f));
+          const files=fs.readdirSync(dir).filter(f=>/\.(jpe?g|png|webp|svg|gif|mp4|m4v|webm|ogv|mov)$/i.test(f));
           let total=0; files.forEach(f=> total+=fs.statSync(p.join(dir,f)).size);
           const mb=total/1024/1024;
           console.log('qa_images total: '+mb.toFixed(2)+' MB ('+files.length+' files)');

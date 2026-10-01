@@ -864,6 +864,28 @@
       margin: 1em auto;
     }
 
+    .prose video {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      max-height: 60vh;
+      height: auto;
+      margin: 1em auto;
+      border-radius: 8px;
+      background: #000;
+    }
+
+    .media-error {
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 8px;
+      margin: 0.5em 0;
+      text-align: center;
+      border: 1px dashed var(--border-mid);
+      border-radius: 8px;
+      word-break: break-all;
+    }
+
     .prose .img-row {
       display: flex;
       gap: 12px;
@@ -1141,7 +1163,7 @@
         <div class="editor-topbar">
           <div class="editor-qtitle" id="editor-qtitle">項目が選択されていません</div>
           <div style="display:flex;gap:8px;align-items:center">
-            <button id="insert-image-btn" class="btn" type="button" title="カーソル位置に画像記法を挿入">🖼 画像</button>
+            <button id="insert-image-btn" class="btn" type="button" title="カーソル位置に画像・動画の記法を挿入（qa_images/ のファイル名の拡張子が .mp4 / .webm / .m4v / .mov / .ogv なら動画として表示）">🖼 画像・動画</button>
             <div class="editor-id" id="editor-id-badge"></div>
           </div>
         </div>
@@ -1201,6 +1223,21 @@
     /* 生HTMLトークンは marked では素通しし、最終出力全体を DOMPurify で
        サニタイズする（mdToSafeHtml）。DOMPurify が未ロードの場合は
        生HTMLを全てエスケープするフェイルクローズ。 */
+    /* 動画の判定（search.html の isVideoSrc と同一。拡張子で判定し、
+       クエリ文字列・フラグメントは無視） */
+    function isVideoSrc(src) {
+      const path = String(src || '').split(/[?#]/)[0];
+      return /\.(mp4|m4v|webm|ogv|mov)$/i.test(path);
+    }
+
+    function videoHtml(href, label, title) {
+      const src = escHtml(href);
+      const name = escHtml(label || '');
+      return `<video src="${src}" controls playsinline preload="metadata"` +
+        (name ? ` aria-label="${name}"` : '') + title + `>` +
+        `<a href="${src}">${name || '動画を開く'}</a></video>`;
+    }
+
     (function configureMark() {
       if (typeof marked === 'undefined') return;
       const renderer = new marked.Renderer();
@@ -1213,6 +1250,7 @@
         const href = token.href || '';
         const text = token.text || '';
         const title = token.title ? ` title="${escHtml(token.title)}"` : '';
+        if (isVideoSrc(href)) return videoHtml(href, text, title);
         return `<img src="${escHtml(href)}" alt="${escHtml(text)}"${title} loading="lazy">`;
       };
       marked.use({ renderer });
@@ -1232,11 +1270,39 @@
     }
 
     /* 画像のライセンスを <figcaption> として付与（build.js の image_licenses 埋め込み） */
+    function mediaSrcOf(el) {
+      if (el.tagName === 'VIDEO' && !el.getAttribute('src')) {
+        const source = el.querySelector('source[src]');
+        return source ? source.getAttribute('src') || '' : '';
+      }
+      return el.getAttribute('src') || '';
+    }
+
+    /* 動画の読み込み失敗表示（ライセンスの有無に関係なく付ける） */
+    function bindVideoErrors(container) {
+      container.querySelectorAll('video').forEach(video => {
+        const showError = () => {
+          if (video.dataset.errShown) return;
+          video.dataset.errShown = '1';
+          video.style.display = 'none';
+          const ph = document.createElement('div');
+          ph.className = 'media-error';
+          ph.textContent = '⚠ 動画を読み込めません: ' + mediaSrcOf(video);
+          video.insertAdjacentElement('afterend', ph);
+        };
+        video.addEventListener('error', showError);
+        const sources = video.querySelectorAll('source');
+        if (sources.length) sources[sources.length - 1].addEventListener('error', showError);
+      });
+    }
+
     function enhanceImagesWithLicenses(container, imageLicenses) {
-      if (!container || !imageLicenses) return;
-      const imgs = container.querySelectorAll('img');
+      if (!container) return;
+      bindVideoErrors(container);
+      if (!imageLicenses) return;
+      const imgs = container.querySelectorAll('img, video');
       imgs.forEach(img => {
-        const src = img.getAttribute('src') || '';
+        const src = mediaSrcOf(img);
         if (!src.startsWith('qa_images/')) return;
         const lic = imageLicenses[src] || imageLicenses['qa_images/' + src.split('/').pop()] || imageLicenses[src.split('/').pop()];
         if (!lic || (!lic.attribution && !lic.license)) return;
@@ -1257,6 +1323,7 @@
           } else cap.textContent = capText;
           if (cap.textContent) figure.appendChild(cap);
         }
+        if (img.tagName === 'VIDEO') return; // 動画のエラー表示は bindVideoErrors
         img.onerror = () => {
           img.style.display='none';
           const ph=document.createElement('div');
@@ -1351,13 +1418,18 @@
         const src = m[2];
         if (src.startsWith('qa_images/')) srcs.push(src);
       }
-      const htmlRe = /<img\b[^>]*>/gi;
+      // <img src> / <video src> / <video poster> / <source src>（動画の HTML 記法）
+      const htmlRe = /<(?:img|video|source)\b[^>]*>/gi;
       while ((m = htmlRe.exec(answer)) !== null) {
         if (inFence(m.index)) continue;
         const tag = m[0];
-        const sm = tag.match(/\ssrc\s*=\s*(['"])(.*?)\1/i) || tag.match(/\ssrc\s*=\s*([^\s>]+)/i);
-        const src = sm ? (sm[2] || sm[1]) : null;
-        if (src && src.startsWith('qa_images/')) srcs.push(src);
+        for (const attr of ['src', 'poster']) {
+          const re1 = new RegExp(`\\s${attr}\\s*=\\s*(['"])(.*?)\\1`, 'i');
+          const re2 = new RegExp(`\\s${attr}\\s*=\\s*([^\\s>]+)`, 'i');
+          const sm = tag.match(re1) || tag.match(re2);
+          const src = sm ? (sm[2] || sm[1]) : null;
+          if (src && src.startsWith('qa_images/')) srcs.push(src);
+        }
       }
       return [...new Set(srcs)];
     }
@@ -1932,7 +2004,7 @@
       out.innerHTML = item.answer
         ? mdToSafeHtml(item.answer)
         : '<p class="empty-hint">回答を入力するとプレビューが表示されます</p>';
-      if (item.answer && item.image_licenses) enhanceImagesWithLicenses(out, item.image_licenses);
+      if (item.answer) enhanceImagesWithLicenses(out, item.image_licenses || null);
     }
 
     function orderFields(item) {
@@ -2349,14 +2421,14 @@
       imgWrap.style.paddingTop = '14px';
       imgWrap.style.borderTop = '1px solid var(--border)';
       const imgLabel = document.createElement('label');
-      imgLabel.textContent = `画像ライセンス (image_licenses) — ${imgSrcs.length}枚`;
+      imgLabel.textContent = `画像・動画ライセンス (image_licenses) — ${imgSrcs.length}件`;
       imgWrap.appendChild(imgLabel);
       const imgHint = document.createElement('div');
       imgHint.className = 'field-hint';
       if (imgSrcs.length) {
-        imgHint.textContent = 'この質問の answer 内で参照されている画像ごとにライセンス情報を編集できます。空欄の attribution/url は省略されます。';
+        imgHint.textContent = 'この質問の answer 内で参照されている画像・動画ごとにライセンス情報を編集できます。空欄の attribution/url は省略されます。';
       } else {
-        imgHint.textContent = 'answer 内に qa_images/ 参照がありません。画像を追加するとここにライセンス欄が表示されます。記法例: ![説明](qa_images/<uuid>.jpg)';
+        imgHint.textContent = 'answer 内に qa_images/ 参照がありません。画像・動画を追加するとここにライセンス欄が表示されます。記法例: ![説明](qa_images/<uuid>.jpg) / 動画: ![説明](qa_images/<uuid>.mp4)';
       }
       imgWrap.appendChild(imgHint);
 

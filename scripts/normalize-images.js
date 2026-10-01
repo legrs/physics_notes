@@ -15,16 +15,25 @@
 // qa_images/<uuid>.jpg にリネームし、q_and_a_data.json 内参照も
 // qa_images/licenses.json のキーも追従する。
 //
+// 画像だけでなく動画 (mp4/m4v/webm/ogv/mov) も同じ qa_images/ で扱う。
+// iPhone 等の HEIC/HEIF は Chrome/Firefox で表示できないため、ここで JPEG に
+// 変換してから UUID 名にする（元ファイルは削除、参照と licenses.json も追従）。
+// 参照は ![説明](qa_images/x.mp4) か <video src> / <source src> / <video poster>。
+//
 // Usage:
 //   node scripts/normalize-images.js          # リネーム + JSON書き換え
 //   node scripts/normalize-images.js --check  # dry-run: 非UUID検出で非0終了
+//   node scripts/normalize-images.js --root <dir>  # <dir>/qa_images と <dir>/q_and_a_data.json を対象にする（テスト用）
 // =============================================================
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const REPO_ROOT = path.join(__dirname, '..');
+const rootArg = process.argv.indexOf('--root');
+const REPO_ROOT = rootArg > 0 && process.argv[rootArg + 1]
+  ? path.resolve(process.argv[rootArg + 1])
+  : path.join(__dirname, '..');
 const QA_IMAGES_DIR = path.join(REPO_ROOT, 'qa_images');
 const DATA_PATH = path.join(REPO_ROOT, 'q_and_a_data.json');
 const LICENSES_PATH = path.join(QA_IMAGES_DIR, 'licenses.json');
@@ -36,7 +45,20 @@ const CHECK = process.argv.includes('--check');
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]+$/;
 // ベース名 (拡張子なし) が UUID かの判定
 const UUID_BASE_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const IMAGE_EXT_RE = /\.(jpe?g|png|webp|svg|gif)$/i;
+// 画像 + 動画（build.js の MEDIA_EXT_RE / search.html の isVideoSrc と揃える）
+const IMAGE_EXT_RE = /\.(jpe?g|png|webp|svg|gif|mp4|m4v|webm|ogv|mov)$/i;
+const VIDEO_EXT_RE = /\.(mp4|m4v|webm|ogv|mov)$/i;
+const VIDEO_WARN_BYTES = 20 * 1024 * 1024;
+// 置けるが配信前に JPEG へ変換する形式
+const HEIC_EXT_RE = /\.(heic|heif)$/i;
+// HTML の画像・動画タグと、その中で qa_images/ を指しうる属性
+const HTML_MEDIA_RE = /<(?:img|video|source)\b[^>]*>/gi;
+const MEDIA_ATTRS = ['src', 'poster'];
+function tagAttr(tag, attr) {
+  const m = tag.match(new RegExp(`\\s${attr}\\s*=\\s*(['"])(.*?)\\1`, 'i'))
+    || tag.match(new RegExp(`\\s${attr}\\s*=\\s*([^\\s>]+)`, 'i'));
+  return m ? (m[2] || m[1]) : null;
+}
 
 function isUuidFilename(name) {
   return UUID_RE.test(name);
@@ -62,8 +84,6 @@ function stripCodeFencesForScan(s) {
 // markdown 画像の src 抽出 (コードフェンス除去後)
 // spec: /!\[([^\]]*)\]\(\s*([^\s)]+)(?:\s+"[^"]*")?\s*\)/g
 const MD_IMG_RE = /!\[([^\]]*)\]\(\s*([^\s)]+)(?:\s+"[^"]*")?\s*\)/g;
-// html <img> の src 抽出
-const HTML_IMG_RE = /<img\b[^>]*>/gi;
 function extractImgSrcs(answer) {
   const srcs = [];
   const cleaned = stripCodeFencesForScan(answer);
@@ -72,19 +92,61 @@ function extractImgSrcs(answer) {
   while ((m = MD_IMG_RE.exec(cleaned)) !== null) {
     srcs.push(m[2]);
   }
-  // HTML
-  HTML_IMG_RE.lastIndex = 0;
-  while ((m = HTML_IMG_RE.exec(cleaned)) !== null) {
-    const tag = m[0];
-    const srcMatch = tag.match(/\ssrc\s*=\s*(['"])(.*?)\1/i) || tag.match(/\ssrc\s*=\s*([^\s>]+)/i);
-    const src = srcMatch ? srcMatch[2] || srcMatch[1] : null;
-    // alt は search_text 用だがここでは不要
-    if (src) srcs.push(src);
+  // HTML (<img src> / <video src|poster> / <source src>)
+  HTML_MEDIA_RE.lastIndex = 0;
+  while ((m = HTML_MEDIA_RE.exec(cleaned)) !== null) {
+    for (const attr of MEDIA_ATTRS) {
+      const src = tagAttr(m[0], attr);
+      if (src) srcs.push(src);
+    }
   }
   return srcs;
 }
 
-function main() {
+// HEIC/HEIF → JPEG。sharp のプリビルドは HEVC を復号できない（AVIF のみ）ため
+// heic-decode（libheif の WASM 版）で復号し、sharp で JPEG にする。生の画素から
+// 作り直すので、iPhone 写真の位置情報などの EXIF もここで落ちる。向き（回転）は
+// libheif が復号時に適用済み。透過は白で塗りつぶす。
+async function heicToJpeg(buf) {
+  const sharp = require('sharp');
+  let img;
+  try {
+    const decode = require('heic-decode');
+    const { width, height, data } = await decode({ buffer: buf });
+    img = sharp(Buffer.from(data.buffer, data.byteOffset, data.byteLength), { raw: { width, height, channels: 4 } });
+  } catch (e) {
+    // AV1 で符号化された .heif 等は sharp 自身が読める
+    img = sharp(buf);
+  }
+  return img.flatten({ background: '#ffffff' }).jpeg({ quality: 90, mozjpeg: true }).toBuffer();
+}
+
+async function convertHeicFiles(renameMap) {
+  let converted = 0;
+  const heics = fs.readdirSync(QA_IMAGES_DIR).filter((f) => HEIC_EXT_RE.test(f));
+  for (const name of heics) {
+    let newName;
+    do { newName = crypto.randomUUID() + '.jpg'; } while (fs.existsSync(path.join(QA_IMAGES_DIR, newName)));
+    if (CHECK) {
+      renameMap.set(name, newName);
+      console.log(`[check] Would convert ${name} -> ${newName} (JPEG)`);
+      continue;
+    }
+    try {
+      const jpg = await heicToJpeg(fs.readFileSync(path.join(QA_IMAGES_DIR, name)));
+      fs.writeFileSync(path.join(QA_IMAGES_DIR, newName), jpg);
+      fs.unlinkSync(path.join(QA_IMAGES_DIR, name));
+      renameMap.set(name, newName);
+      converted++;
+      console.log(`Converted ${name} -> ${newName} (JPEG, ${(jpg.length / 1024).toFixed(0)} KB)`);
+    } catch (e) {
+      console.warn(`⚠ Failed to convert ${name}: ${e.message} — left as is (it will not display in Chrome/Firefox)`);
+    }
+  }
+  return converted;
+}
+
+async function main() {
   let renamed = 0;
   let updatedRefs = 0;
   const renameMap = new Map(); // old basename -> new basename
@@ -96,6 +158,10 @@ function main() {
     if (CHECK) process.exit(0);
     return;
   }
+
+  // 0) HEIC/HEIF → <uuid>.jpg（renameMap に載せるので、以降の参照書き換え・
+  //    licenses.json のキー追従は通常のリネームと同じ経路で行われる）
+  renamed += await convertHeicFiles(renameMap);
 
   const files = fs.readdirSync(QA_IMAGES_DIR).filter((f) => {
     // licenses.json / .gitkeep / README.md はスキップ、画像のみ
@@ -304,52 +370,55 @@ function main() {
         mdReplacements.push({ index: mdMatch.index, len: mdMatch[0].length, alt: mdMatch[1], src, newSrc, full: mdMatch[0] });
       }
     }
-    // 後ろから置換
-    for (let i = mdReplacements.length - 1; i >= 0; i--) {
-      const r = mdReplacements[i];
+    // Markdown と HTML の置換位置はどちらも元の item.answer 基準なので、
+    // 両方を集めてから位置の降順に1回で適用する（以前は Markdown 側を先に
+    // 適用して長さが変わった後に、HTML 側を古い位置で適用しており、同じ
+    // answer に両方の記法があると本文が壊れていた）
+    const replacements = mdReplacements.map((r) => {
       // altはそのまま、srcのみ置換。title付きの場合は title を保持
-      const original = r.full;
-      // src 部分だけ置換:  !\[alt\]\(src "title"\) の src を newSrc に
-      // 元の title を抽出
-      const titleMatch = original.match(/!\[([^\]]*)\]\(\s*([^\s)]+)(?:\s+"([^"]*)")?\s*\)/);
+      const titleMatch = r.full.match(/!\[([^\]]*)\]\(\s*([^\s)]+)(?:\s+"([^"]*)")?\s*\)/);
       const title = titleMatch && titleMatch[3] ? ` "${titleMatch[3]}"` : '';
-      const replacement = `![${r.alt}](${r.newSrc}${title})`;
-      newAnswer = newAnswer.slice(0, r.index) + replacement + newAnswer.slice(r.index + r.len);
-      itemChanged = true;
-      updatedRefs++;
-    }
+      return { index: r.index, len: r.len, text: `![${r.alt}](${r.newSrc}${title})` };
+    });
 
-    // HTML <img> 置換
-    const htmlRe = /<img\b[^>]*>/gi;
+    // HTML <img> / <video> / <source> 置換（src と poster）
+    const htmlRe = new RegExp(HTML_MEDIA_RE.source, 'gi');
     let htmlMatch;
     const htmlReplacements = [];
     while ((htmlMatch = htmlRe.exec(item.answer)) !== null) {
       if (isInFence(htmlMatch.index)) continue;
       const tag = htmlMatch[0];
-      const srcMatch = tag.match(/\ssrc\s*=\s*(['"])(.*?)\1/i) || tag.match(/\ssrc\s*=\s*([^\s>]+)/i);
-      if (!srcMatch) continue;
-      const src = srcMatch[2] || srcMatch[1];
-      if (!src || !src.startsWith('qa_images/')) continue;
-      if (/^(https?:)?\/\//i.test(src) || src.startsWith('data:')) continue;
-      const bn = path.basename(src);
-      const ext = path.extname(bn);
-      const extLower = ext.toLowerCase();
-      const bnLower = ext !== extLower ? bn.slice(0, -ext.length) + extLower : bn;
-      let newSrc = null;
-      if (renameMap.has(bn)) {
-        newSrc = 'qa_images/' + renameMap.get(bn);
-      } else if (bn !== bnLower) {
-        newSrc = 'qa_images/' + bnLower;
+      let newTag = tag;
+      for (const attr of MEDIA_ATTRS) {
+        const src = tagAttr(tag, attr);
+        if (!src || !src.startsWith('qa_images/')) continue;
+        if (/^(https?:)?\/\//i.test(src) || src.startsWith('data:')) continue;
+        const bn = path.basename(src);
+        const ext = path.extname(bn);
+        const extLower = ext.toLowerCase();
+        const bnLower = ext !== extLower ? bn.slice(0, -ext.length) + extLower : bn;
+        let newSrc = null;
+        if (renameMap.has(bn)) {
+          newSrc = 'qa_images/' + renameMap.get(bn);
+        } else if (bn !== bnLower) {
+          newSrc = 'qa_images/' + bnLower;
+        }
+        // 属性値だけを置換（同じ文字列がタグ内の別の場所にあっても触らない）
+        if (newSrc && newSrc !== src) {
+          newTag = newTag.replace(
+            new RegExp(`(\\s${attr}\\s*=\\s*['"]?)${src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i'),
+            (_, pre) => pre + newSrc
+          );
+        }
       }
-      if (newSrc && newSrc !== src) {
-        // tag 内の src だけ置換
-        const newTag = tag.replace(src, newSrc);
+      if (newTag !== tag) {
         htmlReplacements.push({ index: htmlMatch.index, len: tag.length, newTag });
       }
     }
-    for (let i = htmlReplacements.length - 1; i >= 0; i--) {
-      const r = htmlReplacements[i];
-      newAnswer = newAnswer.slice(0, r.index) + r.newTag + newAnswer.slice(r.index + r.len);
+    for (const r of htmlReplacements) replacements.push({ index: r.index, len: r.len, text: r.newTag });
+    replacements.sort((a, b) => b.index - a.index);
+    for (const r of replacements) {
+      newAnswer = newAnswer.slice(0, r.index) + r.text + newAnswer.slice(r.index + r.len);
       itemChanged = true;
       updatedRefs++;
     }
@@ -470,6 +539,18 @@ function main() {
   if (broken.length) console.log(`Broken refs (missing files): ${broken.join(', ')}`);
   else console.log('No broken refs');
 
+  // 動画の注意（reject はしない）
+  const MB = 1024 * 1024;
+  for (const f of currentFiles.filter((f) => VIDEO_EXT_RE.test(f))) {
+    const size = fs.statSync(path.join(QA_IMAGES_DIR, f)).size;
+    if (size >= VIDEO_WARN_BYTES) {
+      console.log(`⚠ ${f} is ${(size / MB).toFixed(1)}MB — 動画は ${VIDEO_WARN_BYTES / MB}MB 未満を推奨（GitHub は 100MB 超を拒否、50MB 超で警告）`);
+    }
+    if (/\.mov$/i.test(f)) {
+      console.log(`⚠ ${f}: .mov（特に iPhone の HEVC）は Chrome/Firefox で再生できないことがあります。H.264 の .mp4 を推奨`);
+    }
+  }
+
   // licenses.json 未記載の警告 (Apache-2.0扱い)
   if (licensesData) {
     const licensedSet = new Set(Object.keys(licensesData).filter((k) => k !== '_default').map((k) => path.basename(k)));
@@ -478,4 +559,7 @@ function main() {
   }
 }
 
-main();
+main().catch((e) => {
+  console.error(`❌ ${e && e.stack || e}`);
+  process.exit(1);
+});

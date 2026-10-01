@@ -73,6 +73,10 @@ jobs:
           let lt3=0,btw=0,gte5=0,total=0;
           files.forEach(f=>{const s=fs.statSync(p.join(dir,f)).size; total+=s; if(s<3*MB)lt3++; else if(s<5*MB)btw++; else gte5++; if(s>=5*MB) console.log('::warning::'+f+' is '+(s/MB).toFixed(1)+'MB (>=5MB)');});
           console.log('Images: '+files.length+' files, avg '+((total/(files.length||1))/MB).toFixed(2)+'MB, <3MB:'+lt3+' 3-5MB:'+btw+' >=5MB:'+gte5+', total '+(total/MB).toFixed(1)+'MB');
+          const videos=fs.readdirSync(dir).filter(f=>/\.(mp4|m4v|webm|ogv|mov)$/i.test(f));
+          let vtotal=0;
+          videos.forEach(f=>{const s=fs.statSync(p.join(dir,f)).size; vtotal+=s; if(s>=20*MB) console.log('::warning::'+f+' is '+(s/MB).toFixed(1)+'MB (video >=20MB; GitHub rejects >100MB)');});
+          console.log('Videos: '+videos.length+' files, total '+(vtotal/MB).toFixed(1)+'MB');
           "
 
       - name: Generate search_text and embeddings
