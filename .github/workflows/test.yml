@@ -456,6 +456,15 @@ jobs:
       - name: Install lld (Linux only)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y lld
+      # MS の配信元が 5xx を返して落ちることがあるので、展開済みの ONNX Runtime を
+      # キャッシュする（キーはスクリプトのハッシュ = VERSION/SHA256 を変えれば更新）。
+      # install_ort_intel.sh は既に展開済みならダウンロードしない。
+      - name: Cache ONNX Runtime (Intel Mac only)
+        if: matrix.target == 'x86_64-apple-darwin'
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}/onnxruntime
+          key: onnxruntime-osx-x86_64-${{ hashFiles('physq/scripts/install_ort_intel.sh') }}
       - name: Install ONNX Runtime (Intel Mac only)
         if: matrix.target == 'x86_64-apple-darwin'
         working-directory: physq

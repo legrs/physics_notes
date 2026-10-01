@@ -21,7 +21,20 @@ LIB_DIR="$DEST/lib"
 if [ ! -f "$LIB_DIR/libonnxruntime.${VERSION}.dylib" ]; then
   rm -rf "$DEST" "$DEST.tgz"
   mkdir -p "$DEST"
-  curl -fL --retry 5 --retry-all-errors -o "$DEST.tgz" "$URL"
+  # GitHub Releases の配信元はときどき数十秒〜数分 5xx（504 等）を返す。
+  # curl 自身のリトライ（指数バックオフで ~30 秒）だけだと短い障害でも
+  # 落ちるので、外側でも間隔を空けて数回やり直す（合計で最大 ~10 分）。
+  ok=0
+  for attempt in 1 2 3 4; do
+    if curl -fL --connect-timeout 30 --retry 6 --retry-all-errors --retry-max-time 120 \
+        -o "$DEST.tgz" "$URL"; then
+      ok=1
+      break
+    fi
+    echo "ONNX Runtime download failed (attempt $attempt/4); retrying in $((attempt * 30))s" >&2
+    sleep $((attempt * 30))
+  done
+  [ "$ok" = 1 ] || { echo "ONNX Runtime download failed: $URL" >&2; exit 1; }
   echo "$SHA256  $DEST.tgz" | shasum -a 256 -c - >/dev/null
   # The archive has a single top-level directory. bsdtar (macOS) doesn't
   # support GNU tar's --strip-components, so extract and hoist manually.
