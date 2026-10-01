@@ -1,0 +1,2013 @@
+<!--
+   Copyright 2026 Igarin & Legrs
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-->
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Media Editor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* ══════════════════════════════════════════════════════════════
+       テーマ（qa_editor.html と同じトークン。ダーク／ライト自動追従）
+    ══════════════════════════════════════════════════════════════ */
+    :root {
+      --accent: #3b82f6;
+      --accent-fg: #ffffff;
+      --accent-soft: rgba(59, 130, 246, 0.08);
+      --bg: #ffffff;
+      --bg-surface: #fafafa;
+      --bg-elevated: #f5f5f5;
+      --bg-card: #ffffff;
+      --text-primary: #111111;
+      --text-body: #222222;
+      --text-secondary: #444444;
+      --text-muted: #888888;
+      --border: #eeeeee;
+      --border-mid: #e0e0e0;
+      --border-dark: #dddddd;
+      --input-bg: #ffffff;
+      --code-bg: #f3f4f6;
+      --code-border: #e5e7eb;
+      --ok: #16a34a;
+      --error: #dc2626;
+      --diff: #b45309;
+      --checker-a: #e9e9ee;
+      --checker-b: #ffffff;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --accent-soft: rgba(59, 130, 246, 0.18);
+        --bg: #000000;
+        --bg-surface: #0d0d0d;
+        --bg-elevated: #1a1a1a;
+        --bg-card: #0a0a0a;
+        --text-primary: #f2f2f2;
+        --text-body: #dddddd;
+        --text-secondary: #aaaaaa;
+        --text-muted: #777777;
+        --border: #222222;
+        --border-mid: #2a2a2a;
+        --border-dark: #333333;
+        --input-bg: #111111;
+        --code-bg: #14141a;
+        --code-border: #2a2a2a;
+        --ok: #4ade80;
+        --error: #f87171;
+        --diff: #fbbf24;
+        --checker-a: #2a2a30;
+        --checker-b: #1a1a1f;
+      }
+
+      body {
+        color-scheme: dark;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      overscroll-behavior-y: none;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", sans-serif;
+      background: var(--bg);
+      color: var(--text-body);
+      font-size: 14px;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+      color: inherit;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    /* ── Topbar ── */
+    #topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-card);
+      flex-shrink: 0;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    #topbar h1 {
+      font-size: 16px;
+      margin: 0;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    .topbar-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .topbar-links a {
+      font-size: 12px;
+      color: var(--accent);
+      text-decoration: none;
+      margin-right: 10px;
+      white-space: nowrap;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .status {
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 40vw;
+    }
+
+    .status.ok {
+      color: var(--ok);
+    }
+
+    .status.error {
+      color: var(--error);
+    }
+
+    .status.loading {
+      color: var(--accent);
+    }
+
+    .btn {
+      border: 1px solid var(--border-dark);
+      background: var(--bg-card);
+      border-radius: 8px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .btn:hover:not(:disabled) {
+      background: var(--bg-elevated);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--accent-fg);
+      border-color: var(--accent);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent);
+      filter: brightness(1.08);
+    }
+
+    .btn-danger {
+      color: var(--error);
+    }
+
+    .btn-small {
+      padding: 3px 8px;
+      font-size: 12px;
+    }
+
+    .btn.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .mobile-tabbar {
+      display: none;
+    }
+
+    /* ── Layout: sidebar | preview | panel ── */
+    #layout {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr) 360px;
+    }
+
+    .pane {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--border);
+      background: var(--bg-surface);
+    }
+
+    .right-panel {
+      border-left: 1px solid var(--border);
+      background: var(--bg-card);
+    }
+
+    .scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar-head {
+      padding: 10px 10px 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .search-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .field-input {
+      width: 100%;
+      border: 1px solid var(--border-dark);
+      background: var(--input-bg);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .field-input:focus {
+      border-color: var(--accent);
+    }
+
+    .field-input.invalid {
+      border-color: var(--error);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .chip {
+      border: 1px solid var(--border-dark);
+      background: var(--bg-card);
+      border-radius: 999px;
+      padding: 2px 9px;
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
+
+    .chip.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .chip .n {
+      opacity: 0.7;
+      margin-left: 3px;
+    }
+
+    .sidebar-tools {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .media-list {
+      padding: 6px 8px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .media-list.grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 8px;
+    }
+
+    .media-item {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 6px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      position: relative;
+      background: transparent;
+      text-align: left;
+      width: 100%;
+    }
+
+    .media-item:hover {
+      background: var(--bg-elevated);
+    }
+
+    .media-item.selected {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+    }
+
+    .media-item.checked {
+      border-color: var(--accent);
+      border-style: dashed;
+    }
+
+    .media-list.grid .media-item {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+    }
+
+    .thumb {
+      width: 56px;
+      height: 56px;
+      flex-shrink: 0;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      color: var(--text-muted);
+      background-color: var(--checker-b);
+      background-image:
+        linear-gradient(45deg, var(--checker-a) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--checker-a) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--checker-a) 75%),
+        linear-gradient(-45deg, transparent 75%, var(--checker-a) 75%);
+      background-size: 12px 12px;
+      background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+    }
+
+    .media-list.grid .thumb {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 4 / 3;
+    }
+
+    .thumb img,
+    .thumb video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .thumb.special {
+      background: var(--bg-elevated);
+    }
+
+    .item-text {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .item-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+      margin-top: 3px;
+    }
+
+    .badge {
+      font-size: 10px;
+      line-height: 1.5;
+      padding: 0 6px;
+      border-radius: 999px;
+      border: 1px solid var(--border-dark);
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .badge.warn {
+      border-color: var(--diff);
+      color: var(--diff);
+    }
+
+    .badge.err {
+      border-color: var(--error);
+      color: var(--error);
+    }
+
+    .badge.info {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .badge.changed {
+      background: var(--diff);
+      border-color: var(--diff);
+      color: #fff;
+    }
+
+    .item-check {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+      display: none;
+    }
+
+    .selecting .item-check {
+      display: block;
+    }
+
+    .selecting .media-list:not(.grid) .media-item {
+      padding-left: 30px;
+    }
+
+    .empty-hint {
+      color: var(--text-muted);
+      font-size: 13px;
+      padding: 16px;
+      line-height: 1.6;
+    }
+
+    /* ── Preview ── */
+    .preview-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .toolbar-group {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .toolbar-sep {
+      flex: 1;
+    }
+
+    .toolbar-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-right: 2px;
+    }
+
+    .stage {
+      flex: 1;
+      min-height: 220px;
+      overflow: auto;
+      overscroll-behavior: contain;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .stage.bg-checker {
+      background-color: var(--checker-b);
+      background-image:
+        linear-gradient(45deg, var(--checker-a) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--checker-a) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--checker-a) 75%),
+        linear-gradient(-45deg, transparent 75%, var(--checker-a) 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+    }
+
+    .stage.bg-white {
+      background: #ffffff;
+    }
+
+    .stage.bg-black {
+      background: #0a0a0a;
+    }
+
+    .stage img,
+    .stage video {
+      display: block;
+    }
+
+    .stage.fit img,
+    .stage.fit video {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .stage.fit {
+      align-items: center;
+    }
+
+    .stage:not(.fit) {
+      align-items: flex-start;
+      justify-content: flex-start;
+    }
+
+    .stage .stage-msg {
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.7;
+      max-width: 460px;
+      background: var(--bg-card);
+      padding: 16px 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .preview-info {
+      border-top: 1px solid var(--border);
+      max-height: 42%;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 10px 14px 14px;
+      flex-shrink: 0;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 6px 14px;
+      margin-bottom: 10px;
+    }
+
+    .info-cell .k {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .info-cell .v {
+      font-size: 13px;
+      color: var(--text-primary);
+      word-break: break-all;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin: 10px 0 6px;
+    }
+
+    .uses {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .uses li {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 13px;
+      background: var(--bg-surface);
+    }
+
+    .uses .q {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .uses .meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .uses a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    /* ── Right panel ── */
+    .panel-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-tab {
+      flex: 1;
+      border: none;
+      background: none;
+      padding: 10px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+    }
+
+    .panel-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .panel-body {
+      padding: 14px 16px 24px;
+    }
+
+    .field {
+      margin-bottom: 12px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .field-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      line-height: 1.5;
+    }
+
+    .field-hint.error {
+      color: var(--error);
+    }
+
+    .source-box {
+      font-size: 12px;
+      line-height: 1.6;
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-bottom: 12px;
+      border: 1px solid var(--border-mid);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+    }
+
+    .source-box strong {
+      color: var(--text-primary);
+    }
+
+    .caption-preview {
+      border: 1px dashed var(--border-dark);
+      border-radius: 8px;
+      padding: 8px 10px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      min-height: 34px;
+    }
+
+    .caption-preview a {
+      color: inherit;
+    }
+
+    .caption-preview .none {
+      font-style: italic;
+    }
+
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin: -4px 0 12px;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .note {
+      font-size: 12px;
+      line-height: 1.6;
+      border-left: 3px solid var(--diff);
+      padding: 6px 10px;
+      margin: 12px 0;
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+    }
+
+    .note.info {
+      border-left-color: var(--accent);
+    }
+
+    .note ul {
+      margin: 4px 0 0;
+      padding-left: 18px;
+    }
+
+    .diff-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 12px;
+      font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .diff-list li {
+      padding: 2px 0;
+      word-break: break-all;
+    }
+
+    .diff-add {
+      color: var(--ok);
+    }
+
+    .diff-del {
+      color: var(--error);
+    }
+
+    .diff-mod {
+      color: var(--diff);
+    }
+
+    pre.code {
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      overflow: auto;
+      overscroll-behavior: contain;
+      max-height: 55vh;
+      white-space: pre;
+      margin: 0;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      background: var(--text-primary);
+      color: var(--bg);
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 50;
+    }
+
+    .toast.show {
+      opacity: 0.92;
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       タブレット: 右パネルを細く
+    ══════════════════════════════════════════════════════════════ */
+    @media (max-width: 1180px) {
+      #layout {
+        grid-template-columns: 280px minmax(0, 1fr) 320px;
+      }
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       スマホ: 1ペインずつ。上部タブで 一覧 / 表示 / ライセンス / コード
+    ══════════════════════════════════════════════════════════════ */
+    @media (max-width: 900px) {
+
+      .topbar-sub,
+      .status {
+        display: none;
+      }
+
+      #topbar {
+        padding: 8px 12px;
+      }
+
+      .mobile-tabbar {
+        display: flex;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-card);
+        flex-shrink: 0;
+      }
+
+      .mobile-tab-btn {
+        flex: 1;
+        padding: 11px 4px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-muted);
+        border-bottom: 2px solid transparent;
+        position: relative;
+      }
+
+      .mobile-tab-btn.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+      }
+
+      .mobile-tab-btn .dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--diff);
+        margin-left: 4px;
+        vertical-align: middle;
+      }
+
+      #layout {
+        display: block;
+      }
+
+      .pane {
+        display: none;
+        height: 100%;
+      }
+
+      #app[data-mview="list"] .sidebar,
+      #app[data-mview="preview"] .preview-pane,
+      #app[data-mview="license"] .right-panel,
+      #app[data-mview="code"] .right-panel {
+        display: flex;
+      }
+
+      .sidebar,
+      .right-panel {
+        border: none;
+      }
+
+      /* スマホでは右パネルの中のタブは上部タブに統合 */
+      .panel-tabs {
+        display: none;
+      }
+
+      .media-list.grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .preview-info {
+        max-height: 50%;
+      }
+
+      .stage {
+        padding: 12px;
+      }
+
+      .item-check {
+        width: 22px;
+        height: 22px;
+      }
+
+      .field-input {
+        font-size: 16px; /* iOS のフォーカス時ズームを防ぐ */
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app" data-mview="list">
+    <header id="topbar">
+      <div class="topbar-left">
+        <h1>Media Editor</h1>
+        <span class="topbar-sub">qa_images の画像・動画とライセンス</span>
+        <span class="topbar-links"><a href="qa_editor.html">Q&amp;A Editor</a><a href="index.html">検索</a></span>
+      </div>
+      <div class="topbar-right">
+        <span id="status-text" class="status"></span>
+        <button id="discard-btn" class="btn" type="button" title="この端末に保存している未反映の変更をすべて破棄" disabled>変更を破棄</button>
+        <button id="fetch-btn" class="btn btn-primary" type="button" title="GitHub から最新の qa_images 一覧・licenses.json・q_and_a_data.json を取得">⭳ 取得</button>
+      </div>
+    </header>
+
+    <nav class="mobile-tabbar" aria-label="表示切り替え">
+      <button class="mobile-tab-btn active" data-view="list" type="button">一覧</button>
+      <button class="mobile-tab-btn" data-view="preview" type="button">表示</button>
+      <button class="mobile-tab-btn" data-view="license" type="button">ライセンス</button>
+      <button class="mobile-tab-btn" data-view="code" type="button">コード<span id="mobile-code-dot"></span></button>
+    </nav>
+
+    <main id="layout">
+      <!-- ── 一覧 ── -->
+      <aside class="pane sidebar" id="sidebar">
+        <div class="sidebar-head">
+          <div class="search-row">
+            <input id="search-input" class="field-input" type="search" placeholder="ファイル名・説明・質問で検索（/）" autocomplete="off">
+          </div>
+          <div class="chips" id="filter-chips"></div>
+          <div class="sidebar-tools">
+            <span id="list-count"></span>
+            <span>
+              <button id="select-mode-btn" class="btn btn-small" type="button" title="複数選択してライセンスをまとめて適用">選択</button>
+              <button id="view-toggle-btn" class="btn btn-small" type="button" title="一覧 / グリッド表示の切り替え">▦</button>
+            </span>
+          </div>
+        </div>
+        <div class="scroll">
+          <div class="media-list" id="media-list"></div>
+        </div>
+      </aside>
+
+      <!-- ── プレビュー ── -->
+      <section class="pane preview-pane" id="preview-pane">
+        <div class="preview-toolbar">
+          <div class="toolbar-group" role="group" aria-label="背景">
+            <span class="toolbar-label">背景</span>
+            <button class="btn btn-small bg-btn" data-bg="checker" type="button" title="透過部分を市松模様で表示">▦</button>
+            <button class="btn btn-small bg-btn" data-bg="white" type="button" title="白背景（サイトのライトモード）">白</button>
+            <button class="btn btn-small bg-btn" data-bg="black" type="button" title="黒背景（サイトのダークモード）">黒</button>
+          </div>
+          <div class="toolbar-group" role="group" aria-label="倍率">
+            <button id="zoom-btn" class="btn btn-small" type="button" title="画面に合わせる / 等倍">フィット</button>
+          </div>
+          <span class="toolbar-sep"></span>
+          <div class="toolbar-group">
+            <button id="prev-btn" class="btn btn-small" type="button" title="前へ (↑ / k)">←</button>
+            <button id="next-btn" class="btn btn-small" type="button" title="次へ (↓ / j)">→</button>
+            <a id="open-original" class="btn btn-small" target="_blank" rel="noopener" href="#">元ファイル ↗</a>
+          </div>
+        </div>
+        <div class="stage bg-checker fit" id="stage"></div>
+        <div class="preview-info" id="preview-info"></div>
+      </section>
+
+      <!-- ── ライセンス / コード ── -->
+      <aside class="pane right-panel" id="right-panel">
+        <div class="panel-tabs">
+          <button class="panel-tab active" data-tab="license" type="button">ライセンス</button>
+          <button class="panel-tab" data-tab="code" type="button">コード <span id="code-count"></span></button>
+        </div>
+        <div class="scroll">
+          <div class="panel-body" id="license-body"></div>
+          <div class="panel-body" id="code-body" hidden></div>
+        </div>
+      </aside>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <datalist id="license-presets"></datalist>
+
+  <script>
+    'use strict';
+
+    /* ══════════════════════════════════════════════════════════════
+       純粋なロジック（DOM 非依存。scripts/tests/media_editor_check.js が
+       このファイルから関数を抜き出して検証する）
+    ══════════════════════════════════════════════════════════════ */
+
+    const RAW_BASE = 'https://raw.githubusercontent.com/legrs/physics_notes/refs/heads/master/';
+    const API_QA_IMAGES = 'https://api.github.com/repos/legrs/physics_notes/contents/qa_images?ref=master';
+
+    // qa_images/ に置ける拡張子（scripts/build.js MEDIA_EXT_RE と同じ）+ CI が JPEG に変換する HEIC/HEIF
+    const MEDIA_EXT_RE = /\.(jpe?g|png|webp|svg|gif|mp4|m4v|webm|ogv|mov|heic|heif)$/i;
+    const UUID_NAME_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]+$/;
+
+    function isVideoSrc(src) {
+      const path = String(src || '').split(/[?#]/)[0];
+      return /\.(mp4|m4v|webm|ogv|mov)$/i.test(path);
+    }
+
+    function isHeicName(name) {
+      return /\.(heic|heif)$/i.test(String(name || ''));
+    }
+
+    // answer 内の qa_images/ 参照（Markdown 画像・<img>・<video>・<source>・poster）。
+    // コードブロック内は無視。scripts/build.js の extractImageSrcsForLicenses と同じ範囲を拾い、
+    // 表示用に alt / ラベルも返す。
+    function extractMediaRefs(answer) {
+      if (!answer || typeof answer !== 'string') return [];
+      const ranges = [];
+      const fenceRe = /```[\s\S]*?```|`[^`]*`/g;
+      let m;
+      while ((m = fenceRe.exec(answer)) !== null) ranges.push([m.index, m.index + m[0].length]);
+      const inFence = pos => ranges.some(([s, e]) => pos >= s && pos < e);
+      const out = [];
+      const mdRe = /!\[([^\]]*)\]\(\s*([^\s)]+)(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)/g;
+      while ((m = mdRe.exec(answer)) !== null) {
+        if (inFence(m.index)) continue;
+        if (m[2].startsWith('qa_images/')) out.push({ src: m[2], alt: m[1], pos: m.index });
+      }
+      const attr = (tag, name) => {
+        const a = tag.match(new RegExp(`\\s${name}\\s*=\\s*(['"])(.*?)\\1`, 'i'))
+          || tag.match(new RegExp(`\\s${name}\\s*=\\s*([^\\s>]+)`, 'i'));
+        return a ? (a[2] !== undefined ? a[2] : a[1]) : null;
+      };
+      const htmlRe = /<(?:img|video|source)\b[^>]*>/gi;
+      while ((m = htmlRe.exec(answer)) !== null) {
+        if (inFence(m.index)) continue;
+        const tag = m[0];
+        const label = attr(tag, 'alt') || attr(tag, 'aria-label') || attr(tag, 'title') || '';
+        for (const a of ['src', 'poster']) {
+          const src = attr(tag, a);
+          if (src && src.startsWith('qa_images/')) out.push({ src, alt: a === 'poster' ? 'poster' : label, pos: m.index });
+        }
+      }
+      return out.sort((a, b) => a.pos - b.pos).map(({ src, alt }) => ({ src, alt }));
+    }
+
+    function basenameOf(src) {
+      return String(src || '').split('/').pop();
+    }
+
+    // licenses.json 内でこのファイルを指すキー（build.js と同じく src / basename の両形式を許す）
+    function licenseKeysFor(licenses, name) {
+      return ['qa_images/' + name, name].filter(k => licenses && Object.prototype.hasOwnProperty.call(licenses, k));
+    }
+
+    // 1つのファイルに実際に適用されるライセンス（scripts/build.js injectImageLicenses と同じ優先順位）:
+    //   licenses.json の個別指定 > q_and_a_data.json の質問ごとの image_licenses（qa_editor で編集）> _default
+    // recordLicenses: このファイルを使っている各質問の image_licenses[src]（無ければ null）
+    function resolveLicense(name, licenses, recordLicenses) {
+      const keys = licenseKeysFor(licenses, name);
+      if (keys.length) return { source: 'explicit', key: keys[0], lic: licenses[keys[0]] };
+      const recs = (recordLicenses || []).filter(l => l && l.license);
+      if (recs.length) {
+        const distinct = [...new Set(recs.map(l => JSON.stringify(l)))];
+        return { source: 'record', lic: recs[0], conflict: distinct.length > 1 };
+      }
+      return { source: 'default', lic: (licenses && licenses._default) || { license: 'Apache-2.0' } };
+    }
+
+    // サイト（search.html の enhanceImagesWithLicenses）が figcaption に出す文字列
+    function captionText(lic) {
+      if (!lic || (!lic.attribution && !lic.license)) return '';
+      let t = lic.attribution || '';
+      if (lic.license && lic.license !== 'Apache-2.0') t = t ? `${t} (${lic.license})` : lic.license;
+      else if (lic.license && !lic.attribution) t = lic.license;
+      return t;
+    }
+
+    function isHttpUrl(u) {
+      return /^https?:\/\/\S+$/i.test(String(u || '').trim());
+    }
+
+    // 空の attribution / url を落とした正規形（license は空でも残す）
+    function cleanLicense(lic) {
+      const out = { license: String((lic && lic.license) || '').trim() };
+      const a = String((lic && lic.attribution) || '').trim();
+      const u = String((lic && lic.url) || '').trim();
+      if (a) out.attribution = a;
+      if (u) out.url = u;
+      return out;
+    }
+
+    // licenses.json の文字列。_default を先頭、既存キーは元の順、新規キーは末尾（ファイル名順）。
+    function serializeLicenses(base, draft) {
+      const order = [];
+      if ('_default' in draft) order.push('_default');
+      for (const k of Object.keys(base || {})) if (k !== '_default' && k in draft) order.push(k);
+      const added = Object.keys(draft).filter(k => k !== '_default' && !(base && k in base)).sort();
+      const obj = {};
+      for (const k of [...order, ...added]) obj[k] = draft[k];
+      return JSON.stringify(obj, null, 2) + '\n';
+    }
+
+    function diffLicenses(base, draft) {
+      const out = [];
+      const keys = new Set([...Object.keys(base || {}), ...Object.keys(draft || {})]);
+      for (const k of keys) {
+        const a = base ? base[k] : undefined, b = draft ? draft[k] : undefined;
+        if (a === undefined) out.push({ type: 'add', key: k, to: b });
+        else if (b === undefined) out.push({ type: 'del', key: k, from: a });
+        else if (JSON.stringify(a) !== JSON.stringify(b)) out.push({ type: 'mod', key: k, from: a, to: b });
+      }
+      return out.sort((x, y) => (x.key === '_default' ? -1 : y.key === '_default' ? 1 : x.key.localeCompare(y.key)));
+    }
+
+    // 一覧の行データ。ファイル一覧（API）・answer 内の参照・licenses.json のキーの和集合。
+    function buildItems(files, records, licenses) {
+      const map = new Map();
+      const get = name => {
+        if (!map.has(name)) map.set(name, { name, src: 'qa_images/' + name, exists: false, size: null, uses: [] });
+        return map.get(name);
+      };
+      for (const f of files || []) {
+        if (!MEDIA_EXT_RE.test(f.name)) continue;
+        const it = get(f.name);
+        it.exists = true;
+        it.size = f.size;
+      }
+      for (const r of records || []) {
+        const seen = new Set();
+        for (const ref of extractMediaRefs(r.answer || '')) {
+          const name = basenameOf(ref.src);
+          const key = name + '\u0000' + ref.alt;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          get(name).uses.push({
+            id: r.id,
+            question: (r.questions && r.questions[0]) || '',
+            alt: ref.alt,
+            src: ref.src,
+            recordLicense: (r.image_licenses && r.image_licenses[ref.src]) || null,
+          });
+        }
+      }
+      for (const k of Object.keys(licenses || {})) {
+        if (k === '_default') continue;
+        get(basenameOf(k));
+      }
+      return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    // 確認が必要な点（一覧のバッジ・「要確認」フィルタ用）
+    function itemProblems(item, resolved, filesKnown) {
+      const p = [];
+      if (filesKnown && !item.exists) p.push({ kind: 'err', text: item.uses.length ? 'ファイルなし' : 'licenses.jsonのみ' });
+      if (item.exists && !item.uses.length) p.push({ kind: 'warn', text: '未使用' });
+      if (isHeicName(item.name)) p.push({ kind: 'info', text: 'JPEG変換待ち' });
+      else if (item.exists && !UUID_NAME_RE.test(item.name)) p.push({ kind: 'info', text: 'リネーム待ち' });
+      if (resolved.conflict) p.push({ kind: 'warn', text: '質問ごとに不一致' });
+      if (resolved.source === 'explicit') {
+        if (!resolved.lic || !String(resolved.lic.license || '').trim()) p.push({ kind: 'err', text: 'license空' });
+        if (resolved.lic && resolved.lic.url && !isHttpUrl(resolved.lic.url)) p.push({ kind: 'err', text: 'URL不正' });
+      }
+      return p;
+    }
+
+    function formatBytes(n) {
+      if (n == null) return '—';
+      if (n < 1024) return n + ' B';
+      if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+      return (n / 1024 / 1024).toFixed(2) + ' MB';
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       状態
+    ══════════════════════════════════════════════════════════════ */
+
+    const STORAGE_KEY = 'media_editor_state_v1';
+    const DEFAULT_ID = '__default__';
+    const LICENSE_PRESETS = [
+      '2026 © Igarin & Legrs. All rights reserved.',
+      'Apache-2.0',
+      'CC BY 4.0',
+      'CC BY-SA 4.0',
+      'CC BY-NC 4.0',
+      'CC0 1.0',
+      'Public Domain',
+    ];
+    const FILTERS = [
+      ['all', 'すべて'],
+      ['problem', '要確認'],
+      ['changed', '変更あり'],
+      ['explicit', '個別指定'],
+      ['default', '既定'],
+      ['image', '画像'],
+      ['video', '動画'],
+    ];
+
+    const state = {
+      baseLicenses: null,   // 取得時の licenses.json
+      draft: null,          // 編集中の licenses.json
+      files: [],            // [{name,size}]（GitHub API）
+      filesKnown: false,    // API でファイル一覧を取れたか
+      records: [],
+      items: [],
+      selected: null,       // ファイル名 or DEFAULT_ID
+      checked: new Set(),
+      selecting: false,
+      filter: 'all',
+      query: '',
+      view: 'list',
+      bg: 'checker',
+      fit: true,
+      rightTab: 'license',
+      mview: 'list',
+      meta: {},             // name -> {w,h,alpha,duration,error}
+      loaded: false,
+    };
+
+    const $ = id => document.getElementById(id);
+
+    function storageGet() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch (_) { return null; }
+    }
+
+    function persist() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          baseLicenses: state.baseLicenses, draft: state.draft, selected: state.selected,
+          view: state.view, bg: state.bg,
+        }));
+      } catch (_) { /* 保存できない環境では何もしない */ }
+    }
+
+    function hasChanges() {
+      return !!state.draft && diffLicenses(state.baseLicenses, state.draft).length > 0;
+    }
+
+    function itemChanged(name) {
+      if (!state.draft) return false;
+      const keys = new Set([...licenseKeysFor(state.baseLicenses, name), ...licenseKeysFor(state.draft, name)]);
+      for (const k of keys) {
+        if (JSON.stringify(state.baseLicenses[k]) !== JSON.stringify(state.draft[k])) return true;
+      }
+      return false;
+    }
+
+    function resolvedFor(item) {
+      return resolveLicense(item.name, state.draft, item.uses.map(u => u.recordLicense));
+    }
+
+    function setStatus(msg, kind) {
+      const el = $('status-text');
+      el.textContent = msg || '';
+      el.className = 'status' + (kind ? ' ' + kind : '');
+    }
+
+    let toastTimer = null;
+    function toast(msg) {
+      const el = $('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+    }
+
+    function el(tag, props, ...children) {
+      const e = document.createElement(tag);
+      if (props) {
+        for (const [k, v] of Object.entries(props)) {
+          if (v == null || v === false) continue;
+          if (k === 'class') e.className = v;
+          else if (k === 'text') e.textContent = v;
+          else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+          else if (k in e && typeof v !== 'string') e[k] = v;
+          else e.setAttribute(k, v === true ? '' : v);
+        }
+      }
+      for (const c of children.flat()) if (c != null && c !== false) e.append(c);
+      return e;
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       取得
+    ══════════════════════════════════════════════════════════════ */
+
+    async function fetchJson(url) {
+      const r = await fetch(url, { cache: 'no-cache' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}: ${url.replace(RAW_BASE, '')}`);
+      return r.json();
+    }
+
+    async function fetchAll({ interactive }) {
+      setStatus('取得中…', 'loading');
+      $('fetch-btn').disabled = true;
+      try {
+        const [records, licenses, files] = await Promise.all([
+          fetchJson(RAW_BASE + 'q_and_a_data.json'),
+          fetchJson(RAW_BASE + 'qa_images/licenses.json').catch(() => ({})),
+          fetchJson(API_QA_IMAGES).then(list => ({ ok: true, list }), e => ({ ok: false, error: e })),
+        ]);
+        if (!Array.isArray(records)) throw new Error('q_and_a_data.json が配列ではありません');
+
+        // ローカルの未反映の変更の扱い
+        const saved = storageGet();
+        const remoteChanged = saved && saved.baseLicenses
+          && JSON.stringify(saved.baseLicenses) !== JSON.stringify(licenses);
+        const localEdits = saved && saved.draft && saved.baseLicenses
+          && diffLicenses(saved.baseLicenses, saved.draft).length > 0;
+        let keepDraft = false;
+        if (state.loaded && hasChanges()) {
+          keepDraft = !confirm('未反映の変更があります。最新の licenses.json で上書きしますか？\n（キャンセルすると変更を残したまま一覧だけ更新します）');
+        } else if (!state.loaded && localEdits) {
+          keepDraft = !remoteChanged || !confirm('前回の未反映の変更がありますが、その後リモートの licenses.json が更新されています。\n最新の内容で上書きしますか？（キャンセルで前回の変更を残します）');
+        }
+
+        state.records = records;
+        state.files = files.ok ? files.list.filter(f => f.type === 'file').map(f => ({ name: f.name, size: f.size })) : [];
+        state.filesKnown = files.ok;
+        if (keepDraft) {
+          const base = state.loaded ? state.baseLicenses : saved.baseLicenses;
+          const draft = state.loaded ? state.draft : saved.draft;
+          // 「変更」は自分の基準からの差分として残す（リモートで消えたキーは基準からも消す）
+          state.baseLicenses = licenses;
+          state.draft = rebaseDraft(base, draft, licenses);
+        } else {
+          state.baseLicenses = licenses;
+          state.draft = JSON.parse(JSON.stringify(licenses));
+        }
+        if (!state.loaded && saved) {
+          state.view = saved.view === 'grid' ? 'grid' : state.view;
+          state.bg = ['checker', 'white', 'black'].includes(saved.bg) ? saved.bg : state.bg;
+          if (saved.selected) state.selected = saved.selected;
+        }
+        state.loaded = true;
+        rebuild();
+        if (!state.selected || (state.selected !== DEFAULT_ID && !state.items.some(i => i.name === state.selected))) {
+          state.selected = state.items[0] ? state.items[0].name : DEFAULT_ID;
+        }
+        persist();
+        renderAll();
+        const warn = files.ok ? '' : '（ファイル一覧は GitHub API の制限で取得できず、参照から推定）';
+        setStatus(`${state.items.length}件 / 質問 ${records.length}件を取得${warn}`, files.ok ? 'ok' : 'error');
+        if (interactive) toast('最新の内容を取得しました');
+      } catch (e) {
+        console.error(e);
+        setStatus('取得に失敗しました: ' + e.message, 'error');
+      } finally {
+        $('fetch-btn').disabled = false;
+      }
+    }
+
+    // base→draft の差分を newBase の上に適用し直す
+    function rebaseDraft(base, draft, newBase) {
+      const out = JSON.parse(JSON.stringify(newBase));
+      for (const d of diffLicenses(base, draft)) {
+        if (d.type === 'del') delete out[d.key];
+        else out[d.key] = d.to;
+      }
+      return out;
+    }
+
+    function rebuild() {
+      state.items = buildItems(state.files, state.records, state.draft);
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       一覧
+    ══════════════════════════════════════════════════════════════ */
+
+    function itemMatches(item, resolved, problems) {
+      switch (state.filter) {
+        case 'problem': if (!problems.length) return false; break;
+        case 'changed': if (!itemChanged(item.name)) return false; break;
+        case 'explicit': if (resolved.source !== 'explicit') return false; break;
+        case 'default': if (resolved.source !== 'default') return false; break;
+        case 'image': if (isVideoSrc(item.name)) return false; break;
+        case 'video': if (!isVideoSrc(item.name)) return false; break;
+      }
+      const q = state.query.trim().toLowerCase();
+      if (!q) return true;
+      const hay = [item.name, ...item.uses.map(u => u.alt + ' ' + u.question), captionText(resolved.lic)]
+        .join(' ').toLowerCase();
+      return hay.includes(q);
+    }
+
+    function visibleItems() {
+      return state.items.filter(it => {
+        const r = resolvedFor(it);
+        return itemMatches(it, r, itemProblems(it, r, state.filesKnown));
+      });
+    }
+
+    function renderFilters() {
+      const counts = {};
+      for (const [k] of FILTERS) counts[k] = 0;
+      for (const it of state.items) {
+        const r = resolvedFor(it);
+        const probs = itemProblems(it, r, state.filesKnown);
+        counts.all++;
+        if (probs.length) counts.problem++;
+        if (itemChanged(it.name)) counts.changed++;
+        if (r.source === 'explicit') counts.explicit++;
+        if (r.source === 'default') counts.default++;
+        if (isVideoSrc(it.name)) counts.video++; else counts.image++;
+      }
+      const box = $('filter-chips');
+      box.replaceChildren(...FILTERS
+        .filter(([k]) => k === 'all' || counts[k] > 0 || state.filter === k)
+        .map(([k, label]) => el('button', {
+          class: 'chip' + (state.filter === k ? ' active' : ''), type: 'button',
+          onclick: () => { state.filter = k; renderList(); renderFilters(); },
+        }, label, el('span', { class: 'n', text: String(counts[k]) }))));
+    }
+
+    // サムネイルは一度作ったら使い回す（ライセンス入力のたびに一覧を描き直すので、
+    // 毎回作ると画像・動画を何度も読み込み直してしまう）
+    const thumbCache = new Map();
+    function thumbFor(item) {
+      const key = item.name + (item.exists || !state.filesKnown ? '' : '#missing');
+      if (!thumbCache.has(key)) thumbCache.set(key, makeThumb(item));
+      return thumbCache.get(key);
+    }
+
+    function makeThumb(item) {
+      const t = el('div', { class: 'thumb' });
+      if (!item.exists && state.filesKnown) { t.classList.add('special'); t.textContent = '⚠'; return t; }
+      if (isHeicName(item.name)) { t.classList.add('special'); t.textContent = 'HEIC'; t.style.fontSize = '12px'; return t; }
+      if (isVideoSrc(item.name)) {
+        const v = el('video', { muted: true, preload: 'metadata', playsInline: true });
+        v.src = RAW_BASE + item.src + '#t=0.1';
+        t.append(v);
+        return t;
+      }
+      const img = el('img', { alt: '', loading: 'lazy', decoding: 'async' });
+      img.src = RAW_BASE + item.src;
+      img.addEventListener('error', () => { t.classList.add('special'); t.replaceChildren('⚠'); });
+      t.append(img);
+      return t;
+    }
+
+    function renderList() {
+      const list = $('media-list');
+      list.className = 'media-list' + (state.view === 'grid' ? ' grid' : '');
+      $('sidebar').classList.toggle('selecting', state.selecting);
+      $('view-toggle-btn').textContent = state.view === 'grid' ? '☰' : '▦';
+      $('select-mode-btn').classList.toggle('active', state.selecting);
+      $('select-mode-btn').textContent = state.selecting ? `選択中 ${state.checked.size}` : '選択';
+
+      const rows = [];
+      // 既定ライセンス（_default）の行は常に先頭
+      if (state.loaded && (state.filter === 'all' || state.filter === 'changed' && JSON.stringify(state.baseLicenses._default) !== JSON.stringify(state.draft._default))) {
+        const changed = JSON.stringify(state.baseLicenses._default) !== JSON.stringify(state.draft._default);
+        rows.push(el('button', {
+          class: 'media-item' + (state.selected === DEFAULT_ID ? ' selected' : ''), type: 'button',
+          onclick: () => select(DEFAULT_ID, true),
+        },
+          el('div', { class: 'thumb special', text: '⚙' }),
+          el('div', { class: 'item-text' },
+            el('div', { class: 'item-title', text: '既定ライセンス (_default)' }),
+            el('div', { class: 'item-sub', text: captionText(state.draft._default) || '(未設定)' }),
+            el('div', { class: 'badges' }, changed ? el('span', { class: 'badge changed', text: '変更あり' }) : null))));
+      }
+
+      const vis = visibleItems();
+      for (const it of vis) {
+        const r = resolvedFor(it);
+        const probs = itemProblems(it, r, state.filesKnown);
+        const firstUse = it.uses[0];
+        const title = (firstUse && (firstUse.alt || firstUse.question)) || it.name;
+        const badges = [];
+        if (itemChanged(it.name)) badges.push(el('span', { class: 'badge changed', text: '変更あり' }));
+        if (isVideoSrc(it.name)) badges.push(el('span', { class: 'badge', text: '🎬 動画' }));
+        badges.push(el('span', {
+          class: 'badge' + (r.source === 'explicit' ? ' info' : ''),
+          text: r.source === 'explicit' ? '個別指定' : r.source === 'record' ? '質問ごと' : '既定',
+        }));
+        for (const p of probs) badges.push(el('span', { class: 'badge ' + p.kind, text: p.text }));
+        const check = el('input', {
+          type: 'checkbox', class: 'item-check', checked: state.checked.has(it.name),
+          'aria-label': '選択',
+          onclick: ev => { ev.stopPropagation(); toggleCheck(it.name); },
+        });
+        rows.push(el('button', {
+          class: 'media-item' + (state.selected === it.name ? ' selected' : '') + (state.checked.has(it.name) ? ' checked' : ''),
+          type: 'button', 'data-name': it.name,
+          onclick: () => state.selecting ? toggleCheck(it.name) : select(it.name, true),
+        },
+          check,
+          thumbFor(it),
+          el('div', { class: 'item-text' },
+            el('div', { class: 'item-title', text: title }),
+            el('div', { class: 'item-sub', text: `${it.name} · ${formatBytes(it.size)} · ${it.uses.length}件で使用` }),
+            el('div', { class: 'badges' }, badges))));
+      }
+      if (!vis.length) {
+        rows.push(el('p', {
+          class: 'empty-hint',
+          text: state.loaded ? '該当するファイルはありません' : '「取得」で GitHub から最新の一覧を読み込みます…',
+        }));
+      }
+      list.replaceChildren(...rows);
+      $('list-count').textContent = state.loaded ? `${vis.length} / ${state.items.length} 件` : '';
+    }
+
+    function toggleCheck(name) {
+      if (state.checked.has(name)) state.checked.delete(name); else state.checked.add(name);
+      renderList();
+      renderLicense();
+    }
+
+    function select(name, fromUser) {
+      state.selected = name;
+      persist();
+      renderList();
+      renderPreview();
+      renderLicense();
+      if (fromUser && isMobile()) setMobileView('preview');
+      const row = document.querySelector(`.media-item[data-name="${CSS.escape(name)}"]`);
+      if (row) row.scrollIntoView({ block: 'nearest' });
+    }
+
+    function step(delta) {
+      const vis = visibleItems();
+      if (!vis.length) return;
+      const i = vis.findIndex(it => it.name === state.selected);
+      const next = vis[Math.max(0, Math.min(vis.length - 1, (i < 0 ? -1 : i) + delta))];
+      if (next) select(next.name, false);
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       プレビュー
+    ══════════════════════════════════════════════════════════════ */
+
+    function selectedItem() {
+      return state.items.find(i => i.name === state.selected) || null;
+    }
+
+    function renderPreview() {
+      const stage = $('stage');
+      const info = $('preview-info');
+      stage.className = `stage bg-${state.bg}` + (state.fit ? ' fit' : '');
+      document.querySelectorAll('.bg-btn').forEach(b => b.classList.toggle('active', b.dataset.bg === state.bg));
+      $('zoom-btn').textContent = state.fit ? 'フィット' : '等倍';
+      const open = $('open-original');
+
+      if (state.selected === DEFAULT_ID || !state.loaded) {
+        open.hidden = true;
+        const usingDefault = state.items.filter(i => resolvedFor(i).source === 'default');
+        stage.replaceChildren(el('div', { class: 'stage-msg' },
+          el('strong', { text: '既定ライセンス (_default)' }), el('br'),
+          '個別指定も質問ごとの指定も無いファイルに使われます。', el('br'),
+          `現在 ${usingDefault.length} 件がこの既定値で表示されています。`));
+        info.replaceChildren(
+          el('div', { class: 'section-title', text: '既定値で表示されているファイル' }),
+          usingDefault.length
+            ? el('ul', { class: 'uses' }, usingDefault.map(i => el('li', {},
+              el('a', { href: '#', text: i.name, onclick: ev => { ev.preventDefault(); select(i.name, true); } }))))
+            : el('p', { class: 'empty-hint', text: 'ありません' }));
+        return;
+      }
+
+      const item = selectedItem();
+      if (!item) { stage.replaceChildren(); info.replaceChildren(); open.hidden = true; return; }
+      const url = RAW_BASE + item.src;
+      open.hidden = !item.exists && state.filesKnown;
+      open.href = url;
+
+      let media;
+      if (!item.exists && state.filesKnown) {
+        media = el('div', { class: 'stage-msg', text: `qa_images/${item.name} はリポジトリにありません。answer の参照か licenses.json のキーが古い可能性があります。` });
+      } else if (isHeicName(item.name)) {
+        media = el('div', { class: 'stage-msg', text: 'HEIC/HEIF はこのブラウザで表示できない場合があります。push すると CI が JPEG に変換し、参照とライセンスのキーも自動で追従します。' });
+      } else if (isVideoSrc(item.name)) {
+        media = el('video', { controls: true, playsInline: true, preload: 'metadata', crossOrigin: 'anonymous' });
+        media.addEventListener('loadedmetadata', () => {
+          state.meta[item.name] = { w: media.videoWidth, h: media.videoHeight, duration: media.duration };
+          if (state.selected === item.name) renderInfo(item);
+        });
+        media.addEventListener('error', () => {
+          state.meta[item.name] = { error: true };
+          if (state.selected === item.name) renderInfo(item);
+        });
+        media.src = url;
+      } else {
+        media = el('img', { alt: item.uses[0] ? item.uses[0].alt : '', crossOrigin: 'anonymous' });
+        media.addEventListener('load', () => {
+          state.meta[item.name] = { w: media.naturalWidth, h: media.naturalHeight, alpha: detectAlpha(media, item.name) };
+          if (state.selected === item.name) renderInfo(item);
+        });
+        media.addEventListener('error', () => {
+          state.meta[item.name] = { error: true };
+          if (state.selected === item.name) renderInfo(item);
+        });
+        media.src = url;
+      }
+      stage.replaceChildren(media);
+      renderInfo(item);
+    }
+
+    // 透過の有無（縮小して描画し、不透明でない画素があるか）。SVG は形式上透過になりうる
+    function detectAlpha(img, name) {
+      if (/\.svg$/i.test(name)) return 'svg';
+      if (/\.jpe?g$/i.test(name)) return false;
+      try {
+        const max = 256;
+        const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight || 1));
+        const w = Math.max(1, Math.round(img.naturalWidth * s)), h = Math.max(1, Math.round(img.naturalHeight * s));
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const g = c.getContext('2d', { willReadFrequently: true });
+        g.drawImage(img, 0, 0, w, h);
+        const d = g.getImageData(0, 0, w, h).data;
+        for (let i = 3; i < d.length; i += 4) if (d[i] < 250) return true;
+        return false;
+      } catch (_) {
+        return null; // CORS 等で読めない
+      }
+    }
+
+    function renderInfo(item) {
+      const meta = state.meta[item.name] || {};
+      const ext = (item.name.split('.').pop() || '').toUpperCase();
+      const cells = [
+        ['種類', isVideoSrc(item.name) ? `動画 (${ext})` : `画像 (${ext})`],
+        ['サイズ', formatBytes(item.size)],
+        ['解像度', meta.error ? '読み込めません' : meta.w ? `${meta.w} × ${meta.h}` : '…'],
+      ];
+      if (isVideoSrc(item.name)) cells.push(['長さ', meta.duration ? `${meta.duration.toFixed(1)} 秒` : '…']);
+      else cells.push(['透過', meta.alpha === 'svg' ? 'SVG（透過しうる）' : meta.alpha === true ? 'あり' : meta.alpha === false ? 'なし' : meta.alpha === null ? '不明' : '…']);
+      cells.push(['ファイル名', item.name]);
+
+      const uses = item.uses.length
+        ? el('ul', { class: 'uses' }, item.uses.map(u => el('li', {},
+          el('div', { class: 'q', text: u.question || '(質問なし)' }),
+          el('div', { class: 'meta' },
+            el('span', { text: u.alt ? `説明: ${u.alt}` : '説明: (なし)' }),
+            el('a', { href: 'search.html?q=' + encodeURIComponent(u.question || ''), target: '_blank', rel: 'noopener', text: '検索で開く ↗' }),
+            el('span', { text: `id ${u.id}` })))))
+        : el('p', { class: 'empty-hint', text: 'どの回答からも参照されていません（削除するか、answer に ![説明](qa_images/' + item.name + ') を追加）' });
+
+      const tips = [];
+      if (meta.alpha === true || meta.alpha === 'svg') {
+        tips.push(el('div', { class: 'note info', text: '透過部分は、サイトのライトモードでは白、ダークモードでは黒系の背景になります。上の「白」「黒」で見え方を確認できます。黒い線の図はダークモードで見えにくくなります。' }));
+      }
+      if (item.size != null && isVideoSrc(item.name) && item.size >= 20 * 1024 * 1024) {
+        tips.push(el('div', { class: 'note', text: '動画が 20MB 以上です。短く圧縮すると表示が速くなります（GitHub は 100MB 超を拒否）。' }));
+      }
+      if (item.size != null && !isVideoSrc(item.name) && item.size >= 5 * 1024 * 1024) {
+        tips.push(el('div', { class: 'note', text: '画像が 5MB 以上です。WebP 等で圧縮すると表示が速くなります。' }));
+      }
+
+      $('preview-info').replaceChildren(
+        el('div', { class: 'info-grid' }, cells.map(([k, v]) => el('div', { class: 'info-cell' },
+          el('div', { class: 'k', text: k }), el('div', { class: 'v', text: v })))),
+        ...tips,
+        el('div', { class: 'section-title', text: `使われている回答（${item.uses.length}）` }),
+        uses);
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       ライセンス
+    ══════════════════════════════════════════════════════════════ */
+
+    // 選択中のファイルの個別指定エントリ（無ければ現在の実効値から作る）
+    function ensureExplicit(item) {
+      const keys = licenseKeysFor(state.draft, item.name);
+      if (keys.length) return keys[0];
+      const key = 'qa_images/' + item.name;
+      state.draft[key] = cleanLicense(resolvedFor(item).lic);
+      return key;
+    }
+
+    function commit() {
+      rebuild();
+      persist();
+      renderList();
+      renderFilters();
+      renderCode();
+      updateChangeIndicators();
+    }
+
+    function licenseForm(lic, onChange) {
+      const field = (label, key, attrs, hint) => {
+        const input = el('input', Object.assign({ class: 'field-input', type: 'text', value: lic[key] || '' }, attrs));
+        const hintEl = el('div', { class: 'field-hint', text: hint || '' });
+        const validate = () => {
+          if (key === 'url') {
+            const bad = input.value.trim() && !isHttpUrl(input.value);
+            input.classList.toggle('invalid', bad);
+            hintEl.classList.toggle('error', bad);
+            hintEl.textContent = bad ? 'http:// か https:// で始まる URL のみリンクになります（それ以外は表示されません）' : (hint || '');
+          }
+        };
+        input.addEventListener('input', () => { onChange(key, input.value); validate(); });
+        validate();
+        return el('div', { class: 'field' }, el('label', { text: label }), input, hintEl);
+      };
+      const licField = field('license', 'license', { list: 'license-presets', placeholder: '例: CC BY 4.0' });
+      const presets = el('div', { class: 'presets' }, LICENSE_PRESETS.map(p => el('button', {
+        class: 'chip', type: 'button', text: p.length > 22 ? p.slice(0, 20) + '…' : p, title: p,
+        onclick: () => { const i = licField.querySelector('input'); i.value = p; onChange('license', p); },
+      })));
+      return [
+        licField,
+        presets,
+        field('attribution（出典・撮影者など）', 'attribution', { placeholder: '例: 撮影: Igarin / 出典: 教科書p42' }),
+        field('url（出典リンク）', 'url', { type: 'url', placeholder: 'https://…', inputmode: 'url' }),
+      ];
+    }
+
+    function captionBox(lic) {
+      const text = captionText(lic);
+      const box = el('div', { class: 'caption-preview', title: 'サイトの画像下に表示される文字' });
+      if (!text) box.append(el('span', { class: 'none', text: '（キャプションは表示されません）' }));
+      else if (lic.url && isHttpUrl(lic.url)) box.append(el('a', { href: lic.url.trim(), target: '_blank', rel: 'noopener', text }));
+      else box.append(text);
+      return box;
+    }
+
+    function renderLicense() {
+      const body = $('license-body');
+      if (!state.loaded) { body.replaceChildren(el('p', { class: 'empty-hint', text: '読み込み中…' })); return; }
+
+      // ── 既定ライセンス
+      if (state.selected === DEFAULT_ID) {
+        const lic = state.draft._default || (state.draft._default = { license: 'Apache-2.0' });
+        const cap = captionBox(lic);
+        body.replaceChildren(
+          el('div', { class: 'source-box' },
+            el('strong', { text: '既定ライセンス (_default)' }), el('br'),
+            'licenses.json の _default。個別指定・質問ごとの指定が無いファイルすべてに使われます。'),
+          el('div', { class: 'section-title', text: 'サイトでの表示' }),
+          cap,
+          ...licenseForm(lic, (k, v) => {
+            state.draft._default = cleanLicense(Object.assign({}, state.draft._default, { [k]: v }));
+            // フォーカスを保つため、フォームは作り直さずキャプションだけ差し替える
+            body.querySelector('.caption-preview').replaceWith(captionBox(state.draft._default));
+            commit();
+          }));
+        return;
+      }
+
+      const item = selectedItem();
+      if (!item) { body.replaceChildren(el('p', { class: 'empty-hint', text: '左の一覧からファイルを選んでください' })); return; }
+      const r = resolvedFor(item);
+      const sourceText = {
+        explicit: ['licenses.json で個別指定', 'このファイルを使うすべての回答に、この値が使われます（最優先）。'],
+        record: ['質問ごとの値（q_and_a_data.json）', 'qa_editor の「画像ライセンス」欄で質問ごとに入れた値です。ここで編集すると licenses.json の個別指定になり、こちらが優先されます。'],
+        default: ['既定ライセンス (_default)', '個別指定がないので既定値が使われています。ここで編集すると、このファイルだけの個別指定になります。'],
+      }[r.source];
+
+      const cap = captionBox(r.lic);
+      const editLic = r.source === 'explicit' ? r.lic : cleanLicense(r.lic);
+      const children = [
+        el('div', { class: 'source-box' }, '現在の値: ', el('strong', { text: sourceText[0] }), el('br'), sourceText[1]),
+        el('div', { class: 'section-title', text: 'サイトでの表示（キャプション）' }),
+        cap,
+        ...licenseForm(editLic, (k, v) => {
+          const key = ensureExplicit(item);
+          state.draft[key] = cleanLicense(Object.assign({}, state.draft[key], { [k]: v }));
+          // 個別指定になった・値が変わったことを上の表示に反映（フォーカスは保つ）
+          const nr = resolvedFor(item);
+          body.querySelector('.caption-preview').replaceWith(captionBox(nr.lic));
+          body.querySelector('.source-box strong').textContent = 'licenses.json で個別指定';
+          commit();
+          renderLicenseButtons(item);
+        }),
+        el('div', { class: 'button-row', id: 'license-buttons' }),
+      ];
+
+      // 質問ごとの値の情報
+      const recs = item.uses.filter(u => u.recordLicense && u.recordLicense.license);
+      const distinct = [...new Map(recs.map(u => [JSON.stringify(u.recordLicense), u.recordLicense])).values()];
+      if (distinct.length && (r.source === 'explicit' || distinct.length > 1)) {
+        children.push(el('div', { class: 'note' + (r.conflict ? '' : ' info') },
+          r.source === 'explicit'
+            ? '質問ごとの値（qa_editor で入力）もありますが、licenses.json の個別指定が優先されるため使われません:'
+            : '回答によって質問ごとの値が異なります。サイトでは回答ごとに違うキャプションになります。ここで個別指定すると統一できます:',
+          el('ul', {}, distinct.map(l => el('li', { text: captionText(l) || '(空)' })))));
+      }
+      if (!item.exists && state.filesKnown && r.source === 'explicit' && !item.uses.length) {
+        children.push(el('div', { class: 'note', text: 'このキーに対応するファイルも参照もありません。不要なら「個別指定を削除」で licenses.json から消せます。' }));
+      }
+      body.replaceChildren(...children);
+      renderLicenseButtons(item);
+    }
+
+    function renderLicenseButtons(item) {
+      const row = $('license-buttons');
+      if (!row) return;
+      const r = resolvedFor(item);
+      const buttons = [];
+      if (r.source === 'explicit') {
+        buttons.push(el('button', {
+          class: 'btn btn-small', type: 'button', text: '個別指定を削除',
+          title: 'licenses.json からこのファイルのエントリを消し、質問ごとの値 / 既定値に戻す',
+          onclick: () => {
+            for (const k of licenseKeysFor(state.draft, item.name)) delete state.draft[k];
+            commit();
+            renderLicense();
+          },
+        }));
+      }
+      if (itemChanged(item.name)) {
+        buttons.push(el('button', {
+          class: 'btn btn-small', type: 'button', text: '取得時の値に戻す',
+          onclick: () => {
+            for (const k of new Set([...licenseKeysFor(state.draft, item.name), ...licenseKeysFor(state.baseLicenses, item.name)])) {
+              if (k in state.baseLicenses) state.draft[k] = JSON.parse(JSON.stringify(state.baseLicenses[k]));
+              else delete state.draft[k];
+            }
+            commit();
+            renderLicense();
+          },
+        }));
+      }
+      const others = [...state.checked].filter(n => n !== item.name);
+      if (others.length) {
+        buttons.push(el('button', {
+          class: 'btn btn-small btn-primary', type: 'button', text: `選択中の ${others.length} 件にも適用`,
+          title: 'このファイルのライセンスを、一覧でチェックしたファイルにも個別指定としてコピー',
+          onclick: () => {
+            const lic = cleanLicense(resolvedFor(item).lic);
+            for (const n of others) {
+              const keys = licenseKeysFor(state.draft, n);
+              state.draft[keys[0] || 'qa_images/' + n] = JSON.parse(JSON.stringify(lic));
+            }
+            commit();
+            toast(`${others.length} 件に適用しました`);
+          },
+        }));
+      } else if (state.selecting) {
+        buttons.push(el('span', { class: 'field-hint', text: '一覧でファイルにチェックを入れると、このライセンスをまとめて適用できます' }));
+      }
+      row.replaceChildren(...buttons);
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       コード（licenses.json）
+    ══════════════════════════════════════════════════════════════ */
+
+    function renderCode() {
+      const body = $('code-body');
+      if (!state.loaded) { body.replaceChildren(); return; }
+      const diff = diffLicenses(state.baseLicenses, state.draft);
+      const json = serializeLicenses(state.baseLicenses, state.draft);
+      const fmt = v => JSON.stringify(v);
+      body.replaceChildren(...[
+        el('div', { class: 'note info' },
+          'これを ', el('code', { text: 'qa_images/licenses.json' }), ' に貼り付けて push すると、CI（Build JSON）の build.js が各回答の image_licenses に反映します。licenses.json の個別指定は、qa_editor で質問ごとに入れた値より優先されます。'),
+        el('div', { class: 'section-title', text: diff.length ? `取得時からの変更（${diff.length}件）` : '取得時からの変更はありません' }),
+        diff.length ? el('ul', { class: 'diff-list' }, diff.map(d => el('li', {
+          class: d.type === 'add' ? 'diff-add' : d.type === 'del' ? 'diff-del' : 'diff-mod',
+          text: d.type === 'add' ? `+ ${d.key}: ${fmt(d.to)}` : d.type === 'del' ? `− ${d.key}` : `~ ${d.key}: ${fmt(d.from)} → ${fmt(d.to)}`,
+        }))) : null,
+        el('div', { class: 'button-row' },
+          el('button', { class: 'btn btn-primary', type: 'button', text: '📋 コピー', onclick: () => copyText(json) }),
+          el('button', { class: 'btn', type: 'button', text: '⭳ licenses.json を保存', onclick: () => download(json) })),
+        el('div', { class: 'section-title', text: 'qa_images/licenses.json' }),
+        el('pre', { class: 'code', text: json }),
+      ].filter(Boolean)); // replaceChildren は null を "null" という文字列にしてしまう
+      $('code-count').textContent = diff.length ? `(${diff.length})` : '';
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        toast('コピーしました');
+      } catch (_) {
+        // clipboard API が使えない環境（http・古い Safari 等）向け
+        const ta = el('textarea', { value: text, style: 'position:fixed;opacity:0' });
+        document.body.append(ta);
+        ta.select();
+        const ok = document.execCommand && document.execCommand('copy');
+        ta.remove();
+        toast(ok ? 'コピーしました' : 'コピーできませんでした。手動で選択してください');
+      }
+    }
+
+    function download(text) {
+      const a = el('a', { href: URL.createObjectURL(new Blob([text], { type: 'application/json' })), download: 'licenses.json' });
+      document.body.append(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       全体
+    ══════════════════════════════════════════════════════════════ */
+
+    function isMobile() {
+      return window.matchMedia('(max-width: 900px)').matches;
+    }
+
+    function setMobileView(v) {
+      state.mview = v;
+      $('app').dataset.mview = v;
+      document.querySelectorAll('.mobile-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+      if (v === 'license' || v === 'code') setRightTab(v);
+    }
+
+    function setRightTab(tab) {
+      state.rightTab = tab;
+      document.querySelectorAll('.panel-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      $('license-body').hidden = tab !== 'license';
+      $('code-body').hidden = tab !== 'code';
+    }
+
+    function updateChangeIndicators() {
+      const changed = hasChanges();
+      $('discard-btn').disabled = !changed;
+      $('mobile-code-dot').className = changed ? 'dot' : '';
+      document.title = (changed ? '● ' : '') + 'Media Editor';
+    }
+
+    function renderAll() {
+      renderFilters();
+      renderList();
+      renderPreview();
+      renderLicense();
+      renderCode();
+      updateChangeIndicators();
+    }
+
+    // ── イベント ──
+    $('fetch-btn').addEventListener('click', () => fetchAll({ interactive: true }));
+    $('discard-btn').addEventListener('click', () => {
+      if (!confirm('未反映の変更をすべて破棄して、取得時の licenses.json に戻しますか？')) return;
+      state.draft = JSON.parse(JSON.stringify(state.baseLicenses));
+      commit();
+      renderLicense();
+      renderPreview();
+    });
+    $('search-input').addEventListener('input', e => { state.query = e.target.value; renderList(); });
+    $('view-toggle-btn').addEventListener('click', () => { state.view = state.view === 'grid' ? 'list' : 'grid'; persist(); renderList(); });
+    $('select-mode-btn').addEventListener('click', () => {
+      state.selecting = !state.selecting;
+      if (!state.selecting) state.checked.clear();
+      renderList();
+      renderLicense();
+    });
+    document.querySelectorAll('.bg-btn').forEach(b => b.addEventListener('click', () => {
+      state.bg = b.dataset.bg; persist(); renderPreview();
+    }));
+    $('zoom-btn').addEventListener('click', () => { state.fit = !state.fit; renderPreview(); });
+    $('prev-btn').addEventListener('click', () => step(-1));
+    $('next-btn').addEventListener('click', () => step(1));
+    document.querySelectorAll('.panel-tab').forEach(b => b.addEventListener('click', () => setRightTab(b.dataset.tab)));
+    document.querySelectorAll('.mobile-tab-btn').forEach(b => b.addEventListener('click', () => setMobileView(b.dataset.view)));
+    document.addEventListener('keydown', e => {
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
+      if (e.key === '/' && !typing) { e.preventDefault(); $('search-input').focus(); return; }
+      if (e.key === 'Escape' && document.activeElement === $('search-input')) {
+        $('search-input').value = ''; state.query = ''; renderList(); $('search-input').blur(); return;
+      }
+      if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); step(1); }
+      else if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); step(-1); }
+    });
+    window.addEventListener('beforeunload', e => {
+      // 変更は端末に保存されるが、貼り付け忘れに気づけるよう一応確認
+      if (hasChanges()) { e.preventDefault(); e.returnValue = ''; }
+    });
+
+    $('license-presets').replaceChildren(...LICENSE_PRESETS.map(p => el('option', { value: p })));
+    setRightTab('license');
+    renderAll();
+    fetchAll({ interactive: false });
+  </script>
+</body>
+
+</html>

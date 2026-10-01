@@ -60,6 +60,7 @@ physics_notes/
 │   ├── licenses.json                  # 個別ライセンス上書き（未記載は Apache-2.0）
 │   └── <uuid>.jpg                     # 実体はUUIDファイル名のみ（手元では雑な名前で置いてpushすればCIが直す）
 ├── qa_editor.html                     # Q&A データの編集ツール（<title>Q&A Editor</title>）
+├── media_editor.html                  # qa_images の画像・動画とライセンスの一覧・編集ツール（licenses.json を生成）
 ├── search.html                        # 検索 UI 本体（BM25 + e5 + RRF のハイブリッド検索）
 ├── template.typ / .pdf                # Typst ノートの共通テンプレート（ページ設定・数式スタイル）
 └── version.json                       # 生成物のハッシュ・埋め込みモデル情報（キャッシュ整合検証用。`qa_images` のハッシュも含む）

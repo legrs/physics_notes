@@ -23,6 +23,7 @@ const PAGES = [
   'search.html',
   'debug_search.html',
   'qa_editor.html',
+  'media_editor.html',
   'fast/index.html',
   'fast/search.html',
 ];
@@ -34,6 +35,7 @@ const REQUIRED_IDS = {
   'search.html': ['search', 'results', 'semantic-status', 'semantic-status-text'],
   'debug_search.html': ['search-input', 'search-btn', 'status-bar'],
   'index.html': ['search'],
+  'media_editor.html': ['fetch-btn', 'media-list', 'stage', 'license-body', 'code-body'],
 };
 
 let failures = 0;

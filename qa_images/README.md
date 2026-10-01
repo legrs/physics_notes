@@ -21,6 +21,10 @@ QAコーパスの写真・動画のフォルダ。`q_and_a_data.json` の `answe
 
 ## ライセンス
 
+**`media_editor.html`（Media Editor）で一覧・確認・編集できる。** GitHub から最新の `qa_images/`・`licenses.json`・`q_and_a_data.json` を読み、ファイルごとにプレビュー（透過の確認用に背景を市松/白/黒で切替）・使われている回答・実際に表示されるキャプションを確認しながらライセンスを編集し、最後に生成された `licenses.json` をコピー（または保存）して置き換え・push する。未使用・参照切れ・HEIC 変換待ち・質問ごとに値が食い違うファイルなどは「要確認」フィルタで絞り込める。スマホでは 一覧/表示/ライセンス/コード のタブ表示。
+
+優先順位（`scripts/build.js` の `injectImageLicenses`）: **`licenses.json` のファイル個別指定 ＞ `q_and_a_data.json` の質問ごとの `image_licenses`（qa_editor の「画像ライセンス」欄）＞ `licenses.json` の `_default`**。個別指定があるファイルでは qa_editor で入れた値は使われない。
+
 - デフォルトはリポジトリ `LICENSE` の Apache-2.0。
 - 個別例外のみ `licenses.json` に上書きを記載 (未記載はデフォ)。例:
 
