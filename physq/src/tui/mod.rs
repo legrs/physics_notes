@@ -1539,7 +1539,7 @@ impl App {
         // The status-bar renderer adds its own "⚠ " prefix.
         match open::that_detached(&full) {
             Ok(()) => self.command_error = None,
-            Err(e) => self.command_error = Some(format!("画像を開けませんでした: {url} ({e})")),
+            Err(e) => self.command_error = Some(format!("開けませんでした: {url} ({e})")),
         }
     }
 
@@ -2526,7 +2526,10 @@ fn detail_lines(
             }
             AnswerPiece::Image(i) => i,
         };
-        let ImageRef { alt, src, .. } = &refs[img_idx];
+        let media = &refs[img_idx];
+        let ImageRef { alt, src, .. } = media;
+        // videos open in the browser / default player just like images
+        let icon = if media.is_video() { "🎬 " } else { "🖼 " };
         let focused = app.pane_focus == PaneFocus::Image && app.image_selected == Some(img_idx);
         let marker = if focused { "▸ " } else { "  " };
         let style = if focused {
@@ -2569,7 +2572,7 @@ fn detail_lines(
             .unwrap_or_default();
         let mut spans = vec![
             Span::raw(marker.to_string()),
-            Span::styled("🖼 ".to_string(), dim),
+            Span::styled(icon.to_string(), dim),
             Span::styled(alt.clone(), style),
             Span::raw(format!("  ({})", src)),
         ];
@@ -3113,17 +3116,17 @@ fn status_tail(app: &App) -> (String, Style) {
     let hint = if app.cfg.keys == KeyMode::Vim {
         match app.vim_mode {
             VimMode::Insert => {
-                "Enter search · Esc normal mode · Tab related/image · /help · Ctrl-C quit"
+                "Enter search · Esc normal mode · Tab related/media · /help · Ctrl-C quit"
             }
             VimMode::Normal => {
-                "i insert · j/k move · Shift-HJKL panes · dd clear · gg/G · Ctrl-d/u scroll · Tab related/image · /help"
+                "i insert · j/k move · Shift-HJKL panes · dd clear · gg/G · Ctrl-d/u scroll · Tab related/media · /help"
             }
             VimMode::Visual => {
                 "h/l/w/b extend · o swap ends · d/x delete · y yank · c change · Esc cancel"
             }
         }
     } else {
-        "Enter search · ↑↓ select · Tab related/image · PgUp/PgDn scroll · /help · Ctrl-C quit"
+        "Enter search · ↑↓ select · Tab related/media · PgUp/PgDn scroll · /help · Ctrl-C quit"
     };
     parts.push(hint.to_string());
     let style = if warn {
@@ -3248,6 +3251,16 @@ mod tests {
             pieces("![a](qa_images/a.jpg)\n![b](qa_images/b.jpg)"),
             vec![AnswerPiece::Image(0), AnswerPiece::Image(1)]
         );
+    }
+
+    #[test]
+    fn answer_pieces_render_a_multiline_video_element_as_one_row() {
+        let a = "before\n<video controls title=\"振り子\">\n<source src=\"qa_images/v.mp4\">\n</video>\nafter";
+        assert_eq!(
+            pieces(a),
+            vec![text("before"), AnswerPiece::Image(0), text("after")]
+        );
+        assert!(image_refs(a)[0].is_video());
     }
 
     #[test]

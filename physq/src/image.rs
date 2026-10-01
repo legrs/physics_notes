@@ -1,17 +1,46 @@
-//! Image extraction from `answer` markdown (§3, §8.2).
-//! Extracts `![alt](src)` and `<img ...>` after stripping code fences / inline code.
+//! Image / video extraction from `answer` markdown (§3, §8.2).
+//! Extracts `![alt](src)`, `<img ...>` and `<video ...>` after stripping code
+//! fences / inline code. Videos use the same `![label](qa_images/clip.mp4)`
+//! syntax as images and are told apart by file extension ([`is_video_src`]),
+//! exactly like the web renderer (`search.html` `isVideoSrc`).
 
 use regex::Regex;
 use std::sync::OnceLock;
 
-/// One image reference found in an `answer`, with its byte span in that
-/// answer so a renderer can split the surrounding text around it.
+/// Video file extensions (lowercase). Keep in sync with `search.html` /
+/// `qa_editor.html` `isVideoSrc`, `scripts/build.js` `MEDIA_EXT_RE` and
+/// `scripts/normalize-images.js` `VIDEO_EXT_RE`.
+pub const VIDEO_EXTS: [&str; 5] = ["mp4", "m4v", "webm", "ogv", "mov"];
+
+/// Whether `src` points at a video, judged by extension like the web does
+/// (query strings and `#t=…` fragments ignored, case-insensitive).
+pub fn is_video_src(src: &str) -> bool {
+    let path = src.split(['?', '#']).next().unwrap_or("");
+    let file = path.rsplit('/').next().unwrap_or(path);
+    match file.rsplit_once('.') {
+        Some((stem, ext)) if !stem.is_empty() => {
+            VIDEO_EXTS.iter().any(|v| v.eq_ignore_ascii_case(ext))
+        }
+        _ => false,
+    }
+}
+
+/// One image or video reference found in an `answer`, with its byte span in
+/// that answer so a renderer can split the surrounding text around it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImageRef {
     pub start: usize,
     pub end: usize,
+    /// alt text (images) / `aria-label` or `title` (`<video>`) / the
+    /// `![label](…)` text (markdown videos).
     pub alt: String,
     pub src: String,
+}
+
+impl ImageRef {
+    pub fn is_video(&self) -> bool {
+        is_video_src(&self.src)
+    }
 }
 
 fn fence_regex() -> &'static Regex {
@@ -41,6 +70,74 @@ fn html_img_regex() -> &'static Regex {
     RE.get_or_init(|| Regex::new(r"(?i)<img\b[^>]*>").unwrap())
 }
 
+fn html_video_open_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"(?i)<video\b[^>]*>").unwrap())
+}
+
+fn html_video_close_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"(?i)</video\s*>").unwrap())
+}
+
+/// `(start, end, opening tag, body)` of every `<video>` element outside code.
+/// An element runs to its `</video>` — but only if that closing tag comes
+/// before the next `<video` and before the next code span, so an unclosed tag
+/// can't swallow later content (refs must not overlap: the TUI lays out the
+/// answer around them). Unclosed → just the opening tag.
+fn video_elements<'a>(
+    answer: &'a str,
+    fences: &[(usize, usize)],
+) -> Vec<(usize, usize, &'a str, &'a str)> {
+    let opens: Vec<_> = html_video_open_regex()
+        .find_iter(answer)
+        .filter(|m| !in_fence(m.start(), fences))
+        .collect();
+    let mut out = Vec::new();
+    for (k, m) in opens.iter().enumerate() {
+        let limit = [
+            opens.get(k + 1).map(|n| n.start()),
+            fences
+                .iter()
+                .map(|&(s, _)| s)
+                .filter(|&s| s >= m.end())
+                .min(),
+        ]
+        .into_iter()
+        .flatten()
+        .min()
+        .unwrap_or(answer.len());
+        let window = &answer[m.end()..limit];
+        match html_video_close_regex().find(window) {
+            Some(c) => out.push((
+                m.start(),
+                m.end() + c.end(),
+                m.as_str(),
+                &window[..c.start()],
+            )),
+            None => out.push((m.start(), m.end(), m.as_str(), "")),
+        }
+    }
+    out
+}
+
+fn source_src_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"(?i)<source\b[^>]*>").unwrap())
+}
+
+fn label_regexes() -> &'static [Regex; 4] {
+    static RE: OnceLock<[Regex; 4]> = OnceLock::new();
+    RE.get_or_init(|| {
+        [
+            Regex::new(r#"(?i)\saria-label\s*=\s*"([^"]*)""#).unwrap(),
+            Regex::new(r"(?i)\saria-label\s*=\s*'([^']*)'").unwrap(),
+            Regex::new(r#"(?i)\stitle\s*=\s*"([^"]*)""#).unwrap(),
+            Regex::new(r"(?i)\stitle\s*=\s*'([^']*)'").unwrap(),
+        ]
+    })
+}
+
 /// `alt` then `src` attribute patterns, each tried double-quoted → single-quoted
 /// (→ unquoted for `src`). `\b`/`\s` anchors keep `data-alt=` / `data-src=`
 /// from matching.
@@ -63,20 +160,24 @@ fn first_capture(res: &[Regex], tag: &str) -> Option<String> {
         .map(|m| m.as_str().to_string())
 }
 
-fn html_src_alt(tag: &str) -> (String, String) {
-    let res = attr_regexes();
-    let alt = first_capture(&res[0..2], tag).unwrap_or_default();
-    let src = first_capture(&res[2..5], tag)
+fn tag_src(tag: &str) -> String {
+    first_capture(&attr_regexes()[2..5], tag)
         .map(|s| s.trim_end_matches(['"', '\'', '>']).to_string())
-        .unwrap_or_default();
-    (alt, src)
+        .unwrap_or_default()
 }
 
-/// Every image in `answer`, in **document order**, with byte spans.
+fn html_src_alt(tag: &str) -> (String, String) {
+    let alt = first_capture(&attr_regexes()[0..2], tag).unwrap_or_default();
+    (alt, tag_src(tag))
+}
+
+/// Every image and video in `answer`, in **document order**, with byte spans.
 /// - Code fences (```...```) and inline code (`...`) are ignored — fence
 ///   detection runs over the whole answer, so a multi-line fence hides the
 ///   images inside it no matter how the caller later splits lines.
-/// - Both markdown `![alt](src "title")` and HTML `<img alt="..." src="...">` are handled.
+/// - Markdown `![alt](src "title")` (image or video by extension), HTML
+///   `<img alt="..." src="...">`, and HTML `<video src>` / `<video><source
+///   src></video>` (one entry per `<video>` element) are handled.
 pub fn image_refs(answer: &str) -> Vec<ImageRef> {
     if answer.is_empty() {
         return Vec::new();
@@ -89,6 +190,7 @@ pub fn image_refs(answer: &str) -> Vec<ImageRef> {
         if in_fence(m.start(), &ranges) {
             continue;
         }
+
         let src = caps.get(2).map_or("", |x| x.as_str());
         if src.is_empty() {
             continue;
@@ -101,10 +203,32 @@ pub fn image_refs(answer: &str) -> Vec<ImageRef> {
         });
     }
 
+    let videos = video_elements(answer, &ranges);
+    for &(start, end, open, body) in &videos {
+        let mut src = tag_src(open);
+        if src.is_empty() {
+            src = source_src_regex()
+                .find_iter(body)
+                .map(|t| tag_src(t.as_str()))
+                .find(|s| !s.is_empty())
+                .unwrap_or_default();
+        }
+        if src.is_empty() {
+            continue;
+        }
+        out.push(ImageRef {
+            start,
+            end,
+            alt: first_capture(label_regexes(), open).unwrap_or_default(),
+            src,
+        });
+    }
+
     for m in html_img_regex().find_iter(answer) {
         if in_fence(m.start(), &ranges) {
             continue;
         }
+
         let (alt, src) = html_src_alt(m.as_str());
         if src.is_empty() {
             continue;
@@ -117,6 +241,13 @@ pub fn image_refs(answer: &str) -> Vec<ImageRef> {
         });
     }
 
+    // Images inside a <video> element are its fallback content, not
+    // separate entries (and would overlap the video's span).
+    out.retain(|r| {
+        !videos
+            .iter()
+            .any(|&(s, e, _, _)| r.start > s && r.start < e)
+    });
     // Selection index i (TUI) must mean the i-th image *as displayed*, so
     // markdown and HTML images are interleaved by position.
     out.sort_by_key(|r| r.start);
@@ -238,6 +369,67 @@ mod tests {
             extract_images(ans),
             vec![("yes".to_string(), "qa_images/ok.jpg".to_string())]
         );
+    }
+
+    #[test]
+    fn video_detection_by_extension() {
+        for v in [
+            "qa_images/a.mp4",
+            "qa_images/a.MP4",
+            "qa_images/a.webm",
+            "qa_images/a.m4v",
+            "qa_images/a.mov",
+            "qa_images/a.ogv",
+            "https://ex.com/v.mp4?x=1",
+            "qa_images/a.mp4#t=5",
+        ] {
+            assert!(is_video_src(v), "{v}");
+        }
+        for n in [
+            "qa_images/a.jpg",
+            "qa_images/mp4",
+            "qa_images/a.mp4.jpg",
+            "qa_images/.mp4",
+            "",
+            "https://ex.com/mp4/",
+        ] {
+            assert!(!is_video_src(n), "{n}");
+        }
+    }
+
+    #[test]
+    fn markdown_and_html_videos_are_extracted_in_order() {
+        let ans = "![振り子](qa_images/a.mp4)\n\
+                   <video controls title=\"斜面\" poster=\"qa_images/p.jpg\">\n\
+                   <source src=\"qa_images/b.webm\" type=\"video/webm\">\n\
+                   <img src=\"qa_images/fallback.jpg\" alt=\"fb\">\n\
+                   </video>\n\
+                   <video src='qa_images/c.mov' aria-label='台車'>\n\
+                   ![img](qa_images/d.png)\n\
+                   ```\n<video src=\"qa_images/no.mp4\"></video>\n```";
+        let refs = image_refs(ans);
+        let got: Vec<(&str, &str, bool)> = refs
+            .iter()
+            .map(|r| (r.alt.as_str(), r.src.as_str(), r.is_video()))
+            .collect();
+        assert_eq!(
+            got,
+            vec![
+                ("振り子", "qa_images/a.mp4", true),
+                ("斜面", "qa_images/b.webm", true),
+                ("台車", "qa_images/c.mov", true),
+                ("img", "qa_images/d.png", false),
+            ]
+        );
+        // the whole <video>…</video> element is one span (Detail renders one row)
+        assert!(ans[refs[1].start..refs[1].end].ends_with("</video>"));
+        // the unclosed <video> is just its opening tag — it must not run on to
+        // the `</video>` inside the later code fence and swallow d.png
+        assert!(ans[refs[2].start..refs[2].end].starts_with("<video"));
+        assert!(ans[refs[2].start..refs[2].end].ends_with('>'));
+        assert!(refs[2].end <= refs[3].start);
+        // spans never overlap (the TUI's answer_pieces relies on it)
+        assert!(refs.windows(2).all(|w| w[0].end <= w[1].start));
     }
 
     #[test]

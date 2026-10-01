@@ -10,7 +10,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use crate::config::{Config, ModelSel, ModelSize};
 use crate::engine::{Engine, SemanticEngine, hybrid};
 use crate::eval;
-use crate::image::{extract_images, resolve_image_url};
+use crate::image::{extract_images, is_video_src, resolve_image_url};
 use crate::model::Corpus;
 use crate::query::prepare_query;
 use crate::semantic::SemanticError;
@@ -326,8 +326,9 @@ fn run_cache(cfg: Config, cmd: CacheCmd) -> Result<()> {
 
 /// §5 startup flow + one query, then print. All ranking logic lives in
 /// `engine`; this function is only spinner, error policy, and output.
-/// Composes with pipes: plain TSV (`rank\tscore\tid\tquestion`) when stdout
-/// is not a terminal.
+/// Composes with pipes: plain TSV (`rank\tscore\tid\tquestion`, followed by
+/// `image|video\talt\turl` rows for the result's media) when stdout is not a
+/// terminal.
 fn run_search(cfg: Config, query: &str, limit: usize, plain: bool) -> Result<()> {
     let limit = if limit == 0 {
         eprintln!("warning: --limit 0 is not meaningful, using 10");
@@ -441,17 +442,20 @@ fn print_results(corpus: &Corpus, results: &[(u32, f64)], limit: usize, plain: b
                 // Print the resolved URL (not the repo-relative src) so
                 // terminals that linkify URLs can open it directly.
                 let url = resolve_image_url(&src, |p| cfg.file_url(p));
+                let icon = if is_video_src(&src) { "🎬" } else { "🖼" };
                 if lic_str.is_empty() {
-                    println!("    {dim}🖼 {alt}  ({url}){reset}");
+                    println!("    {dim}{icon} {alt}  ({url}){reset}");
                 } else {
-                    println!("    {dim}🖼 {alt}  ({url})  {lic_str}{reset}");
+                    println!("    {dim}{icon} {alt}  ({url})  {lic_str}{reset}");
                 }
             }
         } else {
             println!("{}\t{score:.6}\t{}\t{}", i + 1, r.id, tsv_field(question));
             for (alt, src) in extract_images(&r.answer) {
                 let url = resolve_image_url(&src, |p| cfg.file_url(p));
-                println!("image\t{}\t{}", tsv_field(&alt), tsv_field(&url));
+                // row type: `image` or `video` (by extension, like the web)
+                let kind = if is_video_src(&src) { "video" } else { "image" };
+                println!("{kind}\t{}\t{}", tsv_field(&alt), tsv_field(&url));
             }
         }
     }

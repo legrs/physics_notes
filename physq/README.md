@@ -186,7 +186,8 @@ cargo run -- --bm25-only       # interactive TUI, BM25-only (no model download)
 cargo run -- search "電磁誘導"  # one-shot, hybrid ranking
 cargo run -- search "電磁誘導" --bm25-only   # no model download, lexical only
 cargo run -- search "電磁誘導" --model none  # same thing, spelled via --model
-cargo run -- search "電磁誘導" --plain | head # TSV: rank⇥score⇥id⇥question
+cargo run -- search "電磁誘導" --plain | head # TSV: rank⇥score⇥id⇥question, then
+                               # image⇥alt⇥url / video⇥label⇥url rows per result
 cargo run -- cache path
 cargo run -- cache clean             # drop data + index (keeps the model)
 cargo run -- cache clean --all       # also drop the downloaded model
@@ -216,7 +217,7 @@ map. Launch with `--vim`, or switch at any time from `/config` → Keybindings
 | `Enter` (or 0.5 s pause) | semantic ranking + RRF fusion — or run a `/command` |
 | `↑` `↓` / `Ctrl-P` `Ctrl-N` | select result (auto-scrolls into view) |
 | `PgUp` `PgDn` | scroll the detail pane |
-| `Tab` | cycle Results → the selected item's Related list → its Images → Results (lists that are empty are skipped); in Related `↑` `↓` pick and `Enter` jumps, in Images `↑` `↓` pick and `Enter`/`o` opens the image in your browser |
+| `Tab` | cycle Results → the selected item's Related list → its images/videos → Results (lists that are empty are skipped); in Related `↑` `↓` pick and `Enter` jumps, in the media list (🖼 image / 🎬 video rows) `↑` `↓` pick and `Enter`/`o` opens it in your browser / default player |
 | `Esc` | close a `/help`/`/config` screen, then exit Related/Image browsing, then clear the query — never quits |
 | `Ctrl-L` | force a full repaint — recovers a shifted/garbled screen or missing pane borders. The screen already self-heals a few times a second (and instantly whenever IME-committed text arrives), so this is only a manual override; see the note on macOS Terminal.app IME below |
 | `Ctrl-C` / `Ctrl-Q` | quit (or `/exit`, `/quit`, `/q`) |
