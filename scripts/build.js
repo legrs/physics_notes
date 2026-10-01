@@ -111,6 +111,17 @@ function stripHtmlImages(s){
     return ' ' + alt + ' ';
   });
 }
+// 動画の HTML 記法（<video> / <source> / <track>）。src・poster は捨て、
+// aria-label / title だけを検索対象に残す（画像の alt と同じ扱い）。
+// Markdown の ![説明](qa_images/x.mp4) は stripMarkdownImages が処理する。
+function stripHtmlVideos(s){
+  return s
+    .replace(/<video\b[^>]*>/gi, m => {
+      const am = m.match(/\s(?:aria-label|title)\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+      return ' ' + (am ? (am[1] ?? am[2]) : '') + ' ';
+    })
+    .replace(/<\/video\s*>|<(?:source|track)\b[^>]*>/gi, ' ');
+}
 function stripHtmlImageRows(s){
   // <div class="img-row"> の変種（余分な空白/他class/他属性/クォート差異）にも対応。閉じは汎用で除去（answer内に素の</div>はimg-row以外ほぼ無い）
   return s.replace(/<div\b[^>]*\bclass\s*=\s*["'][^"']*\bimg-row\b[^"']*["'][^>]*>/gi,' ').replace(/<\/div>/gi,' ');
@@ -149,6 +160,7 @@ function buildSearchText(tokenizer, item) {
   rawJoined = stripCodeFences(rawJoined);
   rawJoined = stripMarkdownImages(rawJoined);
   rawJoined = stripHtmlImages(rawJoined);
+  rawJoined = stripHtmlVideos(rawJoined);
   rawJoined = stripHtmlImageRows(rawJoined);
   const cleaned = stripLatex(rawJoined).replace(/\s+/g, ' ').trim();
 
@@ -232,14 +244,17 @@ function fileManifest(filePath) {
   return { hash, size: buf.length };
 }
 
+// qa_images/ に置ける画像・動画の拡張子（normalize-images.js / search.html の
+// isVideoSrc / physq の VIDEO_EXTS と揃える）
+const MEDIA_EXT_RE = /\.(jpe?g|png|webp|svg|gif|mp4|m4v|webm|ogv|mov)$/i;
+
 function qaImagesManifest() {
   const dir = path.join(__dirname, '..', 'qa_images');
   if (!fs.existsSync(dir)) return null;
-  const IMAGE_EXT_RE = /\.(jpe?g|png|webp|svg|gif)$/i;
   const files = fs.readdirSync(dir).filter(f => {
     if (f === 'licenses.json' || f === '.gitkeep' || f === 'README.md') return false;
     try { if (fs.statSync(path.join(dir, f)).isDirectory()) return false; } catch (_) { return false; }
-    return IMAGE_EXT_RE.test(f);
+    return MEDIA_EXT_RE.test(f);
   });
   files.sort();
   let total = 0;
@@ -302,13 +317,17 @@ function extractImageSrcsForLicenses(answer) {
     const src = m[2];
     if (src.startsWith('qa_images/')) srcs.push(src);
   }
-  const htmlRe = /<img\b[^>]*>/gi;
+  // <img src> に加え、動画の <video src> / <video poster> / <source src>
+  const htmlRe = /<(?:img|video|source)\b[^>]*>/gi;
   while ((m = htmlRe.exec(answer)) !== null) {
     if (inFence(m.index)) continue;
     const tag = m[0];
-    const sm = tag.match(/\ssrc\s*=\s*(['"])(.*?)\1/i) || tag.match(/\ssrc\s*=\s*([^\s>]+)/i);
-    const src = sm ? (sm[2] || sm[1]) : null;
-    if (src && src.startsWith('qa_images/')) srcs.push(src);
+    for (const attr of ['src', 'poster']) {
+      const sm = tag.match(new RegExp(`\\s${attr}\\s*=\\s*(['"])(.*?)\\1`, 'i'))
+        || tag.match(new RegExp(`\\s${attr}\\s*=\\s*([^\\s>]+)`, 'i'));
+      const src = sm ? (sm[2] || sm[1]) : null;
+      if (src && src.startsWith('qa_images/')) srcs.push(src);
+    }
   }
   return srcs;
 }
