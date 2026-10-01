@@ -2711,14 +2711,9 @@
           }
           if (cap.textContent) figure.appendChild(cap);
         }
-        // onerror でプレースホルダ
-        img.onerror = () => {
-          img.style.display = 'none';
-          const ph = document.createElement('div');
-          ph.textContent = '⚠ 画像を読み込めません: ' + src;
-          ph.style.cssText = 'font-size:12px;color:var(--text-muted);padding:8px;border:1px dashed var(--border-mid);border-radius:8px;text-align:center;margin:0.5em 0';
-          figure.appendChild(ph);
-        };
+        // 読み込み失敗時のプレースホルダは applyBlurReveal（直後に呼ぶ）の
+        // onerror に一本化する。ここでも onerror を付けていた頃は、そちらから
+        // prevErr として連鎖呼び出しされ「読み込めません」が二重に表示されていた。
       });
       applyBlurReveal(container);
     }
@@ -2788,6 +2783,9 @@
     const backdrop = document.getElementById('backdrop');
 
     let isStreaming = false, streamTimer = null, isUserScrolling = false;
+    // openModal のフェードイン完了待ちタイマー。閉じた後や別項目を開き直した
+    // 後に古いタイマーが発火して、古い回答のストリーミングが始まらないよう保持する。
+    let modalOpenTimer = null;
     let allData = null; // fetch後にキャッシュ
     let _currentModalLicenses = null; // 現在モーダルで表示中のレコードの image_licenses
 
@@ -2931,7 +2929,9 @@
         });
       });
 
-      setTimeout(() => {
+      clearTimeout(modalOpenTimer);
+      modalOpenTimer = setTimeout(() => {
+        modalOpenTimer = null;
         modalHeader.style.opacity = '1';
         modalBody.style.opacity = '1';
         startStreaming(item.answer, () => renderRelated(item));
@@ -2939,6 +2939,8 @@
     }
 
     function closeModal() {
+      clearTimeout(modalOpenTimer);
+      modalOpenTimer = null;
       stopStreaming();
       document.body.style.overflow = '';
       modalHeader.style.opacity = '0';
@@ -2961,6 +2963,9 @@
         : _reduced ? 'line'
           : 'char';
 
+      // 前回のストリーミングが残っていれば止める（2本のタイマーが同じ
+      // modalContent に交互に書き込み、回答が混ざって表示されるのを防ぐ）
+      stopStreaming();
       isStreaming = true;
 
       if (_animMode === 'instant') {
@@ -3021,7 +3026,10 @@
     closeBtn.addEventListener('click', closeModal);
     backdrop.addEventListener('click', closeModal);
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && modalOverlay.style.display !== 'none') closeModal();
+      // 初期状態の style.display は '' なので、表示判定は fullscreen クラスで行う
+      // （以前は未表示でも closeModal が走り、チャット表示中の body の
+      // overflow:hidden まで解除していた）
+      if (e.key === 'Escape' && modalOverlay.classList.contains('fullscreen')) closeModal();
 
       // / キー → 検索ボックスにフォーカス（モーダル・チャット未表示時のみ）
       const searchInput = document.getElementById('search');
@@ -3165,12 +3173,26 @@
 
     // ── スニペット抽出（answer から関連文を取得） ────────────────
     function _extractSnippet(item, words) {
+      // 結果カードは平文表示なので、画像記法・HTML タグ・コードブロックは
+      // 先に取り除く（以前は ![alt](qa_images/…) が生のまま表示されていた）。
+      // 画像は alt テキストだけを独立した1文として残す。
+      const altOf = tag => {
+        const m = tag.match(/\salt\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+        return m ? (m[1] ?? m[2]) : '';
+      };
+      const plain = String(item.answer || '')
+        .replace(/```[\s\S]*?```/g, ' ')
+        .replace(/!\[([^\]]*)\]\(\s*[^\s)]+(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)/g, (_, alt) => '\n' + alt + '\n')
+        .replace(/<img\b[^>]*>/gi, tag => '\n' + altOf(tag) + '\n')
+        .replace(/<\/?[a-zA-Z][^>]*>/g, ' ');
       // answer を文単位に分割
-      const sents = item.answer
+      const sents = plain
         .split(/(?<=[。！？\n])|(?=[A-Z][^A-Z])/)
         .map(s => s.trim())
         .filter(s => s.length > 5);
-      if (!sents.length) return item.description;
+      // description が空のレコードもあるので、その場合は数式を含まない最初の文
+      const fallback = () => item.description || sents.find(s => !s.includes('$')) || '';
+      if (!sents.length) return fallback();
 
       // 最もクエリワードを多く含む文を選ぶ
       let best = null, bestScore = -1;
@@ -3180,7 +3202,7 @@
         if (score > bestScore) { bestScore = score; best = s; }
       });
 
-      if (!best || bestScore === 0) return item.description;
+      if (!best || bestScore === 0) return fallback();
       return best.length > 110 ? best.slice(0, 110) + '…' : best;
     }
 
@@ -3631,6 +3653,8 @@
           const catOk = !activeCategory || cats.includes(activeCategory);
           const diffOk = !activeDifficulty || diff === activeDifficulty;
           el.style.display = catOk && diffOk ? '' : 'none';
+          // 非表示になった結果にキーボード選択が残らないようにする
+          if (el.style.display === 'none') el.classList.remove('kb-selected');
         });
       }
 
@@ -3770,7 +3794,7 @@
           dym.innerHTML = `もしかして：<a id="dym-link">${escHtml(didYouMean)}</a>`;
           resultsBox.before(dym);
           document.getElementById('dym-link').addEventListener('click', () => {
-            location.href = `search.html?q=${encodeURIComponent(didYouMean)}`;
+            location.href = `search.html?q=${encodeURIComponent(didYouMean)}&mode=${getSafeMode()}`;
           });
         }
 
@@ -3942,6 +3966,15 @@
         // ── キーボードナビゲーション ─────────────────────────────
         let kbIndex = -1;
 
+        // フィルターで非表示（display:none）の結果はキーボード選択の対象外
+        const kbVisible = i => resultEls[i] && resultEls[i].el.style.display !== 'none';
+        function kbStep(dir) {
+          for (let i = kbIndex + dir; i >= 0 && i < resultEls.length; i += dir) {
+            if (kbVisible(i)) return i;
+          }
+          return kbVisible(kbIndex) ? kbIndex : -1;
+        }
+
         function kbSelect(idx) {
           if (kbIndex >= 0) resultEls[kbIndex]?.el.classList.remove('kb-selected');
           kbIndex = idx;
@@ -3967,11 +4000,11 @@
 
           if (e.key === 'ArrowDown') {
             e.preventDefault();
-            kbSelect(Math.min(kbIndex + 1, resultEls.length - 1));
+            kbSelect(kbStep(1));
           } else if (e.key === 'ArrowUp') {
             e.preventDefault();
-            kbSelect(Math.max(kbIndex - 1, 0));
-          } else if (e.key === 'Enter' && kbIndex >= 0) {
+            kbSelect(kbStep(-1));
+          } else if (e.key === 'Enter' && kbIndex >= 0 && kbVisible(kbIndex)) {
             e.preventDefault();
             const { el, item } = resultEls[kbIndex];
             openModal(el, item);
@@ -4653,8 +4686,10 @@
         const attempt = async () => {
           if (!allData) { setTimeout(attempt, 200); return; }
 
-          const urlMode = new URLSearchParams(location.search).get('mode')
-            || localStorage.getItem('search_mode') || 'auto';
+          // 検索ページと同じ許可リスト経由で取得する（?mode=constructor 等の
+          // 想定外の値で MODE_EMB_KEYS[...] がプロトタイプのメンバを拾い、
+          // 例外で送信ボタンが無効のまま固まるのを防ぐ）
+          const urlMode = getSafeMode();
 
           if (MODE_EMB_KEYS[urlMode]) {
             // セマンティックモード: モデルが未ロードなら読み込んでから検索
@@ -4674,8 +4709,14 @@
                   .map(item => ({ ...item, score: _scoreItem(item, words, expanded, q, bm25idx) }))
                   .filter(i => i.score > 0)
                   .sort((a, b) => b.score - a.score);
+                // 検索ページ・searchTopResult と同じく、上位3件の related に +0.5
+                const topRel = new Set(bm25Results.slice(0, 3).flatMap(r => r.related || []));
+                bm25Results.forEach(r => { if (topRel.has(r.id)) r.score += 0.5; });
+                bm25Results.sort((a, b) => b.score - a.score);
 
-                const lists = await _semanticLists(urlMode, text, allData);
+                // クエリ埋め込みは小文字化したクエリで行う（検索ページと同じ。
+                // 以前は入力そのままの大文字小文字で埋め込んでいた）
+                const lists = await _semanticLists(urlMode, q, allData);
                 if (lists.length === 0) { finish(searchTopResult(text)); return; }
 
                 const weights = MODE_EMB_KEYS[urlMode].map(_rrfWeightForKey);

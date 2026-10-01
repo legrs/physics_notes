@@ -312,6 +312,19 @@ detQueries.forEach((q) => {
   ok(typeof snip === 'string' && snip.length > 0, `snippet for "${q}" is a non-empty string`);
   ok(typeof item.description === 'string', 'snippet fallback description is a string');
 });
+// Result cards are plain text: no raw image markdown / HTML tags may leak in
+// (regression: "![alt](qa_images/….jpeg)" used to show up verbatim).
+[
+  { answer: '説明文です。\n![変圧器のコイル](qa_images/x.jpeg)\n変圧器の巻数比の説明です。', description: 'd' },
+  { answer: '<img src="qa_images/y.png" alt="変圧器"> 変圧器の巻数と電圧の関係。', description: 'd' },
+  { answer: '```\n![変圧器](qa_images/z.jpg)\n```\n変圧器の仕組みについての説明。', description: 'd' },
+  ...data.filter((d) => /qa_images\//.test(d.answer || '')),
+].forEach((item, i) => {
+  for (const w of [['変圧器'], W._expandQuery((item.questions && item.questions[0] || '').toLowerCase()).words]) {
+    const snip = W._extractSnippet(item, w);
+    ok(!/!\[[^\]]*\]\(|<img\b|qa_images\//i.test(snip), `snippet #${i} has no raw image syntax: ${JSON.stringify(snip).slice(0, 80)}`);
+  }
+});
 
 // ── 6. Image markdown & sanitization (strict, XSS) ──────────────────
 section('Image markdown & sanitization (strict)');
