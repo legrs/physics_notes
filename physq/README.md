@@ -216,15 +216,16 @@ map. Launch with `--vim`, or switch at any time from `/config` → Keybindings
 | `Enter` (or 0.5 s pause) | semantic ranking + RRF fusion — or run a `/command` |
 | `↑` `↓` / `Ctrl-P` `Ctrl-N` | select result (auto-scrolls into view) |
 | `PgUp` `PgDn` | scroll the detail pane |
-| `Tab` | browse the selected item's Related list; `↑` `↓` pick, `Enter` jumps |
-| `Esc` | close a `/help`/`/config` screen, then exit Related-browsing, then clear the query — never quits |
+| `Tab` | cycle Results → the selected item's Related list → its Images → Results (lists that are empty are skipped); in Related `↑` `↓` pick and `Enter` jumps, in Images `↑` `↓` pick and `Enter`/`o` opens the image in your browser |
+| `Esc` | close a `/help`/`/config` screen, then exit Related/Image browsing, then clear the query — never quits |
 | `Ctrl-L` | force a full repaint — recovers a shifted/garbled screen or missing pane borders. The screen already self-heals a few times a second (and instantly whenever IME-committed text arrives), so this is only a manual override; see the note on macOS Terminal.app IME below |
 | `Ctrl-C` / `Ctrl-Q` | quit (or `/exit`, `/quit`, `/q`) |
 
 Mouse: wheel over Results scrolls the list (selection is untouched — arrow
 keys still auto-scroll back to it); wheel over Detail scrolls the text; the
 wheel also scrolls an open `/help` or `/config` screen. Clicking a result
-selects it; clicking a Related entry in Detail jumps to it; clicking the
+selects it; clicking a Related entry in Detail jumps to it; clicking an
+image row opens the image in your browser; clicking the
 input line places the cursor on the clicked character (and, under the Vim
 keymap, focuses the pane — as does clicking Results or Detail). "Jumping" to
 a Related item re-searches its question, so it reuses the normal ranking
@@ -256,7 +257,7 @@ INSERT/VISUAL for NORMAL — it never quits.
 | `cc` `cw` `cb` `c$` `c0` / `C` | change: delete, then enter INSERT |
 | `p` / `P` | paste the last deleted/yanked text after/at the cursor |
 | `v` | VISUAL selection (`h l w b 0 $` extend, `o` swaps ends, `d`/`x` delete, `y` yank, `c` change, Esc cancels) |
-| `Tab` | browse the selected item's Related list: `j`/`k` (or `↑` `↓`) pick — the Detail pane auto-scrolls the selection into view — `Enter` jumps, `Esc`/`Tab` exits |
+| `Tab` | cycle the selected item's Related list → its Images → back: `j`/`k` (or `↑` `↓`) pick — the Detail pane auto-scrolls the selection into view — `Enter` jumps to a Related item / opens an image (`o` also opens), `Esc` exits |
 | `Ctrl-L` | force a full repaint (like Vim's) — recovers a shifted/garbled screen or missing pane borders. The screen already self-heals a few times a second (and instantly on IME commit), so this is only a manual override; see the note on macOS Terminal.app IME below |
 | `Ctrl-C` / `Ctrl-Q` | quit (or `:q<Enter>`) |
 

@@ -52,7 +52,7 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::config::{Config, CustomWeights, KeyMode, ModelSel, ModelSize};
 use crate::engine::{Engine, SemanticEngine, hybrid, hybrid_custom};
-use crate::image::extract_images;
+use crate::image::{ImageRef, extract_images, image_refs, resolve_image_url};
 use crate::query::prepare_query;
 use crate::semantic::SemanticError;
 use crate::spinner;
@@ -149,7 +149,7 @@ enum ResultsMode {
 /// Which pane keyboard navigation controls. `Tab` cycles through
 /// `Results` → `Related` (if any) → `Image` (if any) → `Results`.
 /// Anything that isn't a Related/Image-focus key (typing, Esc, …) switches back to `Results`.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum PaneFocus {
     Results,
     Related,
@@ -608,16 +608,6 @@ impl App {
         if self.pane_focus == PaneFocus::Image && self.handle_image_focus_key(key) {
             return;
         }
-        // 'o' opens image when Image pane has items (mouseless access, §8.4)
-        if key.code == KeyCode::Char('o')
-            && self.current_image_count() > 0
-            && self.pane_focus != PaneFocus::Image
-        {
-            // If not already in Image focus, focus it and open first; if already handled above, this is fallback
-            // Only trigger when not typing? We are in Results focus with image available – allow quick open
-            // But to avoid hijacking typing 'o', only when Image already focused via handle_image_focus_key.
-            // So no-op here.
-        }
 
         match key.code {
             KeyCode::Esc => {
@@ -694,9 +684,13 @@ impl App {
     /// browse and falls through to the modal handler.
     fn vim_related_key(&mut self, key: KeyEvent) -> bool {
         match key.code {
-            KeyCode::Esc | KeyCode::Tab => {
+            KeyCode::Esc => {
                 self.pane_focus = PaneFocus::Results;
                 self.related_selected = None;
+                true
+            }
+            KeyCode::Tab => {
+                self.toggle_related_focus();
                 true
             }
             KeyCode::Up | KeyCode::Char('k') => {
@@ -1416,9 +1410,16 @@ impl App {
     /// normal key handling (e.g. typing to search).
     fn handle_related_focus_key(&mut self, key: KeyEvent) -> bool {
         match key.code {
-            KeyCode::Esc | KeyCode::Tab => {
+            KeyCode::Esc => {
                 self.pane_focus = PaneFocus::Results;
                 self.related_selected = None;
+                true
+            }
+            // Tab keeps cycling (Related → Image → Results); it used to
+            // return straight to Results, leaving the Image list unreachable
+            // from the keyboard on any record that also has Related items.
+            KeyCode::Tab => {
+                self.toggle_related_focus();
                 true
             }
             KeyCode::Up => {
@@ -1531,18 +1532,14 @@ impl App {
     }
 
     fn open_url(&mut self, url: &str) {
-        let full = if url.starts_with("http://")
-            || url.starts_with("https://")
-            || url.starts_with("data:")
-            || url.starts_with("//")
-        {
-            url.to_string()
-        } else {
-            self.cfg.file_url(url)
-        };
-        if open::that(&full).is_err() {
-            self.warnings
-                .push(format!("⚠ 画像を開けませんでした: {}", url));
+        let full = resolve_image_url(url, |p| self.cfg.file_url(p));
+        // `command_error` (not `warnings`) so the failure actually shows: the
+        // status bar only ever displays the *first* warning, and Detail lists
+        // warnings only while nothing is selected — never the case here.
+        // The status-bar renderer adds its own "⚠ " prefix.
+        match open::that_detached(&full) {
+            Ok(()) => self.command_error = None,
+            Err(e) => self.command_error = Some(format!("画像を開けませんでした: {url} ({e})")),
         }
     }
 
@@ -2334,7 +2331,56 @@ impl LineBuilder {
     }
 }
 
-#[allow(clippy::all)]
+/// One display unit of an `answer` in the Detail pane: a text line, or the
+/// selectable row for `refs[i]`.
+#[derive(Debug, PartialEq)]
+enum AnswerPiece {
+    Text(String),
+    Image(usize),
+}
+
+/// Lay out `answer` as text lines interleaved with image rows. Text keeps
+/// `str::lines()` semantics (blank lines preserved, `\r\n` handled, no
+/// phantom line after a final newline); the text immediately before/after an
+/// image on the same line is kept only if it isn't blank, so
+/// `"see: ![a](x.jpg) done"` becomes `"see: "`, the image row, `" done"`.
+/// `refs` must be sorted and non-overlapping (as `image_refs` returns them).
+fn answer_pieces(answer: &str, refs: &[ImageRef]) -> Vec<AnswerPiece> {
+    fn push_segment(out: &mut Vec<AnswerPiece>, seg: &str, after_img: bool, before_img: bool) {
+        if seg.is_empty() {
+            return;
+        }
+        let mut parts: Vec<&str> = seg.split('\n').collect();
+        // `lines()` doesn't yield an empty line after a trailing newline at
+        // the very end of the text (an image follows otherwise).
+        if !before_img && parts.len() > 1 && parts.last() == Some(&"") {
+            parts.pop();
+        }
+        let n = parts.len();
+        for (k, part) in parts.into_iter().enumerate() {
+            let part = part.strip_suffix('\r').unwrap_or(part);
+            let fragment = (k == 0 && after_img) || (k + 1 == n && before_img);
+            if fragment && part.trim().is_empty() {
+                continue;
+            }
+            out.push(AnswerPiece::Text(part.to_string()));
+        }
+    }
+
+    let mut out = Vec::new();
+    let mut cursor = 0;
+    for (i, r) in refs.iter().enumerate() {
+        if r.start < cursor || r.end > answer.len() {
+            continue; // defensive: overlapping/out-of-range span
+        }
+        push_segment(&mut out, &answer[cursor..r.start], cursor > 0, true);
+        out.push(AnswerPiece::Image(i));
+        cursor = r.end;
+    }
+    push_segment(&mut out, &answer[cursor..], cursor > 0, false);
+    out
+}
+
 fn detail_lines(
     app: &App,
 ) -> (
@@ -2467,175 +2513,70 @@ fn detail_lines(
         b.push(Line::raw(""));
     }
     b.push(Line::styled("Answer", heading));
-    let mut img_idx = 0usize;
-    for l in record.answer.lines() {
-        // Preserve surrounding text when an image sits inline (e.g. "see: ![alt](qa_images/a.jpg) done").
-        // Extract image positions with fence-awareness (inline `code` → not an image) and render
-        // text fragments as plain lines plus one selectable image row per image.
-        let line_imgs = extract_images(l);
-        if line_imgs.is_empty() {
-            b.push(Line::raw(l.to_string()));
+    // Images are located over the *whole* answer (fence-aware, document
+    // order) — the same list `current_image_count` / `activate_image_selection`
+    // index into — so the i-th highlighted row is always the i-th image that
+    // Enter opens, even with multi-line code fences or mixed <img>/![]().
+    let refs = image_refs(&record.answer);
+    for piece in answer_pieces(&record.answer, &refs) {
+        let img_idx = match piece {
+            AnswerPiece::Text(t) => {
+                b.push(Line::raw(t));
+                continue;
+            }
+            AnswerPiece::Image(i) => i,
+        };
+        let ImageRef { alt, src, .. } = &refs[img_idx];
+        let focused = app.pane_focus == PaneFocus::Image && app.image_selected == Some(img_idx);
+        let marker = if focused { "▸ " } else { "  " };
+        let style = if focused {
+            Style::default().fg(Color::White).bg(Color::Cyan)
         } else {
-            // Build ordered (start,end,alt,src) for this single line, respecting `code` spans.
-            // We re-parse the line with the same regexes as image.rs but keep byte offsets.
-            use regex::Regex;
-            use std::sync::OnceLock;
-            static MD_RE: OnceLock<Regex> = OnceLock::new();
-            static HTML_RE: OnceLock<Regex> = OnceLock::new();
-            static FENCE_RE: OnceLock<Regex> = OnceLock::new();
-            let md_re = MD_RE.get_or_init(|| {
-                Regex::new(r#"!\[([^\]]*)\]\(\s*([^\s)]+)(?:\s+"[^"]*")?\s*\)"#).unwrap()
-            });
-            let html_re = HTML_RE.get_or_init(|| Regex::new(r"(?i)<img\b[^>]*>").unwrap());
-            let fence_re = FENCE_RE.get_or_init(|| Regex::new(r"`[^`]*`").unwrap());
-            let fence_ranges: Vec<(usize, usize)> = fence_re
-                .find_iter(l)
-                .map(|m| (m.start(), m.end()))
-                .collect();
-            let in_fence = |pos: usize| fence_ranges.iter().any(|(s, e)| pos >= *s && pos < *e);
-            let mut segs: Vec<(usize, usize, String, String)> = Vec::new();
-            for cap in md_re.captures_iter(l) {
-                let m = cap.get(0).unwrap();
-                if in_fence(m.start()) {
-                    continue;
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::UNDERLINED)
+        };
+        let lic = record.image_licenses.get(src).or_else(|| {
+            let bn = src.split('/').next_back().unwrap_or(src);
+            record
+                .image_licenses
+                .get(&format!("qa_images/{}", bn))
+                .or_else(|| record.image_licenses.get(bn))
+        });
+        let lic_text = lic
+            .map(|lc| {
+                let mut t = String::new();
+                if let Some(a) = &lc.attribution {
+                    t.push_str(a);
                 }
-                let alt = cap
-                    .get(1)
-                    .map(|x| x.as_str().to_string())
-                    .unwrap_or_default();
-                let src = cap
-                    .get(2)
-                    .map(|x| x.as_str().to_string())
-                    .unwrap_or_default();
-                if !src.is_empty() {
-                    segs.push((m.start(), m.end(), alt, src));
-                }
-            }
-            for m in html_re.find_iter(l) {
-                if in_fence(m.start()) {
-                    continue;
-                }
-                let tag = m.as_str();
-                // replicate html_src_alt parsing (double → single → unquoted)
-                let alt = {
-                    if let Some(c) = Regex::new(r#"(?i)alt\s*=\s*"([^"]*)""#)
-                        .unwrap()
-                        .captures(tag)
-                        .and_then(|c| c.get(1))
-                    {
-                        c.as_str().to_string()
-                    } else if let Some(c) = Regex::new(r"(?i)alt\s*=\s*'([^']*)'")
-                        .unwrap()
-                        .captures(tag)
-                        .and_then(|c| c.get(1))
-                    {
-                        c.as_str().to_string()
+                if !lc.license.is_empty() && lc.license != "Apache-2.0" {
+                    if !t.is_empty() {
+                        t.push_str(&format!(" ({})", lc.license));
                     } else {
-                        String::new()
+                        t = lc.license.clone();
                     }
-                };
-                let src = {
-                    if let Some(c) = Regex::new(r#"(?i)\ssrc\s*=\s*"([^"]*)""#)
-                        .unwrap()
-                        .captures(tag)
-                        .and_then(|c| c.get(1))
-                    {
-                        c.as_str().to_string()
-                    } else if let Some(c) = Regex::new(r#"(?i)\ssrc\s*=\s*'([^']*)'"#)
-                        .unwrap()
-                        .captures(tag)
-                        .and_then(|c| c.get(1))
-                    {
-                        c.as_str().to_string()
-                    } else if let Some(c) = Regex::new(r#"(?i)\ssrc\s*=\s*([^\s>]+)"#)
-                        .unwrap()
-                        .captures(tag)
-                        .and_then(|c| c.get(1))
-                    {
-                        c.as_str()
-                            .trim_end_matches(|ch| ch == '"' || ch == '\'' || ch == '>')
-                            .to_string()
-                    } else {
-                        String::new()
-                    }
-                };
-                if !src.is_empty() {
-                    segs.push((m.start(), m.end(), alt, src));
+                } else if !lc.license.is_empty() && lc.attribution.is_none() && t.is_empty() {
+                    t = lc.license.clone();
                 }
-            }
-            segs.sort_by_key(|(s, _, _, _)| *s);
-            if segs.is_empty() {
-                b.push(Line::raw(l.to_string()));
-            } else {
-                let mut last = 0usize;
-                for (s, e, alt, src) in segs {
-                    let before = &l[last..s];
-                    if !before.trim().is_empty() {
-                        b.push(Line::raw(before.to_string()));
+                if let Some(url) = &lc.url {
+                    if !t.is_empty() {
+                        t.push(' ');
                     }
-                    let focused =
-                        app.pane_focus == PaneFocus::Image && app.image_selected == Some(img_idx);
-                    let marker = if focused { "▸ " } else { "  " };
-                    let style = if focused {
-                        Style::default().fg(Color::White).bg(Color::Cyan)
-                    } else {
-                        Style::default()
-                            .fg(Color::Cyan)
-                            .add_modifier(Modifier::UNDERLINED)
-                    };
-                    let lic = record.image_licenses.get(&src).or_else(|| {
-                        let bn = src.split('/').last().unwrap_or(&src);
-                        record
-                            .image_licenses
-                            .get(&format!("qa_images/{}", bn))
-                            .or_else(|| record.image_licenses.get(bn))
-                    });
-                    let lic_text = lic
-                        .map(|lc| {
-                            let mut t = String::new();
-                            if let Some(a) = &lc.attribution {
-                                t.push_str(a);
-                            }
-                            if !lc.license.is_empty() && lc.license != "Apache-2.0" {
-                                if !t.is_empty() {
-                                    t.push_str(&format!(" ({})", lc.license));
-                                } else {
-                                    t = lc.license.clone();
-                                }
-                            } else if !lc.license.is_empty()
-                                && lc.attribution.is_none()
-                                && t.is_empty()
-                            {
-                                t = lc.license.clone();
-                            }
-                            if let Some(url) = &lc.url {
-                                if !t.is_empty() {
-                                    t.push(' ');
-                                }
-                                t.push_str(url);
-                            }
-                            t
-                        })
-                        .unwrap_or_default();
-                    let mut spans = vec![
-                        Span::raw(marker.to_string()),
-                        Span::styled("🖼 ".to_string(), dim),
-                        Span::styled(alt.clone(), style),
-                        Span::raw(format!("  ({})", src)),
-                    ];
-                    if !lic_text.is_empty() {
-                        spans.push(Span::styled(format!("  {}", lic_text), dim));
-                    }
-                    b.push_image(Line::from(spans), src.clone());
-                    img_idx += 1;
-                    last = e;
+                    t.push_str(url);
                 }
-                let trailing = &l[last..];
-                if !trailing.trim().is_empty() {
-                    b.push(Line::raw(trailing.to_string()));
-                }
-            }
+                t
+            })
+            .unwrap_or_default();
+        let mut spans = vec![
+            Span::raw(marker.to_string()),
+            Span::styled("🖼 ".to_string(), dim),
+            Span::styled(alt.clone(), style),
+            Span::raw(format!("  ({})", src)),
+        ];
+        if !lic_text.is_empty() {
+            spans.push(Span::styled(format!("  {}", lic_text), dim));
         }
+        b.push_image(Line::from(spans), src.clone());
     }
     if !record.keywords.is_empty() {
         b.push(Line::raw(""));
@@ -3273,6 +3214,59 @@ fn marquee(text: &str, window: usize, offset: usize) -> String {
 mod tests {
     use super::*;
 
+    fn pieces(answer: &str) -> Vec<AnswerPiece> {
+        answer_pieces(answer, &image_refs(answer))
+    }
+
+    fn text(s: &str) -> AnswerPiece {
+        AnswerPiece::Text(s.to_string())
+    }
+
+    #[test]
+    fn answer_pieces_without_images_match_str_lines() {
+        for a in ["", "a", "a\nb", "a\n\nb\n", "a\r\nb\r\n", "\n"] {
+            let want: Vec<AnswerPiece> = a.lines().map(text).collect();
+            assert_eq!(pieces(a), want, "answer {a:?}");
+        }
+    }
+
+    #[test]
+    fn answer_pieces_split_inline_images_out_of_their_line() {
+        assert_eq!(
+            pieces("intro\nsee: ![a](qa_images/a.jpg) done\n\nend"),
+            vec![
+                text("intro"),
+                text("see: "),
+                AnswerPiece::Image(0),
+                text(" done"),
+                text(""),
+                text("end"),
+            ]
+        );
+        // image alone on its line: no blank fragments around it
+        assert_eq!(
+            pieces("![a](qa_images/a.jpg)\n![b](qa_images/b.jpg)"),
+            vec![AnswerPiece::Image(0), AnswerPiece::Image(1)]
+        );
+    }
+
+    #[test]
+    fn answer_pieces_respect_multiline_code_fences() {
+        // Regression: the Detail pane used to parse images line by line, so an
+        // image inside a ``` fence got a selectable row (and shifted every
+        // later row's index away from what Enter actually opened).
+        let a = "```\n![no](qa_images/no.jpg)\n```\n![yes](qa_images/yes.jpg)";
+        let p = pieces(a);
+        assert_eq!(
+            p.iter()
+                .filter(|x| matches!(x, AnswerPiece::Image(_)))
+                .count(),
+            1
+        );
+        assert_eq!(p.last(), Some(&AnswerPiece::Image(0)));
+        assert_eq!(image_refs(a)[0].src, "qa_images/yes.jpg");
+    }
+
     fn test_app(vim: bool) -> App {
         let cfg = Config::resolve(
             Some("http://localhost/".to_string()),
@@ -3295,6 +3289,71 @@ mod tests {
         for c in s.chars() {
             app.handle_key(key(KeyCode::Char(c)));
         }
+    }
+
+    /// `app` with one loaded record (selected) that has a Related entry and
+    /// two images.
+    fn app_with_related_and_images(vim: bool) -> App {
+        struct NoTok;
+        impl crate::query::QueryTokenizer for NoTok {
+            fn morphemes(&self, _: &str) -> Vec<String> {
+                Vec::new()
+            }
+            fn tag(&self) -> &'static str {
+                "none"
+            }
+        }
+        let records: Vec<crate::model::Record> = serde_json::from_str(
+            r#"[{"id":"a","questions":["q"],"related":["b"],
+                 "answer":"![1](qa_images/1.jpg)\n<img src=\"qa_images/2.jpg\">"},
+                {"id":"b","questions":["r"]}]"#,
+        )
+        .unwrap();
+        let corpus = std::sync::Arc::new(crate::model::Corpus::new(records));
+        let index = std::sync::Arc::new(crate::bm25::Bm25Index::build(&corpus, "t", "h"));
+        let mut app = test_app(vim);
+        app.data = Some(Engine {
+            corpus,
+            index,
+            tokenizer: std::sync::Arc::new(NoTok),
+            warnings: Vec::new(),
+        });
+        app.results = vec![(0, 1.0)];
+        app.selected = Some(0);
+        app
+    }
+
+    #[test]
+    fn tab_cycles_results_related_image_results() {
+        // Regression: Tab inside the Related list jumped straight back to
+        // Results, so the Image list was unreachable whenever a record had
+        // Related entries too.
+        for vim in [false, true] {
+            let mut app = app_with_related_and_images(vim);
+            if vim {
+                app.handle_key(key(KeyCode::Esc)); // INSERT → NORMAL
+            }
+            assert_eq!(app.pane_focus, PaneFocus::Results);
+            app.handle_key(key(KeyCode::Tab));
+            assert_eq!(app.pane_focus, PaneFocus::Related, "vim={vim}");
+            app.handle_key(key(KeyCode::Tab));
+            assert_eq!(app.pane_focus, PaneFocus::Image, "vim={vim}");
+            assert_eq!(app.image_selected, Some(0));
+            app.handle_key(key(KeyCode::Down));
+            assert_eq!(app.image_selected, Some(1));
+            app.handle_key(key(KeyCode::Tab));
+            assert_eq!(app.pane_focus, PaneFocus::Results, "vim={vim}");
+        }
+    }
+
+    #[test]
+    fn esc_leaves_the_related_list() {
+        let mut app = app_with_related_and_images(false);
+        app.handle_key(key(KeyCode::Tab));
+        assert_eq!(app.pane_focus, PaneFocus::Related);
+        app.handle_key(key(KeyCode::Esc));
+        assert_eq!(app.pane_focus, PaneFocus::Results);
+        assert_eq!(app.related_selected, None);
     }
 
     #[test]
