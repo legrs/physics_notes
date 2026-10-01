@@ -20,7 +20,8 @@ function section(t) { console.log(`── ${t}`); }
 
 const html = loadHtml('media_editor.html');
 const FNS = ['isVideoSrc', 'isHeicName', 'extractMediaRefs', 'basenameOf', 'licenseKeysFor', 'resolveLicense',
-  'captionText', 'isHttpUrl', 'cleanLicense', 'serializeLicenses', 'diffLicenses', 'buildItems', 'itemProblems', 'formatBytes'];
+  'captionText', 'isHttpUrl', 'cleanLicense', 'serializeLicenses', 'diffLicenses', 'buildItems', 'itemProblems', 'formatBytes',
+  'isSafeMediaName', 'stagedName'];
 const src = [extractConst(html, 'MEDIA_EXT_RE'), extractConst(html, 'UUID_NAME_RE'), ...FNS.map(n => extractFunction(html, n))].join('\n');
 const W = new Function(`${src}; return { ${FNS.join(', ')} };`)();
 
@@ -108,6 +109,22 @@ ok(byName['IMG_1.HEIC'].includes('JPEG変換待ち'), 'HEIC flagged for conversi
 ok(byName['orphan.png'].includes('未使用') && byName['orphan.png'].includes('リネーム待ち'), 'unreferenced, non-UUID file flagged');
 ok(byName['gone.jpg'].includes('ファイルなし'), 'reference to a missing file flagged');
 ok(byName['stale.jpg'].includes('licenses.jsonのみ') && byName['stale.jpg'].includes('license空'), 'stale licenses.json key and empty license flagged');
+
+section('local / added files');
+ok(W.isSafeMediaName('photo_001.JPG') && W.isSafeMediaName('写真.heic') && W.isSafeMediaName('3f9a8c1e-1a2b-4c3d-9e8f-a1b2c3d4e5f6.mp4'), 'normal names are safe');
+for (const bad of ['my photo.jpg', 'img(1).png', 'a#b.jpg', 'a%20b.jpg', 'noext', 'doc.pdf']) ok(!W.isSafeMediaName(bad), `unsafe: ${bad}`);
+// the markdown regex the whole pipeline uses must be able to reference every "safe" name
+const MD = /!\[([^\]]*)\]\(\s*([^\s)]+)(?:\s+"[^"]*")?\s*\)/;
+for (const n of ['photo_001.JPG', '写真.heic', 'a-b.c.webm']) ok(MD.exec(`![x](qa_images/${n})`)[2] === `qa_images/${n}`, `safe name ${n} is referenceable`);
+let u = 0;
+const uuid = () => `00000000-0000-0000-0000-00000000000${u++}`;
+ok(W.stagedName('photo.jpg', new Set(), uuid) === 'photo.jpg', 'safe, unused name kept (CI renames later)');
+ok(/^0{8}-.*\.jpg$/.test(W.stagedName('my photo.JPG', new Set(), uuid)), 'unsafe name → UUID with lowercased ext');
+ok(W.stagedName('photo.jpg', new Set(['photo.jpg']), uuid) !== 'photo.jpg', 'colliding name → UUID');
+const loc = W.buildItems([{ name: 'new.png', size: 1, local: true, added: true, pushed: false }, { name: 'old.png', size: 1, local: true, pushed: true }], [], {});
+const probsOf = n => W.itemProblems(loc.find(i => i.name === n), { source: 'default', lic: { license: 'x' } }, true).map(p => p.text);
+ok(probsOf('new.png').includes('未push') && loc.find(i => i.name === 'new.png').added, 'added local file flagged 未push');
+ok(!probsOf('old.png').includes('未push'), 'pushed local file not flagged');
 
 console.log(`\n${checks} checks, ${failures} failures`);
 console.log(failures === 0 ? 'MEDIA EDITOR CHECKS PASSED' : 'MEDIA EDITOR CHECKS FAILED');

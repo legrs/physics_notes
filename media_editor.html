@@ -228,6 +228,76 @@
       display: none;
     }
 
+    .source-bar {
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      line-height: 1.5;
+    }
+
+    .source-bar .src-pill {
+      border-radius: 999px;
+      padding: 1px 8px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-mid);
+      font-weight: 600;
+    }
+
+    .source-bar .src-pill.local {
+      border-color: var(--ok);
+      color: var(--ok);
+    }
+
+    .drop-active .sidebar {
+      outline: 3px dashed var(--accent);
+      outline-offset: -6px;
+    }
+
+    .snippet {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin: 4px 0;
+    }
+
+    .snippet code {
+      flex: 1;
+      min-width: 0;
+      overflow-x: auto;
+      white-space: nowrap;
+      font-size: 12px;
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      border-radius: 6px;
+      padding: 4px 8px;
+    }
+
+    .import-item {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+
+    .import-item .name {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-weight: 700;
+      color: var(--text-primary);
+      word-break: break-all;
+    }
+
+    ol.steps {
+      padding-left: 20px;
+      margin: 6px 0 12px;
+      font-size: 12px;
+      line-height: 1.7;
+      color: var(--text-secondary);
+    }
+
     /* ── Layout: sidebar | preview | panel ── */
     #layout {
       flex: 1;
@@ -850,12 +920,37 @@
     @media (max-width: 900px) {
 
       .topbar-sub,
-      .status {
+      .status,
+      .btn-label,
+      #folder-btn {
         display: none;
       }
 
       #topbar {
-        padding: 8px 12px;
+        padding: 8px 10px;
+        gap: 6px;
+      }
+
+      #topbar h1 {
+        font-size: 15px;
+      }
+
+      .topbar-links a {
+        margin-right: 6px;
+      }
+
+      .topbar-links {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.3;
+      }
+
+      .topbar-right {
+        gap: 5px;
+      }
+
+      .topbar-right .btn {
+        padding: 6px 9px;
       }
 
       .mobile-tabbar {
@@ -953,8 +1048,12 @@
       </div>
       <div class="topbar-right">
         <span id="status-text" class="status"></span>
-        <button id="discard-btn" class="btn" type="button" title="この端末に保存している未反映の変更をすべて破棄" disabled>変更を破棄</button>
-        <button id="fetch-btn" class="btn btn-primary" type="button" title="GitHub から最新の qa_images 一覧・licenses.json・q_and_a_data.json を取得">⭳ 取得</button>
+        <button id="discard-btn" class="btn" type="button" title="この端末に保存している未反映の変更をすべて破棄" disabled><span class="btn-label">変更を</span>破棄</button>
+        <button id="add-btn" class="btn" type="button" title="新しい画像・動画を追加（ドラッグ＆ドロップでも可）">＋<span class="btn-label"> 追加</span></button>
+        <button id="folder-btn" class="btn" type="button" title="手元のリポジトリ（または qa_images フォルダ）を開いて、ローカルの画像・licenses.json を直接編集">📁<span class="btn-label"> フォルダ</span></button>
+        <button id="fetch-btn" class="btn btn-primary" type="button" title="GitHub から最新の qa_images 一覧・licenses.json・q_and_a_data.json を取得">⭳<span class="btn-label"> 取得</span></button>
+        <input id="add-input" type="file" multiple accept="image/*,video/*,.heic,.heif,.svg" hidden>
+        <input id="folder-input" type="file" webkitdirectory multiple hidden>
       </div>
     </header>
 
@@ -969,6 +1068,7 @@
       <!-- ── 一覧 ── -->
       <aside class="pane sidebar" id="sidebar">
         <div class="sidebar-head">
+          <div class="source-bar" id="source-bar"></div>
           <div class="search-row">
             <input id="search-input" class="field-input" type="search" placeholder="ファイル名・説明・質問で検索（/）" autocomplete="off">
           </div>
@@ -1165,6 +1265,9 @@
         const it = get(f.name);
         it.exists = true;
         it.size = f.size;
+        if (f.local) it.local = true;            // 手元のファイル（フォルダ or 追加）
+        if (f.added) it.added = true;            // 「＋追加」で読み込んだ（フォルダ外）
+        if (f.pushed !== undefined) it.pushed = f.pushed; // GitHub に既にあるか（不明なら undefined）
       }
       for (const r of records || []) {
         const seen = new Set();
@@ -1194,6 +1297,8 @@
       const p = [];
       if (filesKnown && !item.exists) p.push({ kind: 'err', text: item.uses.length ? 'ファイルなし' : 'licenses.jsonのみ' });
       if (item.exists && !item.uses.length) p.push({ kind: 'warn', text: '未使用' });
+      if (item.local && item.pushed === false) p.push({ kind: 'info', text: '未push' });
+      if (item.exists && !isSafeMediaName(item.name)) p.push({ kind: 'err', text: '名前に空白・括弧' });
       if (isHeicName(item.name)) p.push({ kind: 'info', text: 'JPEG変換待ち' });
       else if (item.exists && !UUID_NAME_RE.test(item.name)) p.push({ kind: 'info', text: 'リネーム待ち' });
       if (resolved.conflict) p.push({ kind: 'warn', text: '質問ごとに不一致' });
@@ -1202,6 +1307,22 @@
         if (resolved.lic && resolved.lic.url && !isHttpUrl(resolved.lic.url)) p.push({ kind: 'err', text: 'URL不正' });
       }
       return p;
+    }
+
+    // 回答の Markdown から参照できるファイル名か（![](qa_images/名前) の名前部分は
+    // 空白・括弧を含められない。# ? % は URL として壊れる）
+    function isSafeMediaName(name) {
+      return /^[^\s()#?%\\/]+\.[A-Za-z0-9]+$/.test(String(name || '')) && MEDIA_EXT_RE.test(name);
+    }
+
+    // 追加するファイルの保存名。安全な名前で既存と衝突しなければそのまま（CI が後で
+    // UUID 名に直し、licenses.json のキーと参照も追従する）。そうでなければ UUID 名。
+    function stagedName(original, taken, uuid) {
+      const ext = (String(original).match(/\.([A-Za-z0-9]+)$/) || [, ''])[1].toLowerCase();
+      if (isSafeMediaName(original) && !taken.has(original)) return original;
+      let name;
+      do { name = `${uuid()}.${ext}`; } while (taken.has(name));
+      return name;
     }
 
     function formatBytes(n) {
@@ -1237,10 +1358,14 @@
     ];
 
     const state = {
-      baseLicenses: null,   // 取得時の licenses.json
+      baseLicenses: null,   // 編集の基準にした licenses.json（GitHub かローカルのもの）
+      baseSource: 'github', // baseLicenses の出どころ: 'github' | 'local'
       draft: null,          // 編集中の licenses.json
-      files: [],            // [{name,size}]（GitHub API）
-      filesKnown: false,    // API でファイル一覧を取れたか
+      remote: null,         // GitHub から取得: { files:[{name,size}], filesKnown, records, licenses }
+      local: null,          // 開いたフォルダ: { label, files: Map<name,File>, licenses, records, qaDir, writable }
+      added: new Map(),     // 「＋追加」したファイル: name -> File（フォルダ外・メモリ上のみ）
+      files: [],            // 一覧に出すファイル（remote/local/added から合成）
+      filesKnown: false,    // ファイル一覧が確実か
       records: [],
       items: [],
       selected: null,       // ファイル名 or DEFAULT_ID
@@ -1266,7 +1391,7 @@
     function persist() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
-          baseLicenses: state.baseLicenses, draft: state.draft, selected: state.selected,
+          baseLicenses: state.baseLicenses, baseSource: state.baseSource, draft: state.draft, selected: state.selected,
           view: state.view, bg: state.bg,
         }));
       } catch (_) { /* 保存できない環境では何もしない */ }
@@ -1340,54 +1465,271 @@
           fetchJson(API_QA_IMAGES).then(list => ({ ok: true, list }), e => ({ ok: false, error: e })),
         ]);
         if (!Array.isArray(records)) throw new Error('q_and_a_data.json が配列ではありません');
+        state.remote = {
+          records, licenses,
+          files: files.ok ? files.list.filter(f => f.type === 'file').map(f => ({ name: f.name, size: f.size })) : [],
+          filesKnown: files.ok,
+        };
+        applySources({ interactive });
+        const warn = files.ok ? '' : '（ファイル一覧は GitHub API の制限で取得できず、参照から推定）';
+        setStatus(`${state.items.length}件 / 質問 ${state.records.length}件${state.local ? '（ローカル）' : 'を取得'}${warn}`, files.ok ? 'ok' : 'error');
+        if (interactive) toast(state.local ? 'GitHub の最新と比較しました（編集対象はローカルのまま）' : '最新の内容を取得しました');
+      } catch (e) {
+        console.error(e);
+        setStatus('取得に失敗しました: ' + e.message, 'error');
+        if (!state.loaded && state.local) applySources({});
+      } finally {
+        $('fetch-btn').disabled = false;
+      }
+    }
 
-        // ローカルの未反映の変更の扱い
+    // GitHub・開いたフォルダ・追加ファイルから、一覧・回答データ・licenses.json の基準を決める。
+    // フォルダを開いているときはフォルダが正（無いものだけ GitHub で補う）。
+    function applySources({ interactive }) {
+      const remote = state.remote || { files: [], filesKnown: false, records: [], licenses: {} };
+      const local = state.local;
+      const remoteNames = remote.filesKnown ? new Set(remote.files.map(f => f.name)) : null;
+      const pushed = name => (remoteNames ? remoteNames.has(name) : undefined);
+      let files;
+      if (local) {
+        files = [...local.files.values()].map(f => ({ name: f.name, size: f.size, local: true, pushed: pushed(f.name) }));
+      } else {
+        files = remote.files.slice();
+      }
+      for (const [name, f] of state.added) {
+        if (files.some(x => x.name === name)) continue;
+        files.push({ name, size: f.size, local: true, added: true, pushed: pushed(name) });
+      }
+      state.files = files;
+      state.filesKnown = local ? true : remote.filesKnown;
+      state.records = (local && local.records) || remote.records;
+
+      const newBase = (local && local.licenses) || remote.licenses;
+      const newSource = local && local.licenses ? 'local' : 'github';
+      setBase(newBase, newSource, { interactive });
+
+      if (!state.loaded) {
         const saved = storageGet();
-        const remoteChanged = saved && saved.baseLicenses
-          && JSON.stringify(saved.baseLicenses) !== JSON.stringify(licenses);
-        const localEdits = saved && saved.draft && saved.baseLicenses
-          && diffLicenses(saved.baseLicenses, saved.draft).length > 0;
-        let keepDraft = false;
-        if (state.loaded && hasChanges()) {
-          keepDraft = !confirm('未反映の変更があります。最新の licenses.json で上書きしますか？\n（キャンセルすると変更を残したまま一覧だけ更新します）');
-        } else if (!state.loaded && localEdits) {
-          keepDraft = !remoteChanged || !confirm('前回の未反映の変更がありますが、その後リモートの licenses.json が更新されています。\n最新の内容で上書きしますか？（キャンセルで前回の変更を残します）');
-        }
-
-        state.records = records;
-        state.files = files.ok ? files.list.filter(f => f.type === 'file').map(f => ({ name: f.name, size: f.size })) : [];
-        state.filesKnown = files.ok;
-        if (keepDraft) {
-          const base = state.loaded ? state.baseLicenses : saved.baseLicenses;
-          const draft = state.loaded ? state.draft : saved.draft;
-          // 「変更」は自分の基準からの差分として残す（リモートで消えたキーは基準からも消す）
-          state.baseLicenses = licenses;
-          state.draft = rebaseDraft(base, draft, licenses);
-        } else {
-          state.baseLicenses = licenses;
-          state.draft = JSON.parse(JSON.stringify(licenses));
-        }
-        if (!state.loaded && saved) {
+        if (saved) {
           state.view = saved.view === 'grid' ? 'grid' : state.view;
           state.bg = ['checker', 'white', 'black'].includes(saved.bg) ? saved.bg : state.bg;
           if (saved.selected) state.selected = saved.selected;
         }
-        state.loaded = true;
-        rebuild();
-        if (!state.selected || (state.selected !== DEFAULT_ID && !state.items.some(i => i.name === state.selected))) {
-          state.selected = state.items[0] ? state.items[0].name : DEFAULT_ID;
-        }
-        persist();
-        renderAll();
-        const warn = files.ok ? '' : '（ファイル一覧は GitHub API の制限で取得できず、参照から推定）';
-        setStatus(`${state.items.length}件 / 質問 ${records.length}件を取得${warn}`, files.ok ? 'ok' : 'error');
-        if (interactive) toast('最新の内容を取得しました');
-      } catch (e) {
-        console.error(e);
-        setStatus('取得に失敗しました: ' + e.message, 'error');
-      } finally {
-        $('fetch-btn').disabled = false;
       }
+      state.loaded = true;
+      rebuild();
+      if (!state.selected || (state.selected !== DEFAULT_ID && !state.items.some(i => i.name === state.selected))) {
+        state.selected = state.items[0] ? state.items[0].name : DEFAULT_ID;
+      }
+      persist();
+      renderAll();
+    }
+
+    // licenses.json の基準を差し替える。未反映の変更があれば残すか確認し、残すなら新しい基準の上に載せ直す。
+    function setBase(newBase, newSource, { interactive }) {
+      const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+      if (!state.loaded) {
+        // 起動時: 前回の未反映の変更を復元するか
+        const saved = storageGet();
+        const localEdits = saved && saved.draft && saved.baseLicenses
+          && diffLicenses(saved.baseLicenses, saved.draft).length > 0;
+        if (localEdits && saved.baseSource === 'local' && newSource !== 'local') {
+          // 前回はローカルの licenses.json を編集していた: GitHub の値で上書きせず、そのまま保持
+          state.baseLicenses = saved.baseLicenses;
+          state.draft = saved.draft;
+          state.baseSource = 'local';
+          state.pendingLocalNotice = true;
+          return;
+        }
+        let keep = false;
+        if (localEdits) {
+          keep = same(saved.baseLicenses, newBase)
+            || !confirm('前回の未反映の変更がありますが、その後 licenses.json が更新されています。\n最新の内容で上書きしますか？（キャンセルで前回の変更を残します）');
+        }
+        state.baseSource = newSource;
+        state.baseLicenses = newBase;
+        state.draft = keep ? rebaseDraft(saved.baseLicenses, saved.draft, newBase) : JSON.parse(JSON.stringify(newBase));
+        return;
+      }
+      if (same(state.baseLicenses, newBase) && state.baseSource === newSource) return;
+      if (state.baseSource === 'local' && newSource === 'github' && state.local) return; // フォルダ編集中は GitHub で置き換えない
+      let keep = false;
+      if (hasChanges()) {
+        keep = !confirm(newSource === 'local'
+          ? '未反映の変更があります。開いたフォルダの licenses.json を基準にして変更を破棄しますか？\n（キャンセルすると変更をフォルダの内容の上に載せ直します）'
+          : '未反映の変更があります。最新の licenses.json で上書きしますか？\n（キャンセルすると変更を残したまま一覧だけ更新します）');
+      }
+      const oldBase = state.baseLicenses, oldDraft = state.draft;
+      state.baseLicenses = newBase;
+      state.baseSource = newSource;
+      state.draft = keep ? rebaseDraft(oldBase, oldDraft, newBase) : JSON.parse(JSON.stringify(newBase));
+      state.pendingLocalNotice = false;
+    }
+
+    /* ── ローカルのフォルダ・ファイル ── */
+
+    async function pickFolder() {
+      if (window.showDirectoryPicker) {
+        let dir;
+        try {
+          dir = await window.showDirectoryPicker({ id: 'physics-notes', mode: 'readwrite' });
+        } catch (e) {
+          if (e && e.name === 'AbortError') return;
+          // 書き込み許可を断られた等 → 読み取り専用で開き直す
+          try { dir = await window.showDirectoryPicker({ id: 'physics-notes', mode: 'read' }); } catch (_) { return; }
+        }
+        await loadFromDirHandle(dir);
+      } else {
+        $('folder-input').click(); // Firefox / Safari: 読み取り専用のフォルダ選択
+      }
+    }
+
+    async function readJsonFile(file, label) {
+      try {
+        return JSON.parse(await file.text());
+      } catch (e) {
+        toast(`${label} を読めませんでした: ${e.message}`);
+        return null;
+      }
+    }
+
+    async function loadFromDirHandle(dir) {
+      setStatus('フォルダを読み込み中…', 'loading');
+      let qaDir = dir, root = null;
+      try { qaDir = await dir.getDirectoryHandle('qa_images'); root = dir; } catch (_) { /* qa_images 自体を選んだ */ }
+      const files = new Map();
+      let licenses = null, records = null;
+      for await (const [name, h] of qaDir.entries()) {
+        if (h.kind !== 'file') continue;
+        if (name === 'licenses.json') licenses = await readJsonFile(await h.getFile(), 'licenses.json');
+        else if (MEDIA_EXT_RE.test(name)) files.set(name, await h.getFile());
+      }
+      if (root) {
+        try {
+          const f = await (await root.getFileHandle('q_and_a_data.json')).getFile();
+          records = await readJsonFile(f, 'q_and_a_data.json');
+          if (records && !Array.isArray(records)) records = null;
+        } catch (_) { /* 無ければ GitHub のもので補う */ }
+      }
+      let writable = false;
+      try { writable = (await qaDir.queryPermission({ mode: 'readwrite' })) === 'granted'; } catch (_) { }
+      setLocal({ label: root ? `${root.name}/qa_images` : qaDir.name, files, licenses, records, qaDir, writable });
+    }
+
+    // <input webkitdirectory> 版（読み取り専用）。リポジトリ全体を選ぶと node_modules なども
+    // 列挙されて重いので、qa_images フォルダを選ぶよう案内する。
+    async function loadFromFileList(list) {
+      const all = [...list];
+      if (!all.length) return;
+      const parts = f => (f.webkitRelativePath || f.name).split('/');
+      const inQa = all.filter(f => { const p = parts(f); return p.length >= 2 && p[p.length - 2] === 'qa_images'; });
+      const pool = inQa.length ? inQa : all.filter(f => parts(f).length === 2);
+      const files = new Map();
+      let licenses = null, records = null;
+      for (const f of pool) {
+        if (f.name === 'licenses.json') licenses = await readJsonFile(f, 'licenses.json');
+        else if (MEDIA_EXT_RE.test(f.name)) files.set(f.name, f);
+      }
+      const rootData = all.find(f => { const p = parts(f); return p.length === 2 && p[1] === 'q_and_a_data.json'; });
+      if (rootData) {
+        records = await readJsonFile(rootData, 'q_and_a_data.json');
+        if (records && !Array.isArray(records)) records = null;
+      }
+      // 表示名は実際に読んだフォルダのパス（例: physics_notes/qa_images / qa_images）
+      const label = parts(pool[0] || all[0]).slice(0, -1).join('/') || 'qa_images';
+      setLocal({ label, files, licenses, records, qaDir: null, writable: false });
+    }
+
+    function setLocal(local) {
+      state.local = local;
+      // フォルダに既にある名前は「追加」から外す
+      for (const name of [...state.added.keys()]) if (local.files.has(name)) state.added.delete(name);
+      applySources({ interactive: true });
+      const what = [local.licenses ? 'licenses.json' : null, local.records ? 'q_and_a_data.json' : null].filter(Boolean);
+      setStatus(`ローカル: ${local.label}（${local.files.size}ファイル${what.length ? '・' + what.join('・') : ''}）`, 'ok');
+      toast(local.writable ? 'フォルダを開きました（licenses.json を直接保存できます）' : 'フォルダを開きました（読み取り専用）');
+    }
+
+    function closeLocal() {
+      state.local = null;
+      applySources({ interactive: true });
+      setStatus('GitHub の内容を表示しています', '');
+    }
+
+    function addFiles(list) {
+      const incoming = [...list].filter(f => MEDIA_EXT_RE.test(f.name) || /^(image|video)\//.test(f.type));
+      if (!incoming.length) { toast('画像・動画ファイルを選んでください'); return; }
+      const taken = new Set([...state.items.map(i => i.name), ...state.added.keys()]);
+      const renamed = [];
+      let last = null;
+      for (const f of incoming) {
+        // 拡張子が無い（スマホの写真ピッカー等）場合は MIME から補う
+        let original = f.name;
+        if (!/\.[A-Za-z0-9]+$/.test(original)) original += '.' + (f.type.split('/')[1] || 'bin').replace('jpeg', 'jpg').replace('quicktime', 'mov');
+        const name = stagedName(original, taken, () => crypto.randomUUID());
+        taken.add(name);
+        if (name !== f.name) renamed.push(`${f.name} → ${name}`);
+        state.added.set(name, name === f.name ? f : new File([f], name, { type: f.type }));
+        last = name;
+      }
+      applySources({ interactive: true });
+      if (last) select(last, true);
+      toast(renamed.length ? `追加しました（名前を変更: ${renamed.join(', ')}）` : `${incoming.length} 件追加しました`);
+    }
+
+    // 追加したファイルを開いているフォルダの qa_images/ に書き込む
+    async function saveAddedToFolder(names) {
+      const qaDir = state.local && state.local.qaDir;
+      if (!qaDir || !(await ensureWritable())) return;
+      for (const name of names) {
+        const file = state.added.get(name);
+        if (!file) continue;
+        const h = await qaDir.getFileHandle(name, { create: true });
+        const w = await h.createWritable();
+        await w.write(file);
+        await w.close();
+        state.local.files.set(name, file);
+        state.added.delete(name);
+      }
+      applySources({ interactive: false });
+      toast(`${names.length} 件を qa_images/ に保存しました`);
+    }
+
+    async function ensureWritable() {
+      const qaDir = state.local && state.local.qaDir;
+      if (!qaDir) return false;
+      try {
+        if ((await qaDir.queryPermission({ mode: 'readwrite' })) === 'granted') return (state.local.writable = true);
+        if ((await qaDir.requestPermission({ mode: 'readwrite' })) === 'granted') return (state.local.writable = true);
+      } catch (_) { }
+      toast('フォルダへの書き込みが許可されませんでした');
+      return false;
+    }
+
+    async function saveLicensesToFolder() {
+      const qaDir = state.local && state.local.qaDir;
+      if (!qaDir || !(await ensureWritable())) return;
+      const json = serializeLicenses(state.baseLicenses, state.draft);
+      const h = await qaDir.getFileHandle('licenses.json', { create: true });
+      const w = await h.createWritable();
+      await w.write(json);
+      await w.close();
+      state.local.licenses = JSON.parse(json);
+      state.baseLicenses = JSON.parse(json);
+      state.draft = JSON.parse(json);
+      state.baseSource = 'local';
+      commit();
+      renderLicense();
+      toast('qa_images/licenses.json に保存しました。git で commit・push してください');
+    }
+
+    // 手元のファイルは object URL、それ以外は GitHub の raw URL
+    const objectUrls = new Map();
+    function mediaUrl(item) {
+      const file = (state.local && state.local.files.get(item.name)) || state.added.get(item.name);
+      if (!file) return RAW_BASE + item.src;
+      if (!objectUrls.has(file)) objectUrls.set(file, URL.createObjectURL(file));
+      return objectUrls.get(file);
     }
 
     // base→draft の差分を newBase の上に適用し直す
@@ -1457,7 +1799,7 @@
     // 毎回作ると画像・動画を何度も読み込み直してしまう）
     const thumbCache = new Map();
     function thumbFor(item) {
-      const key = item.name + (item.exists || !state.filesKnown ? '' : '#missing');
+      const key = mediaUrl(item) + (item.exists || !state.filesKnown ? '' : '#missing');
       if (!thumbCache.has(key)) thumbCache.set(key, makeThumb(item));
       return thumbCache.get(key);
     }
@@ -1465,16 +1807,17 @@
     function makeThumb(item) {
       const t = el('div', { class: 'thumb' });
       if (!item.exists && state.filesKnown) { t.classList.add('special'); t.textContent = '⚠'; return t; }
-      if (isHeicName(item.name)) { t.classList.add('special'); t.textContent = 'HEIC'; t.style.fontSize = '12px'; return t; }
+      if (isHeicName(item.name) && !item.local) { t.classList.add('special'); t.textContent = 'HEIC'; t.style.fontSize = '12px'; return t; }
       if (isVideoSrc(item.name)) {
         const v = el('video', { muted: true, preload: 'metadata', playsInline: true });
-        v.src = RAW_BASE + item.src + '#t=0.1';
+        v.src = mediaUrl(item) + '#t=0.1';
         t.append(v);
         return t;
       }
       const img = el('img', { alt: '', loading: 'lazy', decoding: 'async' });
-      img.src = RAW_BASE + item.src;
-      img.addEventListener('error', () => { t.classList.add('special'); t.replaceChildren('⚠'); });
+      img.src = mediaUrl(item);
+      // HEIC は Safari 以外では表示できない
+      img.addEventListener('error', () => { t.classList.add('special'); t.replaceChildren(isHeicName(item.name) ? 'HEIC' : '⚠'); });
       t.append(img);
       return t;
     }
@@ -1602,14 +1945,14 @@
 
       const item = selectedItem();
       if (!item) { stage.replaceChildren(); info.replaceChildren(); open.hidden = true; return; }
-      const url = RAW_BASE + item.src;
+      const url = mediaUrl(item);
       open.hidden = !item.exists && state.filesKnown;
       open.href = url;
 
       let media;
       if (!item.exists && state.filesKnown) {
         media = el('div', { class: 'stage-msg', text: `qa_images/${item.name} はリポジトリにありません。answer の参照か licenses.json のキーが古い可能性があります。` });
-      } else if (isHeicName(item.name)) {
+      } else if (isHeicName(item.name) && !item.local) {
         media = el('div', { class: 'stage-msg', text: 'HEIC/HEIF はこのブラウザで表示できない場合があります。push すると CI が JPEG に変換し、参照とライセンスのキーも自動で追従します。' });
       } else if (isVideoSrc(item.name)) {
         media = el('video', { controls: true, playsInline: true, preload: 'metadata', crossOrigin: 'anonymous' });
@@ -1630,7 +1973,11 @@
         });
         media.addEventListener('error', () => {
           state.meta[item.name] = { error: true };
-          if (state.selected === item.name) renderInfo(item);
+          if (state.selected !== item.name) return;
+          if (isHeicName(item.name)) {
+            stage.replaceChildren(el('div', { class: 'stage-msg', text: 'このブラウザは HEIC/HEIF を表示できません（Safari なら表示可）。push すると CI が JPEG に変換し、参照とライセンスのキーも自動で追従します。' }));
+          }
+          renderInfo(item);
         });
         media.src = url;
       }
@@ -1668,6 +2015,9 @@
       ];
       if (isVideoSrc(item.name)) cells.push(['長さ', meta.duration ? `${meta.duration.toFixed(1)} 秒` : '…']);
       else cells.push(['透過', meta.alpha === 'svg' ? 'SVG（透過しうる）' : meta.alpha === true ? 'あり' : meta.alpha === false ? 'なし' : meta.alpha === null ? '不明' : '…']);
+      cells.push(['場所', item.added ? '追加（まだどこにも保存されていません）'
+        : item.local ? (item.pushed === false ? 'ローカルのみ（未push）' : item.pushed ? 'ローカル（GitHub にもあり）' : 'ローカル')
+          : 'GitHub']);
       cells.push(['ファイル名', item.name]);
 
       const uses = item.uses.length
@@ -1713,6 +2063,7 @@
 
     function commit() {
       rebuild();
+      renderSourceBar();
       persist();
       renderList();
       renderFilters();
@@ -1895,12 +2246,60 @@
           text: d.type === 'add' ? `+ ${d.key}: ${fmt(d.to)}` : d.type === 'del' ? `− ${d.key}` : `~ ${d.key}: ${fmt(d.from)} → ${fmt(d.to)}`,
         }))) : null,
         el('div', { class: 'button-row' },
-          el('button', { class: 'btn btn-primary', type: 'button', text: '📋 コピー', onclick: () => copyText(json) }),
-          el('button', { class: 'btn', type: 'button', text: '⭳ licenses.json を保存', onclick: () => download(json) })),
+          state.local && state.local.qaDir
+            ? el('button', {
+              class: 'btn btn-primary', type: 'button', text: '💾 フォルダの licenses.json に保存', disabled: !diff.length,
+              title: `${state.local.label}/licenses.json を直接書き換えます`, onclick: () => saveLicensesToFolder(),
+            })
+            : null,
+          el('button', { class: 'btn' + (state.local && state.local.qaDir ? '' : ' btn-primary'), type: 'button', text: '📋 コピー', onclick: () => copyText(json) }),
+          el('button', { class: 'btn', type: 'button', text: '⭳ ダウンロード', onclick: () => download(json, 'licenses.json') })),
+        importGuide(),
         el('div', { class: 'section-title', text: 'qa_images/licenses.json' }),
         el('pre', { class: 'code', text: json }),
       ].filter(Boolean)); // replaceChildren は null を "null" という文字列にしてしまう
       $('code-count').textContent = diff.length ? `(${diff.length})` : '';
+    }
+
+    // 手元にしかない（追加した / 未push の）ファイルを、回答とリポジトリに取り込む手順
+    function importGuide() {
+      const pending = state.items.filter(i => i.added || (i.local && i.pushed === false));
+      if (!pending.length) return null;
+      const canWrite = !!(state.local && state.local.qaDir);
+      const addedNames = pending.filter(i => i.added).map(i => i.name);
+      const rows = pending.map(i => {
+        const md = `![説明](qa_images/${i.name})`;
+        const file = state.added.get(i.name) || (state.local && state.local.files.get(i.name));
+        return el('div', { class: 'import-item' },
+          el('div', { class: 'name', text: i.name }),
+          el('div', { class: 'field-hint', text: i.added ? '追加したファイル（まだ保存されていません）' : 'フォルダにあり・GitHub に未push' }),
+          el('div', { class: 'snippet' }, el('code', { text: md }),
+            el('button', { class: 'btn btn-small', type: 'button', text: 'コピー', title: '回答（answer）に貼る記法', onclick: () => copyText(md) })),
+          i.added ? el('div', { class: 'button-row' },
+            canWrite ? el('button', { class: 'btn btn-small btn-primary', type: 'button', text: 'qa_images/ に保存', onclick: () => saveAddedToFolder([i.name]) }) : null,
+            el('button', { class: 'btn btn-small', type: 'button', text: '⭳ ダウンロード', title: 'この名前でダウンロード（GitHub の Upload files にこのファイルを使う）', onclick: () => download(file, i.name) }),
+            el('button', { class: 'btn btn-small btn-danger', type: 'button', text: '取り消し', onclick: () => { state.added.delete(i.name); applySources({}); } })) : null);
+      });
+      const steps = canWrite
+        ? [
+          addedNames.length ? '「qa_images/ に保存」で追加したファイルをフォルダに書き込む' : null,
+          '上の「💾 フォルダの licenses.json に保存」',
+          '回答（qa_editor の answer）に各ファイルの記法を貼る（説明 の部分は画像の説明に）',
+          'git add qa_images q_and_a_data.json して commit・push（CI が UUID 名・JPEG に直し、参照とキーも追従）',
+        ]
+        : [
+          addedNames.length ? 'ファイルを GitHub の qa_images/ にアップロード（github.com のリポジトリで qa_images を開き「Add file → Upload files」。スマホのブラウザでも可）。名前を変えたものは「ダウンロード」したファイルを使う' : null,
+          'qa_images/licenses.json も同じ画面で「✏️」から編集し、上の内容を貼り付けて Commit',
+          '回答（qa_editor の answer）に各ファイルの記法を貼る（説明 の部分は画像の説明に）',
+          'push 後、CI が UUID 名・JPEG に直し、参照と licenses.json のキーも自動で追従',
+        ];
+      return el('div', {},
+        el('div', { class: 'section-title', text: `手元にしかないファイル（${pending.length}）の取り込み` }),
+        el('ol', { class: 'steps' }, steps.filter(Boolean).map(t => el('li', { text: t }))),
+        canWrite && addedNames.length > 1
+          ? el('div', { class: 'button-row' }, el('button', { class: 'btn btn-small btn-primary', type: 'button', text: `追加した ${addedNames.length} 件をまとめて保存`, onclick: () => saveAddedToFolder(addedNames) }))
+          : null,
+        ...rows);
     }
 
     async function copyText(text) {
@@ -1918,8 +2317,9 @@
       }
     }
 
-    function download(text) {
-      const a = el('a', { href: URL.createObjectURL(new Blob([text], { type: 'application/json' })), download: 'licenses.json' });
+    function download(data, name) {
+      const blob = data instanceof Blob ? data : new Blob([data], { type: 'application/json' });
+      const a = el('a', { href: URL.createObjectURL(blob), download: name });
       document.body.append(a);
       a.click();
       setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
@@ -1954,7 +2354,26 @@
       document.title = (changed ? '● ' : '') + 'Media Editor';
     }
 
+    function renderSourceBar() {
+      const bar = $('source-bar');
+      const parts = [];
+      if (state.local) {
+        parts.push(el('span', { class: 'src-pill local', text: `📁 ${state.local.label}` }),
+          el('span', { text: state.local.writable ? '直接保存できます' : '読み取り専用' }),
+          el('button', { class: 'btn btn-small', type: 'button', text: 'GitHub 表示に戻す', onclick: closeLocal }));
+        if (!state.local.records) parts.push(el('span', { class: 'field-hint', text: '回答データは GitHub のもの' }));
+      } else {
+        parts.push(el('span', { class: 'src-pill', text: 'GitHub（最新）' }));
+        if (state.pendingLocalNotice) {
+          parts.push(el('span', { class: 'field-hint error', text: '前回はローカルの licenses.json を編集中でした。フォルダを開き直すと続きから保存できます' }));
+        }
+      }
+      if (state.added.size) parts.push(el('span', { class: 'src-pill', text: `＋ 追加 ${state.added.size}` }));
+      bar.replaceChildren(...parts);
+    }
+
     function renderAll() {
+      renderSourceBar();
       renderFilters();
       renderList();
       renderPreview();
@@ -1965,6 +2384,30 @@
 
     // ── イベント ──
     $('fetch-btn').addEventListener('click', () => fetchAll({ interactive: true }));
+    $('add-btn').addEventListener('click', () => $('add-input').click());
+    $('add-input').addEventListener('change', e => { addFiles(e.target.files); e.target.value = ''; });
+    $('folder-btn').addEventListener('click', () => pickFolder().catch(e => setStatus('フォルダを開けませんでした: ' + e.message, 'error')));
+    $('folder-input').addEventListener('change', e => {
+      loadFromFileList(e.target.files).catch(err => setStatus('フォルダを読めませんでした: ' + err.message, 'error'));
+      e.target.value = '';
+    });
+    if (!window.showDirectoryPicker) {
+      $('folder-btn').title = 'qa_images フォルダ（または中身）を選んで、ローカルの画像・licenses.json を表示（このブラウザでは読み取り専用。保存は Chrome / Edge で可）';
+    }
+    // ドラッグ＆ドロップで追加（ページ全体で受け付ける）
+    let dragDepth = 0;
+    document.addEventListener('dragenter', e => {
+      if (![...(e.dataTransfer && e.dataTransfer.types || [])].includes('Files')) return;
+      dragDepth++; $('app').classList.add('drop-active');
+    });
+    document.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; $('app').classList.remove('drop-active'); } });
+    document.addEventListener('dragover', e => { if ([...(e.dataTransfer && e.dataTransfer.types || [])].includes('Files')) e.preventDefault(); });
+    document.addEventListener('drop', e => {
+      if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+      e.preventDefault();
+      dragDepth = 0; $('app').classList.remove('drop-active');
+      addFiles(e.dataTransfer.files);
+    });
     $('discard-btn').addEventListener('click', () => {
       if (!confirm('未反映の変更をすべて破棄して、取得時の licenses.json に戻しますか？')) return;
       state.draft = JSON.parse(JSON.stringify(state.baseLicenses));
