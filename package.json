@@ -9,7 +9,7 @@
     "normalize:images": "node scripts/normalize-images.js",
     "normalize:images:check": "node scripts/normalize-images.js --check",
     "test": "node scripts/tests/run_all.js",
-    "test:html": "node scripts/tests/html_syntax.js && node scripts/tests/html_stress.js",
+    "test:html": "node scripts/tests/html_syntax.js && node scripts/tests/html_stress.js && node scripts/tests/media_editor_check.js",
     "test:data": "node scripts/tests/data_check.js && node physq/scripts/parity_check.js",
     "test:qa-images": "node scripts/normalize-images.js --check && node scripts/tests/qa_images_stress.js && node scripts/tests/data_check.js",
     "test:build": "node scripts/tests/data_check.js",

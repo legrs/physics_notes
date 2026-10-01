@@ -37,6 +37,7 @@ console.log('=== physics_notes full test suite (STRICT) ===');
 // Phase 1–2: HTML
 run('html syntax', process.execPath, [path.join('scripts', 'tests', 'html_syntax.js')]);
 run('html stress', process.execPath, [path.join('scripts', 'tests', 'html_stress.js')]);
+run('media editor', process.execPath, [path.join('scripts', 'tests', 'media_editor_check.js')]);
 
 // Phase 2.5: QA images (UUID / licenses / normalize / search_text invariants)
 // normalize --check is warn-only: Build JSON will auto-rename non-UUID files, so editing qa_images should not fail CI
