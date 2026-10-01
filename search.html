@@ -2722,9 +2722,11 @@
           } else if (lic.license && !lic.attribution) {
             capText = lic.license;
           }
-          if (lic.url) {
+          // url はデータ由来で DOMPurify を通らない（DOM で直接組み立てる）ため、
+          // javascript: 等を弾き http(s) のみリンクにする
+          if (lic.url && /^https?:\/\//i.test(String(lic.url).trim())) {
             const a = document.createElement('a');
-            a.href = lic.url;
+            a.href = String(lic.url).trim();
             a.textContent = capText || lic.url;
             a.target = '_blank';
             a.rel = 'noopener';

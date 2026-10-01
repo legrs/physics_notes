@@ -335,6 +335,13 @@ section('Image markdown & sanitization (strict)');
   ok(htmlSrc.includes("ADD_ATTR: ['loading']"), 'DOMPurify allows loading attr');
   ok(htmlSrc.includes('enhanceImagesWithLicenses'), 'enhanceImagesWithLicenses exists');
   ok(htmlSrc.includes('img.onerror'), 'img.onerror placeholder exists');
+  // License caption links are built with the DOM (not via DOMPurify), so the
+  // data-provided url must be restricted to http(s) in both pages.
+  const editorSrc = fs.readFileSync(path.join(REPO_ROOT, 'qa_editor.html'), 'utf-8');
+  for (const [name, src] of [['search.html', htmlSrc], ['qa_editor.html', editorSrc]]) {
+    ok(/a\.href = lic\.url/.test(src) === false && /\^https\?:\\\/\\\/\/i\.test\(String\(lic\.url\)/.test(src),
+      `${name}: license url link is restricted to http(s)`);
+  }
   // BM25 must not be poisoned by image src / javascript: URLs
   const imgQueries = [
     '![attack](javascript:alert(1))',
