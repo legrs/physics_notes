@@ -16,6 +16,8 @@
 // qa_images/licenses.json のキーも追従する。
 //
 // 画像だけでなく動画 (mp4/m4v/webm/ogv/mov) も同じ qa_images/ で扱う。
+// iPhone 等の HEIC/HEIF は Chrome/Firefox で表示できないため、ここで JPEG に
+// 変換してから UUID 名にする（元ファイルは削除、参照と licenses.json も追従）。
 // 参照は ![説明](qa_images/x.mp4) か <video src> / <source src> / <video poster>。
 //
 // Usage:
@@ -47,6 +49,8 @@ const UUID_BASE_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const IMAGE_EXT_RE = /\.(jpe?g|png|webp|svg|gif|mp4|m4v|webm|ogv|mov)$/i;
 const VIDEO_EXT_RE = /\.(mp4|m4v|webm|ogv|mov)$/i;
 const VIDEO_WARN_BYTES = 20 * 1024 * 1024;
+// 置けるが配信前に JPEG へ変換する形式
+const HEIC_EXT_RE = /\.(heic|heif)$/i;
 // HTML の画像・動画タグと、その中で qa_images/ を指しうる属性
 const HTML_MEDIA_RE = /<(?:img|video|source)\b[^>]*>/gi;
 const MEDIA_ATTRS = ['src', 'poster'];
@@ -99,7 +103,50 @@ function extractImgSrcs(answer) {
   return srcs;
 }
 
-function main() {
+// HEIC/HEIF → JPEG。sharp のプリビルドは HEVC を復号できない（AVIF のみ）ため
+// heic-decode（libheif の WASM 版）で復号し、sharp で JPEG にする。生の画素から
+// 作り直すので、iPhone 写真の位置情報などの EXIF もここで落ちる。向き（回転）は
+// libheif が復号時に適用済み。透過は白で塗りつぶす。
+async function heicToJpeg(buf) {
+  const sharp = require('sharp');
+  let img;
+  try {
+    const decode = require('heic-decode');
+    const { width, height, data } = await decode({ buffer: buf });
+    img = sharp(Buffer.from(data.buffer, data.byteOffset, data.byteLength), { raw: { width, height, channels: 4 } });
+  } catch (e) {
+    // AV1 で符号化された .heif 等は sharp 自身が読める
+    img = sharp(buf);
+  }
+  return img.flatten({ background: '#ffffff' }).jpeg({ quality: 90, mozjpeg: true }).toBuffer();
+}
+
+async function convertHeicFiles(renameMap) {
+  let converted = 0;
+  const heics = fs.readdirSync(QA_IMAGES_DIR).filter((f) => HEIC_EXT_RE.test(f));
+  for (const name of heics) {
+    let newName;
+    do { newName = crypto.randomUUID() + '.jpg'; } while (fs.existsSync(path.join(QA_IMAGES_DIR, newName)));
+    if (CHECK) {
+      renameMap.set(name, newName);
+      console.log(`[check] Would convert ${name} -> ${newName} (JPEG)`);
+      continue;
+    }
+    try {
+      const jpg = await heicToJpeg(fs.readFileSync(path.join(QA_IMAGES_DIR, name)));
+      fs.writeFileSync(path.join(QA_IMAGES_DIR, newName), jpg);
+      fs.unlinkSync(path.join(QA_IMAGES_DIR, name));
+      renameMap.set(name, newName);
+      converted++;
+      console.log(`Converted ${name} -> ${newName} (JPEG, ${(jpg.length / 1024).toFixed(0)} KB)`);
+    } catch (e) {
+      console.warn(`⚠ Failed to convert ${name}: ${e.message} — left as is (it will not display in Chrome/Firefox)`);
+    }
+  }
+  return converted;
+}
+
+async function main() {
   let renamed = 0;
   let updatedRefs = 0;
   const renameMap = new Map(); // old basename -> new basename
@@ -111,6 +158,10 @@ function main() {
     if (CHECK) process.exit(0);
     return;
   }
+
+  // 0) HEIC/HEIF → <uuid>.jpg（renameMap に載せるので、以降の参照書き換え・
+  //    licenses.json のキー追従は通常のリネームと同じ経路で行われる）
+  renamed += await convertHeicFiles(renameMap);
 
   const files = fs.readdirSync(QA_IMAGES_DIR).filter((f) => {
     // licenses.json / .gitkeep / README.md はスキップ、画像のみ
@@ -508,4 +559,7 @@ function main() {
   }
 }
 
-main();
+main().catch((e) => {
+  console.error(`❌ ${e && e.stack || e}`);
+  process.exit(1);
+});

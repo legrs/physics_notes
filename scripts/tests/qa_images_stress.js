@@ -233,6 +233,32 @@ section('normalize-images.js real run (--root, images + videos)');
   fs.rmSync(td, { recursive: true, force: true });
 })();
 
+section('normalize-images.js HEIC/HEIF → JPEG');
+(function(){
+  const fixture = path.join(REPO_ROOT, 'scripts/tests/fixtures/tiny.heic');
+  const td = fs.mkdtempSync(path.join(os.tmpdir(), 'qa-heic-'));
+  const qa = path.join(td, 'qa_images'); fs.mkdirSync(qa);
+  fs.copyFileSync(fixture, path.join(qa, 'IMG_0001.HEIC'));
+  fs.copyFileSync(fixture, path.join(qa, 'scan.heif'));
+  fs.writeFileSync(path.join(qa, 'licenses.json'), JSON.stringify({ _default: { license: 'Apache-2.0' }, 'IMG_0001.HEIC': { license: 'CC BY 4.0' } }));
+  fs.writeFileSync(path.join(td, 'q_and_a_data.json'), JSON.stringify([{ id: 'r1', questions: ['q'],
+    answer: '![iPhone](qa_images/IMG_0001.HEIC) <img src="qa_images/scan.heif" alt="s">' }]));
+  const script = path.join(REPO_ROOT, 'scripts/normalize-images.js');
+  const chk = spawnSync(process.execPath, [script, '--root', td, '--check'], { encoding: 'utf-8' });
+  ok(chk.status === 1 && /Would convert IMG_0001\.HEIC/.test(chk.stdout), '--check reports HEIC needing conversion');
+  ok(fs.existsSync(path.join(qa, 'IMG_0001.HEIC')), '--check does not touch files');
+  const run = spawnSync(process.execPath, [script, '--root', td], { encoding: 'utf-8', timeout: 120000 });
+  ok(run.status === 0, `normalize converts HEIC (exit ${run.status}) ${(run.stderr || '').slice(0, 200)}`);
+  const files = fs.readdirSync(qa).filter(f => f !== 'licenses.json');
+  ok(files.length === 2 && files.every(f => UUID_RE.test(f) && f.endsWith('.jpg')), `HEIC/HEIF became <uuid>.jpg: ${files.join(', ')}`);
+  ok(files.every(f => fs.readFileSync(path.join(qa, f)).subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))), 'converted files are real JPEGs');
+  const out = JSON.parse(fs.readFileSync(path.join(td, 'q_and_a_data.json'), 'utf-8'))[0].answer;
+  ok(!/heic|heif/i.test(out) && files.every(f => out.includes('qa_images/' + f)), 'markdown and <img> refs point at the JPEGs');
+  const lic = JSON.parse(fs.readFileSync(path.join(qa, 'licenses.json'), 'utf-8'));
+  ok(Object.entries(lic).some(([k, v]) => k.endsWith('.jpg') && v.license === 'CC BY 4.0'), 'licenses.json key follows the conversion');
+  fs.rmSync(td, { recursive: true, force: true });
+})();
+
 // ---- 5. version.json qa_images manifest ----
 section('version.json qa_images manifest (if exists)');
 const ver = JSON.parse(fs.readFileSync(path.join(REPO_ROOT,'version.json'),'utf-8'));

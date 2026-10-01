@@ -255,4 +255,5 @@ query.split(" ").every(word => item.search_text.includes(word))
 * **手元では雑な名前でOK** — `photo_001.JPG` のような名前で `qa_images/` に置き、`answer` に `![](qa_images/photo_001.JPG)` と書いて push するだけで、CI（`.github/workflows/build.yml`）が `qa_images/<uuid>.jpg` にリネームし、`q_and_a_data.json` 内参照も `qa_images/licenses.json` のキーも追従して `[skip ci]` で再pushします。
 * **ライセンス** — デフォルトは `LICENSE` の Apache-2.0。例外のみ `qa_images/licenses.json` に記載します。`scripts/build.js` が `licenses.json` を読み、各レコードに `image_licenses` として埋め込むため、Web は `<figcaption>`、physq は Detail で自動表示されます。
 * **ローカルで正規化** — `npm run normalize:images`（実行） / `npm run normalize:images:check`（dry-run）。
+* **形式** — `jpg/jpeg/png/webp/svg/gif` はそのまま、**HEIC/HEIF（iPhone の写真）は CI が JPEG に自動変換**します（Chrome/Firefox が HEIC を表示できないため。位置情報などの EXIF も除去）。透過 PNG/SVG の透明部分は表示場所の背景色になります。
 * **サイズ** — `webp` 推奨ですが強制しません。CI は `<3MB / 3-5MB / ≥5MB` の統計を出力し、5MB超は警告のみです。動画は git にそのまま入るので短く圧縮したもの（H.264 の `.mp4`、目安 20MB 未満）を推奨し、それを超えると警告します（GitHub は 100MB 超のファイルを拒否）。詳細は `qa_images/README.md` を参照。
