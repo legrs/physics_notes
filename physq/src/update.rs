@@ -78,7 +78,12 @@ pub struct UpdatePlan {
 fn http_client() -> Result<reqwest::blocking::Client> {
     reqwest::blocking::Client::builder()
         .user_agent(concat!("physq/", env!("CARGO_PKG_VERSION")))
-        .timeout(std::time::Duration::from_secs(60))
+        .connect_timeout(std::time::Duration::from_secs(15))
+        // `timeout` bounds the *whole* request including the body. The release
+        // binary (plus the Intel ONNX Runtime dylib) is tens of MB, which a
+        // 60 s cap made impossible to finish on a slow connection; keep a
+        // generous upper bound so a stalled transfer still fails eventually.
+        .timeout(std::time::Duration::from_secs(15 * 60))
         .build()
         .context("failed to build HTTP client")
 }
@@ -337,7 +342,25 @@ pub fn apply(plan: &UpdatePlan, progress: &dyn Fn(&str)) -> Result<()> {
             .context("running executable has no parent dir")?
             .to_path_buf();
         let dest = exe_dir.join(name);
-        std::fs::write(&dest, dylib).with_context(|| format!("writing {}", dest.display()))?;
+        // Write next to the destination, then rename over it: truncating the
+        // dylib in place while the running physq has it mapped can crash the
+        // old process (and leaves a corrupt dylib if the write is cut short).
+        let mut tmp = tempfile::Builder::new()
+            .prefix(".physq-update-")
+            .tempfile_in(&exe_dir)
+            .with_context(|| format!("creating a temp file in {}", exe_dir.display()))?;
+        tmp.write_all(&dylib)
+            .with_context(|| format!("writing {}", dest.display()))?;
+        // tempfile creates 0600; keep the usual 0644 a plain write would give.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(tmp.path(), std::fs::Permissions::from_mode(0o644))
+                .with_context(|| format!("setting permissions on {}", dest.display()))?;
+        }
+        tmp.persist(&dest)
+            .map_err(|e| e.error)
+            .with_context(|| format!("replacing {}", dest.display()))?;
     } else if companion_asset_name().is_some() {
         bail!(
             "Intel Mac update: release {} is missing required companion asset {}; aborting (binary would not launch)",

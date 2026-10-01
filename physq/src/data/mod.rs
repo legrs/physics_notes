@@ -6,10 +6,10 @@
 //! If-None-Match) on the data files and warn once. Offline with a complete
 //! cache → use the cache and warn.
 //!
-//! With a complete cache, the network is only touched once per
-//! `refresh_interval_secs` window (`Config::refresh_interval_secs`, default
-//! 15 min) — repeated launches within that window reuse the cache with zero
-//! requests. Every check (success, 404, unexpected status, or a connection
+//! With a complete cache and a non-zero `refresh_interval_secs`
+//! (`Config::refresh_interval_secs`; default 0 = check every launch), the
+//! network is only touched once per window — repeated launches within it
+//! reuse the cache with zero requests. Every check (success, 404, unexpected status, or a connection
 //! error) resets the window, so a rate-limited host doesn't get hammered by
 //! quick repeated launches either.
 
@@ -240,26 +240,50 @@ pub async fn ensure_data(
                     // whether the set on the server has changed — surface it as a warning so the
                     // user knows a new image is available without needing to read version.json.
                     if let Some(new_qa) = &manifest.qa_images {
-                        let old_qa_hash = std::fs::read(cfg.data_dir().join(VERSION_FILE))
-                            .ok()
-                            .and_then(|b| serde_json::from_slice::<Manifest>(&b).ok())
-                            .and_then(|m| m.qa_images.map(|q| q.hash));
-                        if old_qa_hash.as_deref() != Some(new_qa.hash.as_str()) {
-                            // Only warn when we actually had a previous hash to compare (i.e. not first fetch)
-                            // and the count/hash indicates a change. Empty→non-empty is also a change.
-                            if old_qa_hash.is_some() || new_qa.count > 0 {
-                                warnings.push(format!(
-                                    "qa_images updated: {} file(s), {} total bytes (hash {})",
-                                    new_qa.count,
-                                    new_qa.total_bytes,
-                                    &new_qa.hash[..8.min(new_qa.hash.len())]
-                                ));
-                            }
+                        // `None` = no previous version.json at all (first fetch,
+                        // or a cleaned cache): nothing was "updated", so stay
+                        // quiet. `Some(None)` = previous manifest predates
+                        // qa_images (schema < 4): a non-empty set is new.
+                        let old_qa_hash: Option<Option<String>> =
+                            std::fs::read(cfg.data_dir().join(VERSION_FILE))
+                                .ok()
+                                .and_then(|b| serde_json::from_slice::<Manifest>(&b).ok())
+                                .map(|m| m.qa_images.map(|q| q.hash));
+                        let changed = match &old_qa_hash {
+                            None => false,
+                            Some(None) => new_qa.count > 0,
+                            Some(Some(old)) => *old != new_qa.hash,
+                        };
+                        if changed {
+                            warnings.push(format!(
+                                "qa_images updated: {} file(s), {} total bytes (hash {})",
+                                new_qa.count,
+                                new_qa.total_bytes,
+                                new_qa.hash.get(..8).unwrap_or(&new_qa.hash)
+                            ));
                         }
                     }
-                    fetch_by_manifest(cfg, &client, &manifest, &mut meta, progress, &mut warnings)
-                        .await?;
-                    write_atomic(&cfg.data_dir().join(VERSION_FILE), &bytes)?;
+                    match fetch_by_manifest(
+                        cfg,
+                        &client,
+                        &manifest,
+                        &mut meta,
+                        progress,
+                        &mut warnings,
+                    )
+                    .await
+                    {
+                        Ok(()) => write_atomic(&cfg.data_dir().join(VERSION_FILE), &bytes)?,
+                        // version.json answered but a data file didn't (429,
+                        // dropped connection…): same policy as an unreachable
+                        // version.json — keep serving the cache instead of
+                        // failing the whole launch. version.json isn't saved,
+                        // so the next launch retries the stale file(s).
+                        Err(e) if cache_complete(cfg) => warnings.push(format!(
+                            "could not download updated data ({e:#}); using cached data"
+                        )),
+                        Err(e) => return Err(e),
+                    }
                 }
                 Err(e) => {
                     warnings.push(format!(
@@ -375,16 +399,33 @@ async fn fetch_by_manifest(
             .bytes()
             .await
             .with_context(|| format!("reading {name}"))?;
+        // raw.githubusercontent.com is CDN-cached for a few minutes, so right
+        // after a push version.json can already be new while the data file is
+        // still the old one. Recording the new manifest hash for stale bytes
+        // would pin the stale copy until the *next* upstream change, so only
+        // record it when the content really matches (build.js hashes with
+        // SHA-256; any other hash format is treated as opaque).
+        let verified = !looks_like_sha256(&mf.hash) || sha256_hex(&bytes) == mf.hash;
+        if !verified {
+            warnings.push(format!(
+                "{name} from the data host doesn't match version.json yet (CDN cache lag?); \
+                 using it for now and re-checking next launch"
+            ));
+        }
         write_atomic(&local, &bytes)?;
         meta.files.insert(
             name.to_string(),
             FileMeta {
-                manifest_hash: Some(mf.hash.clone()),
+                manifest_hash: verified.then(|| mf.hash.clone()),
                 etag,
             },
         );
     }
     Ok(())
+}
+
+fn looks_like_sha256(s: &str) -> bool {
+    s.len() == 64 && s.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
 /// Pre-version.json fallback: conditional GET per data file.
@@ -526,6 +567,13 @@ mod tests {
     fn skip_check_boundary_is_inclusive_of_expiry() {
         // exactly at the window edge: age == interval, no longer "within" it
         assert!(!should_skip_check(Some(1_000), 1_900, 900));
+    }
+
+    #[test]
+    fn sha256_shape_detection() {
+        assert!(looks_like_sha256(&sha256_hex(b"x")));
+        assert!(!looks_like_sha256("aa"));
+        assert!(!looks_like_sha256(&"z".repeat(64)));
     }
 
     #[test]

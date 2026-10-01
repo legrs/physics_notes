@@ -112,6 +112,13 @@
     body {
       height: 100%;
       overflow: hidden;
+      /* #app 自体は overflow:hidden で高さを画面ぴったりに収めているが、
+         内部の一覧・プレビュー等（overflow-y:auto）を端までスクロールした
+         状態でさらにスクロール操作を続けると、ブラウザによっては余った分が
+         親要素へ連鎖（scroll chaining）し、ページ全体がバウンド/スクロール
+         して見えることがある。html/body でも連鎖を止めておく（各スクロール
+         領域側の overscroll-behavior: contain と二重の対策）。 */
+      overscroll-behavior-y: none;
     }
 
     body {
@@ -377,6 +384,7 @@
     .sidebar-list {
       flex: 1;
       overflow-y: auto;
+      overscroll-behavior: contain;
       padding: 4px 8px 12px;
       display: flex;
       flex-direction: column;
@@ -579,6 +587,7 @@
       flex: 1;
       min-height: 0;
       overflow-y: auto;
+      overscroll-behavior: contain;
     }
 
     .tab-content:not([hidden]) {
@@ -722,6 +731,7 @@
       overflow: hidden;
       max-height: 240px;
       overflow-y: auto;
+      overscroll-behavior: contain;
       line-height: 1.5;
     }
 
@@ -802,6 +812,7 @@
       border-radius: 10px;
       padding: 14px 16px;
       overflow-x: auto;
+      overscroll-behavior-x: contain;
       margin: 1em 0;
     }
 
@@ -882,6 +893,7 @@
     .prose table {
       display: block;
       overflow-x: auto;
+      overscroll-behavior-x: contain;
       width: 100%;
       border-collapse: collapse;
       margin: 1em 0;
@@ -930,6 +942,7 @@
     .math-block {
       display: block;
       overflow-x: auto;
+      overscroll-behavior-x: contain;
       padding: 12px 16px;
       margin: 1em 0;
       background: var(--math-block-bg);
@@ -992,6 +1005,7 @@
       margin: 0;
       flex: 1;
       overflow: auto;
+      overscroll-behavior: contain;
       padding: 16px 18px;
       background: var(--code-bg);
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -1235,9 +1249,10 @@
           let capText = lic.attribution || '';
           if (lic.license && lic.license !== 'Apache-2.0') capText = capText ? `${capText} (${lic.license})` : lic.license;
           else if (lic.license && !lic.attribution) capText = lic.license;
-          if (lic.url) {
+          // url はデータ由来で DOMPurify を通らないため http(s) のみリンクにする
+          if (lic.url && /^https?:\/\//i.test(String(lic.url).trim())) {
             const a = document.createElement('a');
-            a.href = lic.url; a.textContent = capText || lic.url; a.target='_blank'; a.rel='noopener';
+            a.href = String(lic.url).trim(); a.textContent = capText || lic.url; a.target='_blank'; a.rel='noopener';
             cap.appendChild(a);
           } else cap.textContent = capText;
           if (cap.textContent) figure.appendChild(cap);
@@ -1606,7 +1621,8 @@
           return remote && FIELD_ORDER.every(f => jsonEq(item[f], remote[f]));
         });
 
-        if (!same) {
+        // 何も読み込んでいない（空の）状態からの初回取得では失う編集が無いので確認しない
+        if (!same && allData.length) {
           const ok = confirm('取得したリモートの内容が現在の編集内容と異なります。取得すると上書きされます。続行しますか？');
           if (!ok) {
             // 上書きはしないが、比較のために取得したリモートの内容で

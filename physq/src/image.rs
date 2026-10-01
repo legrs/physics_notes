@@ -4,14 +4,27 @@
 use regex::Regex;
 use std::sync::OnceLock;
 
-fn fence_ranges(s: &str) -> Vec<(usize, usize)> {
-    let mut ranges = Vec::new();
+/// One image reference found in an `answer`, with its byte span in that
+/// answer so a renderer can split the surrounding text around it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImageRef {
+    pub start: usize,
+    pub end: usize,
+    pub alt: String,
+    pub src: String,
+}
+
+fn fence_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
     // ```...``` (dot matches newline via (?s)) and `...`
-    let re = Regex::new(r"(?s)```.*?```|`[^`]*`").unwrap();
-    for m in re.find_iter(s) {
-        ranges.push((m.start(), m.end()));
-    }
-    ranges
+    RE.get_or_init(|| Regex::new(r"(?s)```.*?```|`[^`]*`").unwrap())
+}
+
+fn fence_ranges(s: &str) -> Vec<(usize, usize)> {
+    fence_regex()
+        .find_iter(s)
+        .map(|m| (m.start(), m.end()))
+        .collect()
 }
 
 fn in_fence(pos: usize, ranges: &[(usize, usize)]) -> bool {
@@ -28,87 +41,112 @@ fn html_img_regex() -> &'static Regex {
     RE.get_or_init(|| Regex::new(r"(?i)<img\b[^>]*>").unwrap())
 }
 
-fn html_src_alt(tag: &str) -> (String, String) {
-    // alt: try double-quoted, then single-quoted
-    let alt = {
-        let re_double = Regex::new(r#"(?i)alt\s*=\s*"([^"]*)""#).unwrap();
-        if let Some(c) = re_double.captures(tag) {
-            c.get(1).map(|m| m.as_str().to_string()).unwrap_or_default()
-        } else {
-            let re_single = Regex::new(r"(?i)alt\s*=\s*'([^']*)'").unwrap();
-            re_single
-                .captures(tag)
-                .and_then(|c| c.get(1))
-                .map(|m| m.as_str().to_string())
-                .unwrap_or_default()
-        }
-    };
-    // src: quoted double, then single, then unquoted
-    let re_src_double = Regex::new(r#"(?i)\ssrc\s*=\s*"([^"]*)""#).unwrap();
-    if let Some(c) = re_src_double.captures(tag) {
-        let src = c.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
-        return (alt, src);
-    }
-    let re_src_single = Regex::new(r"(?i)\ssrc\s*=\s*'([^']*)'").unwrap();
-    if let Some(c) = re_src_single.captures(tag) {
-        let src = c.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
-        return (alt, src);
-    }
-    let src_unquoted = Regex::new(r"(?i)\ssrc\s*=\s*([^\s>]+)").unwrap();
-    if let Some(c) = src_unquoted.captures(tag) {
-        let src = c.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
-        let src = src.trim_end_matches(['"', '\'', '>']).to_string();
-        return (alt, src);
-    }
-    (alt, String::new())
+/// `alt` then `src` attribute patterns, each tried double-quoted → single-quoted
+/// (→ unquoted for `src`). `\b`/`\s` anchors keep `data-alt=` / `data-src=`
+/// from matching.
+fn attr_regexes() -> &'static [Regex; 5] {
+    static RE: OnceLock<[Regex; 5]> = OnceLock::new();
+    RE.get_or_init(|| {
+        [
+            Regex::new(r#"(?i)[\s<]alt\s*=\s*"([^"]*)""#).unwrap(),
+            Regex::new(r"(?i)[\s<]alt\s*=\s*'([^']*)'").unwrap(),
+            Regex::new(r#"(?i)\ssrc\s*=\s*"([^"]*)""#).unwrap(),
+            Regex::new(r"(?i)\ssrc\s*=\s*'([^']*)'").unwrap(),
+            Regex::new(r"(?i)\ssrc\s*=\s*([^\s>]+)").unwrap(),
+        ]
+    })
 }
 
-/// Extract `(alt, src)` pairs from `answer` markdown.
-/// - Code fences (```...```) and inline code (`...`) are ignored.
+fn first_capture(res: &[Regex], tag: &str) -> Option<String> {
+    res.iter()
+        .find_map(|re| re.captures(tag).and_then(|c| c.get(1)))
+        .map(|m| m.as_str().to_string())
+}
+
+fn html_src_alt(tag: &str) -> (String, String) {
+    let res = attr_regexes();
+    let alt = first_capture(&res[0..2], tag).unwrap_or_default();
+    let src = first_capture(&res[2..5], tag)
+        .map(|s| s.trim_end_matches(['"', '\'', '>']).to_string())
+        .unwrap_or_default();
+    (alt, src)
+}
+
+/// Every image in `answer`, in **document order**, with byte spans.
+/// - Code fences (```...```) and inline code (`...`) are ignored — fence
+///   detection runs over the whole answer, so a multi-line fence hides the
+///   images inside it no matter how the caller later splits lines.
 /// - Both markdown `![alt](src "title")` and HTML `<img alt="..." src="...">` are handled.
-/// - `alt` may be empty, `src` may be `qa_images/...` relative or an absolute `https://` URL.
-/// - `qa_images/` relative is the only form that gets UUID-normalized upstream; this function keeps it as-is.
-pub fn extract_images(answer: &str) -> Vec<(String, String)> {
+pub fn image_refs(answer: &str) -> Vec<ImageRef> {
     if answer.is_empty() {
         return Vec::new();
     }
     let ranges = fence_ranges(answer);
     let mut out = Vec::new();
 
-    // markdown
     for caps in md_regex().captures_iter(answer) {
         let m = caps.get(0).unwrap();
         if in_fence(m.start(), &ranges) {
             continue;
         }
-        let alt = caps
-            .get(1)
-            .map(|x| x.as_str().to_string())
-            .unwrap_or_default();
-        let src = caps
-            .get(2)
-            .map(|x| x.as_str().to_string())
-            .unwrap_or_default();
+        let src = caps.get(2).map_or("", |x| x.as_str());
         if src.is_empty() {
             continue;
         }
-        out.push((alt, src));
+        out.push(ImageRef {
+            start: m.start(),
+            end: m.end(),
+            alt: caps.get(1).map_or("", |x| x.as_str()).to_string(),
+            src: src.to_string(),
+        });
     }
 
-    // html <img>
     for m in html_img_regex().find_iter(answer) {
         if in_fence(m.start(), &ranges) {
             continue;
         }
-        let tag = m.as_str();
-        let (alt, src) = html_src_alt(tag);
+        let (alt, src) = html_src_alt(m.as_str());
         if src.is_empty() {
             continue;
         }
-        out.push((alt, src));
+        out.push(ImageRef {
+            start: m.start(),
+            end: m.end(),
+            alt,
+            src,
+        });
     }
 
+    // Selection index i (TUI) must mean the i-th image *as displayed*, so
+    // markdown and HTML images are interleaved by position.
+    out.sort_by_key(|r| r.start);
     out
+}
+
+/// Extract `(alt, src)` pairs from `answer` markdown, in document order.
+/// - `alt` may be empty, `src` may be `qa_images/...` relative or an absolute `https://` URL.
+/// - `qa_images/` relative is the only form that gets UUID-normalized upstream; this function keeps it as-is.
+pub fn extract_images(answer: &str) -> Vec<(String, String)> {
+    image_refs(answer)
+        .into_iter()
+        .map(|r| (r.alt, r.src))
+        .collect()
+}
+
+/// Resolve an image `src` from the corpus into something a browser / OS
+/// opener can load: absolute `http(s):` and `data:` URLs pass through,
+/// protocol-relative `//host/…` gets `https:` (an OS opener has no page
+/// scheme to inherit), and anything else is a repo-relative path served from
+/// the data host (`file_url`).
+pub fn resolve_image_url(src: &str, file_url: impl Fn(&str) -> String) -> String {
+    let lower = src.to_ascii_lowercase();
+    if lower.starts_with("http://") || lower.starts_with("https://") || lower.starts_with("data:") {
+        src.to_string()
+    } else if let Some(rest) = src.strip_prefix("//") {
+        format!("https://{rest}")
+    } else {
+        file_url(src.trim_start_matches("./"))
+    }
 }
 
 #[cfg(test)]
@@ -173,5 +211,58 @@ mod tests {
         let ans = r#"![alt](qa_images/a.jpg "title")"#;
         let v = extract_images(ans);
         assert_eq!(v[0].1, "qa_images/a.jpg");
+    }
+
+    #[test]
+    fn markdown_and_html_images_come_back_in_document_order() {
+        // Regression: markdown images used to be returned before every HTML
+        // one, so TUI selection #0 (the first image on screen, an <img>)
+        // opened the markdown image further down.
+        let ans = "<img src=\"qa_images/first.jpg\" alt=\"1\">\ntext\n![2](qa_images/second.jpg)";
+        let v = extract_images(ans);
+        assert_eq!(v[0].1, "qa_images/first.jpg");
+        assert_eq!(v[1].1, "qa_images/second.jpg");
+    }
+
+    #[test]
+    fn spans_point_at_the_image_syntax() {
+        let ans = "see ![a](qa_images/a.jpg) done";
+        let r = &image_refs(ans)[0];
+        assert_eq!(&ans[r.start..r.end], "![a](qa_images/a.jpg)");
+    }
+
+    #[test]
+    fn data_attributes_are_not_mistaken_for_alt_or_src() {
+        let ans = r#"<img data-alt="no" alt="yes" data-src="nope.jpg" src="qa_images/ok.jpg">"#;
+        assert_eq!(
+            extract_images(ans),
+            vec![("yes".to_string(), "qa_images/ok.jpg".to_string())]
+        );
+    }
+
+    #[test]
+    fn resolve_image_url_handles_every_src_shape() {
+        let base = |p: &str| format!("https://host/repo/{p}");
+        assert_eq!(
+            resolve_image_url("qa_images/a.jpg", base),
+            "https://host/repo/qa_images/a.jpg"
+        );
+        assert_eq!(
+            resolve_image_url("./qa_images/a.jpg", base),
+            "https://host/repo/qa_images/a.jpg"
+        );
+        assert_eq!(
+            resolve_image_url("https://ex.com/a.png", base),
+            "https://ex.com/a.png"
+        );
+        assert_eq!(
+            resolve_image_url("HTTPS://ex.com/a.png", base),
+            "HTTPS://ex.com/a.png"
+        );
+        // protocol-relative: an OS opener has no page scheme to inherit
+        assert_eq!(
+            resolve_image_url("//cdn.ex.com/a.png", base),
+            "https://cdn.ex.com/a.png"
+        );
     }
 }

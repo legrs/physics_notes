@@ -10,7 +10,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use crate::config::{Config, ModelSel, ModelSize};
 use crate::engine::{Engine, SemanticEngine, hybrid};
 use crate::eval;
-use crate::image::extract_images;
+use crate::image::{extract_images, resolve_image_url};
 use crate::model::Corpus;
 use crate::query::prepare_query;
 use crate::semantic::SemanticError;
@@ -438,26 +438,47 @@ fn print_results(corpus: &Corpus, results: &[(u32, f64)], limit: usize, plain: b
                         s
                     })
                     .unwrap_or_default();
+                // Print the resolved URL (not the repo-relative src) so
+                // terminals that linkify URLs can open it directly.
+                let url = resolve_image_url(&src, |p| cfg.file_url(p));
                 if lic_str.is_empty() {
-                    println!("    {dim}🖼 {alt}  ({src}){reset}");
+                    println!("    {dim}🖼 {alt}  ({url}){reset}");
                 } else {
-                    println!("    {dim}🖼 {alt}  ({src})  {lic_str}{reset}");
+                    println!("    {dim}🖼 {alt}  ({url})  {lic_str}{reset}");
                 }
             }
         } else {
-            println!("{}\t{score:.6}\t{}\t{question}", i + 1, r.id);
+            println!("{}\t{score:.6}\t{}\t{}", i + 1, r.id, tsv_field(question));
             for (alt, src) in extract_images(&r.answer) {
-                let url = if src.starts_with("http://")
-                    || src.starts_with("https://")
-                    || src.starts_with("data:")
-                    || src.starts_with("//")
-                {
-                    src.clone()
-                } else {
-                    cfg.file_url(&src)
-                };
-                println!("image\t{}\t{}", alt, url);
+                let url = resolve_image_url(&src, |p| cfg.file_url(p));
+                println!("image\t{}\t{}", tsv_field(&alt), tsv_field(&url));
             }
         }
+    }
+}
+
+/// One TSV cell: tabs and line breaks inside a field would shift every later
+/// column (or start a bogus row) for `cut`/`awk` consumers, so fold them to
+/// spaces.
+fn tsv_field(s: &str) -> String {
+    s.chars()
+        .map(|c| {
+            if matches!(c, '\t' | '\n' | '\r') {
+                ' '
+            } else {
+                c
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tsv_field_keeps_rows_and_columns_intact() {
+        assert_eq!(tsv_field("a\tb\nc\r\nd"), "a b c  d");
+        assert_eq!(tsv_field("電磁誘導とは？"), "電磁誘導とは？");
     }
 }

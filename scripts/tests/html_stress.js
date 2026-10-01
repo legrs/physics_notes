@@ -312,6 +312,36 @@ detQueries.forEach((q) => {
   ok(typeof snip === 'string' && snip.length > 0, `snippet for "${q}" is a non-empty string`);
   ok(typeof item.description === 'string', 'snippet fallback description is a string');
 });
+// Result cards are plain text: no raw image markdown / HTML tags may leak in
+// (regression: "![alt](qa_images/….jpeg)" used to show up verbatim).
+[
+  { answer: '説明文です。\n![変圧器のコイル](qa_images/x.jpeg)\n変圧器の巻数比の説明です。', description: 'd' },
+  { answer: '<img src="qa_images/y.png" alt="変圧器"> 変圧器の巻数と電圧の関係。', description: 'd' },
+  { answer: '```\n![変圧器](qa_images/z.jpg)\n```\n変圧器の仕組みについての説明。', description: 'd' },
+  ...data.filter((d) => /qa_images\//.test(d.answer || '')),
+].forEach((item, i) => {
+  for (const w of [['変圧器'], W._expandQuery((item.questions && item.questions[0] || '').toLowerCase()).words]) {
+    const snip = W._extractSnippet(item, w);
+    ok(!/!\[[^\]]*\]\(|<img\b|qa_images\//i.test(snip), `snippet #${i} has no raw image syntax: ${JSON.stringify(snip).slice(0, 80)}`);
+  }
+});
+
+// Titles/snippets: inline LaTeX is rendered (not shown as raw "$…$"), the
+// rest goes through the plain renderer (escaping/highlight). KaTeX and
+// DOMPurify are stubbed — this checks the segmentation, not KaTeX itself.
+section('Inline math in titles');
+(function () {
+  const fn = new Function('katex', 'sanitizeHtml', 'escHtml',
+    `${extractFunction(html, 'inlineMathHtml')}; return inlineMathHtml;`)(
+    { renderToString: (e) => `<K>${e}</K>` }, (h) => h, (t) => t.replace(/</g, '&lt;'));
+  ok(fn('$ \\omega^2 $の値は？') === '<K>\\omega^2</K>の値は？', 'single inline math rendered');
+  ok(fn('$$ \\Delta q $$を移動<b>') === '<K>\\Delta q</K>を移動&lt;b>', '$$ block rendered inline, rest escaped');
+  ok(fn('a $x$ b $y$ c', (t) => `[${t}]`) === '[a ]<K>x</K>[ b ]<K>y</K>[ c]', 'plain renderer applied between math segments');
+  ok(fn('値段は$5') === '値段は$5', 'lone $ left as text');
+  const titles = data.map((d) => (d.questions || [])[0] || '').filter((t) => t.includes('$'));
+  ok(titles.length > 0 && titles.every((t) => !/\$[^$\n]+?\$/.test(fn(t).replace(/<K>[\s\S]*?<\/K>/g, ''))),
+    `no raw $…$ left in ${titles.length} real titles`);
+})();
 
 // ── 6. Image markdown & sanitization (strict, XSS) ──────────────────
 section('Image markdown & sanitization (strict)');
@@ -322,6 +352,18 @@ section('Image markdown & sanitization (strict)');
   ok(htmlSrc.includes("ADD_ATTR: ['loading']"), 'DOMPurify allows loading attr');
   ok(htmlSrc.includes('enhanceImagesWithLicenses'), 'enhanceImagesWithLicenses exists');
   ok(htmlSrc.includes('img.onerror'), 'img.onerror placeholder exists');
+  // Transparent PNG/SVG: the Blur Reveal frame behind the image must follow
+  // the theme surface (it used to be a fixed near-black #16161c in both themes).
+  const frameCss = (htmlSrc.match(/\.br-frame \{[\s\S]*?\n    \}/) || [''])[0];
+  ok(/background: var\(--br-frame-bg, var\(--bg-card\)\)/.test(frameCss) && !/--br-frame-bg:\s*#/.test(htmlSrc),
+    'Blur Reveal frame background follows the theme (no fixed dark color)');
+  // License caption links are built with the DOM (not via DOMPurify), so the
+  // data-provided url must be restricted to http(s) in both pages.
+  const editorSrc = fs.readFileSync(path.join(REPO_ROOT, 'qa_editor.html'), 'utf-8');
+  for (const [name, src] of [['search.html', htmlSrc], ['qa_editor.html', editorSrc]]) {
+    ok(/a\.href = lic\.url/.test(src) === false && /\^https\?:\\\/\\\/\/i\.test\(String\(lic\.url\)/.test(src),
+      `${name}: license url link is restricted to http(s)`);
+  }
   // BM25 must not be poisoned by image src / javascript: URLs
   const imgQueries = [
     '![attack](javascript:alert(1))',
