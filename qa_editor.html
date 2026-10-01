@@ -495,12 +495,90 @@
     }
 
     .editor-topbar {
+      container-type: inline-size;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
       padding: 12px 20px;
       border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .media-picker {
+      position: absolute;
+      z-index: 40;
+      width: min(360px, 90vw);
+      max-height: 60vh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      background: var(--bg-card);
+      border: 1px solid var(--border-dark);
+      border-radius: 10px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+      padding: 6px;
+    }
+
+    .media-picker-head {
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 4px 6px 6px;
+      line-height: 1.5;
+    }
+
+    .media-picker-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      border: none;
+      background: none;
+      text-align: left;
+      padding: 5px 6px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .media-picker-item:hover,
+    .media-picker-item:focus {
+      background: var(--bg-elevated);
+      outline: none;
+    }
+
+    .media-picker-item img,
+    .media-picker-item .ph {
+      width: 40px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 6px;
+      flex-shrink: 0;
+      background: var(--bg-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .media-picker-item .nm {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      word-break: break-all;
+      color: var(--text-primary);
+    }
+
+    .media-picker-item .sub {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .editor-head-main {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .editor-head-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
       flex-shrink: 0;
     }
 
@@ -517,7 +595,21 @@
       font-size: 11px;
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       color: var(--text-muted);
-      flex-shrink: 0;
+      margin-top: 2px;
+      /* 欄が狭くても全桁見えるよう、必要なら途中で折り返す（選択してコピーもできる） */
+      overflow-wrap: anywhere;
+      user-select: all;
+    }
+
+    .editor-id:empty {
+      display: none;
+    }
+
+    /* エディタ欄が狭いときはボタンをアイコンだけにする */
+    @container (max-width: 420px) {
+      .editor-head-actions .btn-text {
+        display: none;
+      }
     }
 
     #answer-input {
@@ -1054,6 +1146,31 @@
         display: none;
       }
 
+      /* 狭い画面: ボタンは1行に収め（ラベルは隠してアイコンだけ）、状態メッセージは
+         その下の行に全幅で出す（以前はボタンの横で縦長に潰れ、取得ボタンが画面外に出ていた） */
+      #topbar {
+        padding: 8px 12px;
+        gap: 6px 10px;
+      }
+
+      .topbar-right {
+        flex-wrap: wrap;
+        gap: 6px;
+        width: 100%;
+        justify-content: flex-end;
+      }
+
+      .topbar-right .status {
+        order: 10;
+        flex-basis: 100%;
+        max-width: none;
+        text-align: left;
+      }
+
+      .topbar-right .btn-text {
+        display: none;
+      }
+
       #layout {
         flex-direction: column;
       }
@@ -1132,8 +1249,13 @@
         </div>
         <span id="status-text" class="status"></span>
         <button id="sync-searchtext-btn" class="btn" type="button"
-          title="他の全フィールドがリモートと完全に一致する項目についてのみ、search_textをリモートの最新値に更新します">↻ search_text同期</button>
+          title="他の全フィールドがリモートと完全に一致する項目についてのみ、search_textをリモートの最新値に更新します">↻<span class="btn-text"> search_text同期</span></button>
+        <button id="local-open-btn" class="btn" type="button"
+          title="手元のリポジトリ（q_and_a_data.json があるフォルダ）を開いて、ローカルのデータを直接編集・保存">📁<span class="btn-text"> ローカル</span></button>
+        <button id="local-save-btn" class="btn" type="button" hidden
+          title="ローカルの q_and_a_data.json に保存（Ctrl/Cmd+S）">💾<span class="btn-text"> 保存</span></button>
         <button id="fetch-btn" class="btn btn-primary" type="button">⭳ 取得</button>
+        <input id="local-json-input" type="file" accept=".json,application/json" hidden>
       </div>
     </header>
 
@@ -1162,10 +1284,14 @@
 
       <section class="editor-pane" id="editor-pane">
         <div class="editor-topbar">
-          <div class="editor-qtitle" id="editor-qtitle">項目が選択されていません</div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <button id="insert-image-btn" class="btn" type="button" title="カーソル位置に画像・動画の記法を挿入（qa_images/ のファイル名の拡張子が .mp4 / .webm / .m4v / .mov / .ogv なら動画として表示）">🖼 画像・動画</button>
+          <!-- タイトルと ID は縦に並べる（以前は ID をボタンの横に置いていて、
+               エディタ欄が狭いと ID が欄の外に押し出されて見切れていた） -->
+          <div class="editor-head-main">
+            <div class="editor-qtitle" id="editor-qtitle">項目が選択されていません</div>
             <div class="editor-id" id="editor-id-badge"></div>
+          </div>
+          <div class="editor-head-actions">
+            <button id="insert-image-btn" class="btn" type="button" title="カーソル位置に画像・動画の記法を挿入（qa_images/ のファイル名の拡張子が .mp4 / .webm / .m4v / .mov / .ogv なら動画として表示）">🖼<span class="btn-text"> 画像・動画</span></button>
           </div>
         </div>
         <textarea id="answer-input" spellcheck="false" disabled
@@ -1642,6 +1768,7 @@
 
     // ── ローカル保存（誤って閉じても編集内容を失わないための保険） ──
     function persistState() {
+      scheduleLocalUI();
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
           allData, selectedId, newIds: [...newIds],
@@ -1957,7 +2084,17 @@
       scheduleLiveRender();
     });
 
-    document.getElementById('insert-image-btn').addEventListener('click', () => {
+    document.getElementById('insert-image-btn').addEventListener('click', e => {
+      // ローカルのフォルダを開いていれば qa_images/ の一覧から選ぶ
+      if (localRepo && localRepo.files.size) {
+        if (document.getElementById('media-picker')) closeMediaPicker();
+        else openMediaPicker(e.currentTarget);
+        return;
+      }
+      insertImageTemplate();
+    });
+
+    function insertImageTemplate() {
       const item = getSelectedItem();
       const input = document.getElementById('answer-input');
       if (!item || input.disabled) return;
@@ -1983,7 +2120,7 @@
       markDirty();
       scheduleLiveRender();
       input.focus();
-    });
+    }
 
     function scheduleLiveRender() {
       if (renderScheduled) return;
@@ -2006,6 +2143,7 @@
         ? mdToSafeHtml(item.answer)
         : '<p class="empty-hint">回答を入力するとプレビューが表示されます</p>';
       if (item.answer) enhanceImagesWithLicenses(out, item.image_licenses || null);
+      applyLocalMedia(out);
     }
 
     function orderFields(item) {
@@ -2679,6 +2817,299 @@
     document.getElementById('undo-btn').addEventListener('click', undo);
     document.getElementById('redo-btn').addEventListener('click', redo);
 
+    /* ══════════════════════════════════════════════════════════════
+       ローカルのリポジトリ（未push のデータ・画像）
+       - Chrome / Edge: フォルダを開くと q_and_a_data.json を読み込み、
+         💾 保存（Ctrl/Cmd+S）でそのファイルに直接書き戻す。qa_images/ の
+         手元の画像・動画はプレビューに表示され、🖼 ボタンから挿入できる。
+         開いたフォルダは記憶し、次回は確認だけで開き直せる。
+       - それ以外（Firefox / Safari / スマホ）: q_and_a_data.json を選んで
+         読み込み、💾 でダウンロード保存（読み取りのみのため）。
+       保存形式は「コード」タブの全件出力と同じ（4スペース・フィールド順固定）で、
+       読み込んで保存し直してもファイルは1バイトも変わらない。
+    ══════════════════════════════════════════════════════════════ */
+    const LOCAL_MEDIA_RE = /\.(jpe?g|png|webp|svg|gif|mp4|m4v|webm|ogv|mov|heic|heif)$/i;
+    let localRepo = null; // { label, root, dataHandle, qaDir, files: Map<name, File>, savedText, writable }
+    const localUrls = new Map();
+
+    function serializeData() {
+      return JSON.stringify(allData.map(orderFields), null, 4);
+    }
+
+    // FileSystemDirectoryHandle は IndexedDB に保存できる（次回の再オープン用）
+    function idbHandle(op, value) {
+      return new Promise(resolve => {
+        let req;
+        try { req = indexedDB.open('qa_editor', 1); } catch (_) { resolve(null); return; }
+        req.onupgradeneeded = () => req.result.createObjectStore('kv');
+        req.onerror = () => resolve(null);
+        req.onsuccess = () => {
+          try {
+            const tx = req.result.transaction('kv', op === 'get' ? 'readonly' : 'readwrite');
+            const store = tx.objectStore('kv');
+            const r = op === 'get' ? store.get('repoDir') : op === 'set' ? store.put(value, 'repoDir') : store.delete('repoDir');
+            r.onsuccess = () => resolve(op === 'get' ? r.result || null : true);
+            r.onerror = () => resolve(null);
+          } catch (_) { resolve(null); }
+        };
+      });
+    }
+
+    async function openLocal() {
+      if (!window.showDirectoryPicker) {
+        document.getElementById('local-json-input').click();
+        return;
+      }
+      let dir = null;
+      const remembered = await idbHandle('get');
+      if (remembered && confirm(`前回のフォルダ「${remembered.name}」を開きますか？\n（キャンセルで別のフォルダを選択）`)) {
+        try {
+          if ((await remembered.requestPermission({ mode: 'readwrite' })) === 'granted') dir = remembered;
+        } catch (_) { /* 消えた・移動した等 → 選び直し */ }
+      }
+      if (!dir) {
+        try {
+          dir = await window.showDirectoryPicker({ id: 'physics-notes', mode: 'readwrite' });
+        } catch (e) {
+          if (e && e.name !== 'AbortError') setStatus('フォルダを開けませんでした: ' + e.message, 'error');
+          return;
+        }
+      }
+      let dataHandle;
+      try {
+        dataHandle = await dir.getFileHandle('q_and_a_data.json');
+      } catch (_) {
+        setStatus(`「${dir.name}」に q_and_a_data.json がありません。リポジトリのフォルダ（physics_notes）を選んでください`, 'error');
+        return;
+      }
+      const text = await (await dataHandle.getFile()).text();
+      let qaDir = null;
+      const files = new Map();
+      try {
+        qaDir = await dir.getDirectoryHandle('qa_images');
+        for await (const [name, h] of qaDir.entries()) {
+          if (h.kind === 'file' && LOCAL_MEDIA_RE.test(name)) files.set(name, await h.getFile());
+        }
+      } catch (_) { /* qa_images が無くてもデータの編集はできる */ }
+      if (!loadLocalText(text, dir.name)) return;
+      localRepo = { label: dir.name, root: dir, dataHandle, qaDir, files, savedText: text, writable: true };
+      await idbHandle('set', dir);
+      afterLocalLoaded();
+    }
+
+    async function openLocalJsonFile(file) {
+      const text = await file.text();
+      if (!loadLocalText(text, file.name)) return;
+      localRepo = { label: file.name, root: null, dataHandle: null, qaDir: null, files: new Map(), savedText: text, writable: false };
+      afterLocalLoaded();
+    }
+
+    // ローカルの JSON を編集データにする（リモートとの差分情報 remoteData はそのまま残す）
+    function loadLocalText(text, label) {
+      let json;
+      try { json = JSON.parse(text); } catch (e) {
+        setStatus(`${label} を読めませんでした: ${e.message}`, 'error');
+        return false;
+      }
+      if (!Array.isArray(json)) {
+        setStatus(`${label} は配列ではありません`, 'error');
+        return false;
+      }
+      const fresh = json.map(normalizeItem);
+      const same = allData.length === fresh.length && allData.every((it, i) => jsonEq(orderFields(it), orderFields(fresh[i])));
+      if (!same && allData.length && dirty
+        && !confirm('今の編集内容とローカルのファイルの内容が異なります。ローカルの内容で置き換えますか？')) {
+        return false;
+      }
+      const prev = selectedId;
+      allData = fresh;
+      newIds.clear();
+      dirty = false;
+      selectedId = prev && allData.some(d => d.id === prev) ? prev : (allData.length ? allData[0].id : null);
+      persistState();
+      resetHistory();
+      return true;
+    }
+
+    function afterLocalLoaded() {
+      renderSidebar();
+      renderEditorForSelected();
+      updateLocalUI();
+      const media = localRepo.files.size ? `・qa_images ${localRepo.files.size}件` : '';
+      setStatus(localRepo.writable
+        ? `ローカル「${localRepo.label}」を開きました（${allData.length}件${media}）。💾 で直接保存できます`
+        : `「${localRepo.label}」を読み込みました（${allData.length}件）。💾 でダウンロード保存`, 'ok');
+    }
+
+    function localUnsaved() {
+      return !!localRepo && serializeData() !== localRepo.savedText;
+    }
+
+    let localUiTimer = null;
+    function updateLocalUI() {
+      const btn = document.getElementById('local-save-btn');
+      btn.hidden = !localRepo;
+      if (!localRepo) return;
+      const unsaved = localUnsaved();
+      btn.disabled = !unsaved;
+      btn.classList.toggle('btn-primary', unsaved);
+      btn.title = localRepo.writable
+        ? `${localRepo.label}/q_and_a_data.json に保存（Ctrl/Cmd+S）${unsaved ? '' : ' — 保存済み'}`
+        : `q_and_a_data.json をダウンロード${unsaved ? '' : '（変更なし）'}`;
+    }
+    // 1MB の JSON を毎キー入力で直列化しないよう、少し待ってから判定する
+    function scheduleLocalUI() {
+      if (!localRepo) return;
+      clearTimeout(localUiTimer);
+      localUiTimer = setTimeout(updateLocalUI, 500);
+    }
+
+    async function saveLocal() {
+      if (!localRepo) return;
+      const text = serializeData();
+      if (!localRepo.writable) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+        a.download = 'q_and_a_data.json';
+        document.body.append(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+        localRepo.savedText = text;
+        updateLocalUI();
+        setStatus('q_and_a_data.json をダウンロードしました。リポジトリのファイルと置き換えてください', 'ok');
+        return;
+      }
+      try {
+        // 開いた後にファイルが外から変わっていたら（git pull・build.js 等）確認する
+        const onDisk = await (await localRepo.dataHandle.getFile()).text();
+        if (onDisk !== localRepo.savedText
+          && !confirm('開いた後に q_and_a_data.json がエディタの外で変更されています（git pull や build.js 等）。上書きしますか？')) return;
+        if ((await localRepo.root.queryPermission({ mode: 'readwrite' })) !== 'granted'
+          && (await localRepo.root.requestPermission({ mode: 'readwrite' })) !== 'granted') {
+          setStatus('フォルダへの書き込みが許可されませんでした', 'error');
+          return;
+        }
+        const w = await localRepo.dataHandle.createWritable();
+        await w.write(text);
+        await w.close();
+        localRepo.savedText = text;
+        updateLocalUI();
+        setStatus(`${localRepo.label}/q_and_a_data.json に保存しました（commit・push すると反映）`, 'ok');
+      } catch (e) {
+        setStatus('保存に失敗しました: ' + e.message, 'error');
+      }
+    }
+
+    // プレビュー内の qa_images/… を、手元にある（未push かもしれない）ファイルで表示する。
+    // ライセンスの figcaption は src で引くので、enhanceImagesWithLicenses の後に差し替える。
+    function applyLocalMedia(container) {
+      if (!localRepo || !localRepo.files.size) return;
+      container.querySelectorAll('img[src], video[src], video[poster], source[src]').forEach(el => {
+        for (const attr of ['src', 'poster']) {
+          const v = el.getAttribute(attr);
+          if (!v || !v.startsWith('qa_images/')) continue;
+          const file = localRepo.files.get(v.slice('qa_images/'.length));
+          if (!file) continue;
+          if (!localUrls.has(file)) localUrls.set(file, URL.createObjectURL(file));
+          el.setAttribute(attr, localUrls.get(file));
+        }
+        if (el.tagName === 'SOURCE' && el.parentElement && el.parentElement.load) el.parentElement.load();
+      });
+    }
+
+    // 🖼 ボタン: フォルダを開いていれば qa_images/ の中から選んで挿入
+    function insertAtCursor(snippet, selectFrom, selectTo) {
+      const item = getSelectedItem();
+      const input = document.getElementById('answer-input');
+      if (!item || input.disabled) return;
+      const start = input.selectionStart ?? input.value.length;
+      const end = input.selectionEnd ?? input.value.length;
+      input.focus();
+      if (typeof input.setRangeText === 'function') input.setRangeText(snippet, start, end, 'end');
+      else input.value = input.value.slice(0, start) + snippet + input.value.slice(end);
+      input.setSelectionRange(start + selectFrom, start + selectTo);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function closeMediaPicker() {
+      const p = document.getElementById('media-picker');
+      if (p) p.remove();
+    }
+
+    function openMediaPicker(anchor) {
+      closeMediaPicker();
+      const used = new Set(allData.flatMap(d => extractImageSrcs(d.answer || '')));
+      const files = [...localRepo.files.values()].sort((a, b) => b.lastModified - a.lastModified);
+      const picker = document.createElement('div');
+      picker.className = 'media-picker';
+      picker.id = 'media-picker';
+      const head = document.createElement('div');
+      head.className = 'media-picker-head';
+      head.textContent = `qa_images/（${files.length}件・新しい順）から挿入。新しい画像はこのフォルダに置くか、Media Editor の「＋ 追加」から保存してください。`;
+      picker.append(head);
+      const blank = document.createElement('button');
+      blank.type = 'button';
+      blank.className = 'media-picker-item';
+      blank.innerHTML = '<span class="ph">✎</span><span><span class="nm">![説明](qa_images/)</span><br><span class="sub">ファイル名を自分で入力</span></span>';
+      blank.addEventListener('click', () => { closeMediaPicker(); insertImageTemplate(); });
+      picker.append(blank);
+      for (const f of files) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'media-picker-item';
+        let thumb;
+        if (/\.(mp4|m4v|webm|ogv|mov)$/i.test(f.name)) {
+          thumb = document.createElement('span'); thumb.className = 'ph'; thumb.textContent = '🎬';
+        } else {
+          thumb = document.createElement('img');
+          if (!localUrls.has(f)) localUrls.set(f, URL.createObjectURL(f));
+          thumb.src = localUrls.get(f);
+          thumb.alt = '';
+          thumb.onerror = () => { const ph = document.createElement('span'); ph.className = 'ph'; ph.textContent = '🖼'; thumb.replaceWith(ph); };
+        }
+        const text = document.createElement('span');
+        const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = f.name;
+        const sub = document.createElement('span'); sub.className = 'sub';
+        sub.textContent = `${(f.size / 1024).toFixed(0)} KB${used.has('qa_images/' + f.name) ? ' · 使用中' : ' · 未使用'}`;
+        text.append(nm, document.createElement('br'), sub);
+        b.append(thumb, text);
+        b.addEventListener('click', () => {
+          closeMediaPicker();
+          const snippet = `![説明](qa_images/${f.name})`;
+          insertAtCursor(snippet, 2, 4); // 「説明」を選択状態にしてすぐ打ち替えられるように
+        });
+        picker.append(b);
+      }
+      document.body.append(picker);
+      const r = anchor.getBoundingClientRect();
+      picker.style.top = `${r.bottom + 6}px`;
+      picker.style.left = `${Math.max(8, Math.min(r.right - picker.offsetWidth, innerWidth - picker.offsetWidth - 8))}px`;
+      const first = picker.querySelector('.media-picker-item');
+      if (first) first.focus();
+    }
+
+    document.addEventListener('click', e => {
+      const p = document.getElementById('media-picker');
+      if (p && !p.contains(e.target) && !e.target.closest('#insert-image-btn')) closeMediaPicker();
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMediaPicker(); });
+
+    document.getElementById('local-open-btn').addEventListener('click', () => {
+      openLocal().catch(e => setStatus('ローカルを開けませんでした: ' + e.message, 'error'));
+    });
+    document.getElementById('local-json-input').addEventListener('change', e => {
+      const f = e.target.files && e.target.files[0];
+      if (f) openLocalJsonFile(f).catch(err => setStatus('読み込めませんでした: ' + err.message, 'error'));
+      e.target.value = '';
+    });
+    document.getElementById('local-save-btn').addEventListener('click', saveLocal);
+    window.addEventListener('keydown', e => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's' && localRepo) {
+        e.preventDefault();
+        saveLocal();
+      }
+    });
+
     // フォーカスが input/textarea の中にある間は、ブラウザ標準のテキスト編集
     // Undo/Redo を優先させる（answer欄などでの Ctrl+Z を横取りしない）。
     // それ以外の場所（サイドバー選択中など）では、エディタ全体のUndo/Redoとして扱う。
@@ -2697,7 +3128,7 @@
 
     // ── 離脱時に未反映の編集があれば警告 ───────────────────────
     window.addEventListener('beforeunload', e => {
-      if (dirty) { e.preventDefault(); e.returnValue = ''; }
+      if (dirty || localUnsaved()) { e.preventDefault(); e.returnValue = ''; }
     });
 
     // ── 初期化 ──────────────────────────────────────────────

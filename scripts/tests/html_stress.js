@@ -343,6 +343,23 @@ section('Inline math in titles');
     `no raw $…$ left in ${titles.length} real titles`);
 })();
 
+// qa_editor の「ローカルに保存」は「コード」タブの全件出力と同じ直列化を使う。
+// 実データを読み込んで保存し直してもファイルが1バイトも変わらないこと
+// （変わると、開いて保存しただけで git に全行の差分が出る）。
+section('qa_editor save round trip');
+(function () {
+  const ed = fs.readFileSync(path.join(REPO_ROOT, 'qa_editor.html'), 'utf-8');
+  const nil = ed.indexOf('function normalizeImageLicenses(');
+  const src = [extractConst(ed, 'FIELD_ORDER'), extractFunction(ed.slice(nil), 'normalizeImageLicenses'),
+    extractFunction(ed, 'normalizeItem'), extractFunction(ed, 'orderFields')].join('\n');
+  const E = new Function(`${src}; return { normalizeItem, orderFields };`)();
+  const raw = fs.readFileSync(path.join(REPO_ROOT, 'q_and_a_data.json'), 'utf-8');
+  const out = JSON.stringify(JSON.parse(raw).map(E.normalizeItem).map(E.orderFields), null, 4);
+  ok(out === raw, 'normalizeItem → orderFields → JSON.stringify(…, 4) reproduces q_and_a_data.json byte for byte');
+  ok(/function serializeData\(\) \{\s*return JSON\.stringify\(allData\.map\(orderFields\), null, 4\);/.test(ed),
+    'qa_editor saves with the same serialization as the code tab');
+})();
+
 // ── 6. Image markdown & sanitization (strict, XSS) ──────────────────
 section('Image markdown & sanitization (strict)');
 (function(){
