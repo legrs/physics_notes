@@ -288,17 +288,40 @@
         // ===== モード選択 =====
         // search.html と同じ許可リストで検証（URL や localStorage 由来の
         // 任意文字列をそのまま保存・URL 連結しない）
+        /* localStorage は「Cookie をすべてブロック」設定などでアクセス自体が
+           SecurityError を投げ、Safari の一部モードでは setItem が例外になる。
+           素の呼び出しだと最初のアクセスでスクリプトごと止まり、ページが
+           表示されなくなるため、必ずこのラッパー経由で使う（失敗時はメモリ保持）。 */
+        var safeStorage = (function () {
+          var mem = {};
+          function ls() { try { return window.localStorage; } catch (_) { return null; } }
+          return {
+            getItem: function (k) {
+              try { var s = ls(); if (s) return s.getItem(k); } catch (_) { }
+              return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null;
+            },
+            setItem: function (k, v) {
+              mem[k] = String(v);
+              try { var s = ls(); if (s) s.setItem(k, String(v)); } catch (_) { }
+            },
+            removeItem: function (k) {
+              delete mem[k];
+              try { var s = ls(); if (s) s.removeItem(k); } catch (_) { }
+            },
+          };
+        })();
+
         const VALID_MODES = new Set(['auto', 'fast', 'pro', 'ultra', 'max']);
         const modeBtns = document.querySelectorAll('.mode-btn');
         const modeSelect = document.getElementById('mode-select');
         const modeParam = new URLSearchParams(location.search).get('mode');
         let currentMode =
-            [modeParam, localStorage.getItem('search_mode')].find(m => VALID_MODES.has(m)) || 'auto';
+            [modeParam, safeStorage.getItem('search_mode')].find(m => VALID_MODES.has(m)) || 'auto';
 
         function applyMode(mode) {
             if (!VALID_MODES.has(mode)) return;
             currentMode = mode;
-            localStorage.setItem('search_mode', mode);
+            safeStorage.setItem('search_mode', mode);
             modeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
             if (modeSelect) modeSelect.value = mode;
         }

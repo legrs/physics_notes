@@ -52,6 +52,29 @@
         .replace(/'/g, '&#39;');
     }
 
+    /* localStorage は「Cookie をすべてブロック」設定などでアクセス自体が
+       SecurityError を投げ、Safari の一部モードでは setItem が例外になる。
+       素の呼び出しだと最初のアクセスでスクリプトごと止まり、ページが
+       表示されなくなるため、必ずこのラッパー経由で使う（失敗時はメモリ保持）。 */
+    var safeStorage = (function () {
+      var mem = {};
+      function ls() { try { return window.localStorage; } catch (_) { return null; } }
+      return {
+        getItem: function (k) {
+          try { var s = ls(); if (s) return s.getItem(k); } catch (_) { }
+          return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null;
+        },
+        setItem: function (k, v) {
+          mem[k] = String(v);
+          try { var s = ls(); if (s) s.setItem(k, String(v)); } catch (_) { }
+        },
+        removeItem: function (k) {
+          delete mem[k];
+          try { var s = ls(); if (s) s.removeItem(k); } catch (_) { }
+        },
+      };
+    })();
+
     /* mode パラメータの許可リスト（予期しない値を排除） */
     const VALID_MODES = new Set(['auto', 'fast', 'pro', 'ultra', 'max']);
 
@@ -61,7 +84,7 @@
      */
     function getSafeMode() {
       const urlMode = new URLSearchParams(location.search).get('mode') || '';
-      const lsMode = localStorage.getItem('search_mode') || '';
+      const lsMode = safeStorage.getItem('search_mode') || '';
       const candidate = urlMode || lsMode;
       return VALID_MODES.has(candidate) ? candidate : 'auto';
     }
@@ -70,7 +93,7 @@
   <!-- ダークモード初期化（FLOCKを防ぐためpaint前に実行） -->
   <script>
     (function () {
-      var stored = localStorage.getItem('dark_mode');
+      var stored = safeStorage.getItem('dark_mode');
       var sys = window.matchMedia('(prefers-color-scheme:dark)').matches;
       if (stored !== null ? stored === '1' : sys) {
         document.documentElement.classList.add('dark');
@@ -3377,7 +3400,7 @@
           if (vr.ok) upstreamHash = (await vr.json())?.files?.['embeddings.json']?.hash || null;
         } catch (_) { /* オフライン等 — キャッシュを使い続ける */ }
         if (cache && upstreamHash &&
-          localStorage.getItem(EMBEDDINGS_HASH_KEY) !== upstreamHash) {
+          safeStorage.getItem(EMBEDDINGS_HASH_KEY) !== upstreamHash) {
           try { await cache.delete(EMBEDDINGS_URL); } catch (_) { }
         }
 
@@ -3428,8 +3451,8 @@
           }
           // どの version.json ハッシュ時点のキャッシュかを記録（不明なら記録を
           // 消し、次回オンライン時に再取得させる）
-          if (upstreamHash) localStorage.setItem(EMBEDDINGS_HASH_KEY, upstreamHash);
-          else localStorage.removeItem(EMBEDDINGS_HASH_KEY);
+          if (upstreamHash) safeStorage.setItem(EMBEDDINGS_HASH_KEY, upstreamHash);
+          else safeStorage.removeItem(EMBEDDINGS_HASH_KEY);
 
           _embeddingsData = normalizeEmbeddings(JSON.parse(new TextDecoder().decode(buf)));
         }
@@ -4075,7 +4098,7 @@
 
       document.querySelectorAll('.cs-swatch').forEach(btn => {
         btn.addEventListener('click', () => {
-          localStorage.setItem('chat_accent', btn.dataset.accent);
+          safeStorage.setItem('chat_accent', btn.dataset.accent);
           applyAccent(btn.dataset.accent);
         });
       });
@@ -4086,22 +4109,22 @@
         const toggle = document.getElementById('cs-dark-toggle');
         if (toggle) toggle.checked = isDark;
         updateNeutralSwatch();
-        applyAccent(localStorage.getItem('chat_accent') || 'blue');
+        applyAccent(safeStorage.getItem('chat_accent') || 'blue');
       }
 
       document.getElementById('cs-dark-toggle').addEventListener('change', function () {
         const isDark = this.checked;
-        localStorage.setItem('dark_mode', isDark ? '1' : '0');
+        safeStorage.setItem('dark_mode', isDark ? '1' : '0');
         applyDark(isDark);
       });
 
       window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', e => {
-        const stored = localStorage.getItem('dark_mode');
+        const stored = safeStorage.getItem('dark_mode');
         if (stored !== null) {
           // システム設定が手動設定に追いついた瞬間、overrideを解放して追従モードに戻る
           // 例: 手動でdark(='1')にした後、システムもdarkになったらlocalStorageを削除
           if (e.matches === (stored === '1')) {
-            localStorage.removeItem('dark_mode');
+            safeStorage.removeItem('dark_mode');
           }
           // 見た目は変わらないのでapplyDark不要
         } else {
@@ -4136,13 +4159,13 @@
       window.addEventListener('load', () => {
         // Dark mode: follow system preference by default.
         // If the user has manually toggled the switch, localStorage overrides.
-        const stored = localStorage.getItem('dark_mode');
+        const stored = safeStorage.getItem('dark_mode');
         const prefersDark = window.matchMedia('(prefers-color-scheme:dark)').matches;
         const isDark = stored !== null ? stored === '1' : prefersDark;
         applyDark(isDark);
 
         updateNeutralSwatch();
-        applyAccent(localStorage.getItem('chat_accent') || 'blue');
+        applyAccent(safeStorage.getItem('chat_accent') || 'blue');
 
         // Inline SVG icon so it can be colored with CSS
         const btn = document.getElementById('ai-chat-btn');
@@ -4171,7 +4194,7 @@
               svg.style.display = 'block';
               img.replaceWith(svg);
               // Apply current accent to the inline SVG
-              applyAccent(localStorage.getItem('chat_accent') || 'blue');
+              applyAccent(safeStorage.getItem('chat_accent') || 'blue');
             })
             .catch(() => {
               // If fetch fails, just resize the img
@@ -4181,7 +4204,7 @@
         }
         // ?mode= パラメータを検証してから localStorage に保存（許可リスト外は無視）
         const modeParam = new URLSearchParams(location.search).get('mode');
-        if (modeParam && VALID_MODES.has(modeParam)) localStorage.setItem('search_mode', modeParam);
+        if (modeParam && VALID_MODES.has(modeParam)) safeStorage.setItem('search_mode', modeParam);
       });
       function openSettings() {
         settingsOverlay.style.display = 'block';
