@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-02T00:10:30.825Z",
+  "generated_at": "2026-10-02T03:17:52.949Z",
   "schema_version": 4,
   "tokenizer": "lindera-ipadic",
   "embedding_model": {
@@ -17,10 +17,10 @@
     }
   },
   "qa_images": {
-    "hash": "1d677ab2461868cbfd34fa0275d22e5e2163c3b3a55c413afbf1a38dad5b69b8",
+    "hash": "899a499f4b5f94573395a38e4441e4937a31cf5cdf8e3e1609fd0acb73440874",
     "count": 6,
-    "total_bytes": 4123728,
-    "avg_bytes": 687288,
+    "total_bytes": 3857579,
+    "avg_bytes": 642930,
     "buckets": {
       "lt3": 6,
       "btw": 0,
