@@ -3578,6 +3578,68 @@ we can explain the Photoelectric Effect.
 ( if light is patricle , the probability of "Two photon colide to an electron almost simultaneously." is nealy zero. 
 Thus, if energy of electron is lower than a threshold , no electrons fly out.)
 
+#align(center,box(width:16cm, height:6cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+      
+      line((0,0),(5,0),mark:(end:">",fill:black))
+      line((0,-2),(0,4),mark:(end:">",fill:black))
+      content((5,-0.3),$v$)
+      content((-0.5,3.5),$K_0$)
+      content((-0.5,0),$O$)
+
+      line((0,-1),(4,4),stroke:(paint:red))
+      content((5,3),text(fill:red)[$K_0 = h nu - W$])
+      content((-0.6,-1),$-W$)
+
+
+    })
+  ]
+])
+
+$K_0$ is maximum kinetic energy of an electron.
+
+$W$ is called *work function* which is minimum work to take an electron to infinity.
+#text(size:10pt)[(「金属結晶中の自由電子のうち最も出てこやすいやつ」のpotentialの-1倍)]
+
+#text(size:10pt)[*量子の粒子性は相互作用をするときにのみ現れる．*]
+
+#align(center,box(width:16cm, height:6cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      line((-3,0),(-1,0),mark:(end:">",fill:yellow),stroke:(thickness:0.5,paint:yellow))
+      
+      circle((0,0),radius:0.05)
+      arc((2,0),radius:2,start:0deg,stop:30deg,fill:yellow)
+      arc((2,0),radius:2,start:0deg,stop:-30deg,fill:yellow)
+      line((0,0),(0,-4))
+      line((2,0),(5,0))
+      line((5,0),(5,-4))
+      line((0,-2),(5,-2))
+
+      circle((3.5,0),radius:0.5,fill:white)
+      content((3.5,0),[A])
+
+      circle((2.5,-2),radius:0.5,fill:white)
+      content((2.5,-2),[V])
+
+      line((0,-3.5),(5,-3.5),mark:(end:">",fill:black))
+      content((2.5,-3.9),[$bold(V)$#text(size:10pt)[(variable)]])
+
+      line((3,1),(4,1),mark:(end:">",fill:black))
+      //content(())
+
+    })
+  ]
+])
+
+
+//仕事関数は，「自由電子を無限遠にもっていくのに必要な仕事」ですが，これって
+//金属結合による電子の位置エネルギーの-1倍と等しいですか？定義的にはpotentialそのものですよね
+
 
 //#text(size:10pt)[( )]
 
