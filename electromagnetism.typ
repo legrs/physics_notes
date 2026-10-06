@@ -3610,11 +3610,19 @@ $W$ is called *work function* which is minimum work to take an electron to infin
     #cetz.canvas({
       import cetz.draw: *
 
-      line((-3,0),(-1,0),mark:(end:">",fill:yellow),stroke:(thickness:0.5,paint:yellow))
+      line((-2,0),(-1,0),mark:(end:">",fill:yellow),stroke:(thickness:0.5,paint:yellow))
       
       circle((0,0),radius:0.05)
       arc((2,0),radius:2,start:0deg,stop:30deg,fill:yellow)
       arc((2,0),radius:2,start:0deg,stop:-30deg,fill:yellow)
+      line((2,0),(1.7,1),(-2,1),(-2,-1),(1.7,-1),closed:true,fill:rgb("ffff0055"),stroke:none)
+      line((1.8,0.8),(0.1,0.1),mark:(end:">",fill:blue),stroke:(paint:blue))
+      line((1.8,-0.8),(0.1,-0.1),mark:(end:">",fill:blue),stroke:(paint:blue))
+      line((1.95,0.3),(0.1,0.025),mark:(end:">",fill:blue),stroke:(paint:blue))
+      line((1.95,-0.3),(0.1,-0.025),mark:(end:">",fill:blue),stroke:(paint:blue))
+      content((1,0.8),text(fill:blue)[$bold(e)$])
+      content((-0.6,-1),text(fill:blue)[$bold(e)$])
+      line((-0.3,-0.5),(-0.3,-1.5),mark:(end:">",fill:blue),stroke:(paint:blue))
       line((0,0),(0,-4))
       line((2,0),(5,0))
       line((5,0),(5,-4))
@@ -3627,14 +3635,65 @@ $W$ is called *work function* which is minimum work to take an electron to infin
       content((2.5,-2),[V])
 
       line((0,-3.5),(5,-3.5),mark:(end:">",fill:black))
-      content((2.5,-3.9),[$bold(V)$#text(size:10pt)[(variable)]])
+      content((2.5,-3.9),[$bold(V)$#text(size:10pt)[(contollable)]])
 
-      line((3,1),(4,1),mark:(end:">",fill:black))
-      //content(())
+      line((3,0.6),(4,0.6),mark:(end:">",fill:red),stroke:(paint:red))
+      content((3.5,1),text(fill:red)[$bold(I)$])
+
+      translate((10,-3))
+
+      line((-3,0),(3,0),mark:(end:">",fill:black),stroke:(paint:black))
+      line((0,0),(0,3),mark:(end:">",fill:black),stroke:(paint:black))
+      content((0,-0.5),$O$)
+
+      content((-0.5,3),$I$)
+      content((3,0.5),$V$)
+
+      //let graph_x = (-1,-0.5,0,0.5,1,)
+      let graph = (0.1,0.15,0.20,0.2,0.2,0.2,0.2,0.15,0.1,0.05,0.03,0.01,0.01,)
+
+      set-style(stroke: (paint: red))
+
+      let v_0 = -1
+      let v = 0
+      let i = 0
+      let k = 1.5
+      while (v_0 + v/5)<=3 {
+        if v < graph.len() -1{
+          line((v_0 + v/5,i),(v_0 + (v+1)/5,i+graph.at(v)))
+          line((v_0 + v/5,i*k),(v_0 + (v+1)/5,(i+graph.at(v))*k))
+          i += graph.at(v)
+        }else{
+          line((v_0 + v/5,i),(v_0 + (v+1)/5,i))
+          line((v_0 + v/5,i*k),(v_0 + (v+1)/5,i*k))
+        }
+        v += 1
+      }
+
+      content((-1,-0.5),$bold(-V_0)$)
+
+      content((2,2.6),text(fill:red,size:10pt)[strong light])
+      content((2,1.8),text(fill:red,size:10pt)[weak light])
 
     })
   ]
 ])
++ make an electron current by light
++ make a potential slope by battery
+
+When voltage is $-V_0$, $I=0$ i.e. kinetic energy of electrons is 0.\
+Set first kinetic energy of an electron to $K_0$,\
+$bold(K_0 = e V_0)$
+
+=== Electron Volt
+
+$1 "eV"$ equals to *" Kinetic energy of an electron gained by voltage $bold(V)$"*
+#text(size:10pt)[( eVってそのままかよ )]
+
+#pagebreak()
+== X-Ray
+
+
 
 
 //仕事関数は，「自由電子を無限遠にもっていくのに必要な仕事」ですが，これって
