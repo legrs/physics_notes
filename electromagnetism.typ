@@ -3693,6 +3693,94 @@ $1 "eV"$ equals to *" Kinetic energy of an electron gained by voltage $bold(V)$"
 #pagebreak()
 == X-Ray
 
+#grid(
+  columns:2,
+  gutter:5mm,
+  align(center,box(width:16cm, height:6cm, clip:true)[
+    #place(center + horizon)[
+      #cetz.canvas({
+        import cetz.draw: *
+  
+        line((-1,-1),(1,1),(1.5,1),(1.5,-1),(-1,-1),close:true,fill:gray)
+        //line((-1,-1),(1.5,-1))
+        //line((1.5,-1),(1.5,1))
+        //line((1.5,1),(1,1))
+        line((1.5,0),(3,0))
+        line((-3,1),(-3,-1))
+        line((-3,0),(-5,0))
+        line((-5,0),(-5,-2))
+        line((3,0),(3,-2))
+        line((3,-1.8),(-5,-1.8),mark:(start:">",fill:black),stroke:(thickness:0.1))
+        content((0,-2.2),[$V$ (high-voltage)])
+        line((-2,0),(-1,0),mark:(end:">",fill:black))
+        content((-1.6,0.3),text(size:9pt)[thermoelelectron])
+        line((0,0),(-1,2),mark:(end:">",fill:black),stroke:(dash:"dotted"))
+        content((-0,2),[X-ray])
+        particle((-2,0),"-",1)
+      })
+    ]
+  ]),
+  align(center,box(width:16cm, height:6cm, clip:true)[
+    #place(center + horizon)[
+      #cetz.canvas({
+        import cetz.draw: *
+  
+      line((0,0),(6,0),mark:(end:">",fill:black),stroke:(paint:black))
+      line((0,0),(0,3),mark:(end:">",fill:black),stroke:(paint:black))
+      content((0,-0.5),$O$)
+
+      content((-0.5,3),$I$)
+      content((3,0.5),$V$)
+
+      //let graph_x = (-1,-0.5,0,0.5,1,)
+      let graph = (4,3,2,1.2,0.7,0.3,0,-0.5,-1,-1.5,-1,-1,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.2,-0.2,-0.2,-0.15,-0.15,-0.1,-0.1,-0.1)
+      let line = (3,4.5)
+
+      set-style(stroke: (paint: red))
+
+      let v_0 = 1
+      let v = 0
+      let i = 0
+      let k_1 = 0.2
+      //let k_2 = 0.05
+      while (v_0 + v/5)<=5.5 {
+        let x = v_0 + v/5
+        let y = i*k_1
+        let x_p = v_0 + (v+1)/5
+        let y_p = 0
+
+        if v < graph.len() -1{
+          y_p = (i+graph.at(v))*k_1
+          i += graph.at(v)
+        }
+        v += 1
+
+        draw.line((x,y),(x_p,y_p))
+        for i in line{
+          if (x <= i) and (i < x_p){
+            let x_i = i
+            let y_i = y + (i - x)/(x_p - x) * (y_p - y)
+            let y_i2 = y + (i + 0.1 - x)/(x_p - x) * (y_p - y)
+            //draw.line((x,y),(x_i,y_i))
+            draw.line((x_i,y),(x_i+0.05,y+3),(x_i+0.1,y_i2))
+            //draw.line((x_i,y_i),(x_p,y_p))
+            rect((x_i+0.02,y+0.1),(x_i + 0.08,y_i2 - 0.1),fill:white,stroke:none)
+            
+
+          }
+        }
+      }
+
+      //content((-1,-0.5),$bold(-V_0)$)
+
+      //content((2,2.6),text(fill:red,size:10pt)[strong light])
+      //content((2,1.8),text(fill:red,size:10pt)[weak light])
+})
+    ]
+  ])
+
+)
+
 
 
 
