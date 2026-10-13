@@ -3720,7 +3720,7 @@ $1 "eV"$ equals to *" Kinetic energy of an electron gained by voltage $bold(V)$"
       })
     ]
   ]),
-  align(center,box(width:16cm, height:6cm, clip:true)[
+  align(center,box(width:16cm, height:7cm, clip:true)[
     #place(center + horizon)[
       #cetz.canvas({
         import cetz.draw: *
@@ -3729,14 +3729,14 @@ $1 "eV"$ equals to *" Kinetic energy of an electron gained by voltage $bold(V)$"
       line((0,0),(0,3),mark:(end:">",fill:black),stroke:(paint:black))
       content((0,-0.5),$O$)
 
-      content((-0.5,3),$I$)
+      content((-0.5,2),angle:90deg,[intensity])
       content((3,0.5),$V$)
 
       //let graph_x = (-1,-0.5,0,0.5,1,)
       let graph = (4,3,2,1.2,0.7,0.3,0,-0.5,-1,-1.5,-1,-1,-0.8,-0.7,-0.6,-0.5,-0.4,-0.3,-0.2,-0.2,-0.2,-0.15,-0.15,-0.1,-0.1,-0.1)
       let line = (3,4.5)
+      let line_i = (3,4.5)
 
-      set-style(stroke: (paint: red))
 
       let v_0 = 1
       let v = 0
@@ -3744,6 +3744,7 @@ $1 "eV"$ equals to *" Kinetic energy of an electron gained by voltage $bold(V)$"
       let k_1 = 0.2
       //let k_2 = 0.05
       while (v_0 + v/5)<=5.5 {
+        set-style(stroke: (paint: red))
         let x = v_0 + v/5
         let y = i*k_1
         let x_p = v_0 + (v+1)/5
@@ -3756,13 +3757,14 @@ $1 "eV"$ equals to *" Kinetic energy of an electron gained by voltage $bold(V)$"
         v += 1
 
         draw.line((x,y),(x_p,y_p))
-        for i in line{
-          if (x <= i) and (i < x_p){
-            let x_i = i
-            let y_i = y + (i - x)/(x_p - x) * (y_p - y)
-            let y_i2 = y + (i + 0.1 - x)/(x_p - x) * (y_p - y)
+        for i in range(line.len()){
+          let l = line.at(i)
+          if (x <= l) and (l < x_p){
+            let x_i = l
+            let y_i = y + (l - x)/(x_p - x) * (y_p - y)
+            let y_i2 = y + (l + 0.1 - x)/(x_p - x) * (y_p - y)
             //draw.line((x,y),(x_i,y_i))
-            draw.line((x_i,y),(x_i+0.05,y+3),(x_i+0.1,y_i2))
+            draw.line((x_i,y),(x_i+0.05,y+line_i.at(i)),(x_i+0.1,y_i2))
             //draw.line((x_i,y_i),(x_p,y_p))
             rect((x_i+0.02,y+0.1),(x_i + 0.08,y_i2 - 0.1),fill:white,stroke:none)
             
@@ -3771,16 +3773,51 @@ $1 "eV"$ equals to *" Kinetic energy of an electron gained by voltage $bold(V)$"
         }
       }
 
-      //content((-1,-0.5),$bold(-V_0)$)
+      content((1,-0.5),$bold(lambda_0)$)
+      content((5,-0.5),[wavelength])
 
-      //content((2,2.6),text(fill:red,size:10pt)[strong light])
-      //content((2,1.8),text(fill:red,size:10pt)[weak light])
+      draw.line((3 + 0.05,5.5),(3 + 0.05,5.4),mark:(end:">",fill:black),stroke:(paint:black))
+      draw.line((4.5 + 0.05,5.5),(4.5 + 0.05,5.4),mark:(end:">",fill:black),stroke:(paint:black))
+
+      content((4,6),text(fill:black,size:12pt)[characterictic X-rays])
 })
     ]
   ])
-
 )
 
+$
+  bold(lambda_0 = (h c)/(e V))
+$
+#text(size:10pt)[( これが蛍光X線分析か )]
+
+=== Bragg's Law
+
+Irradiating X-ray at cristals from point source, we can obrain X-ray diffraction images.
+In these images, *Laue spot* can be seen.
+
+Consider parallel planes in a crystal containing atoms arranged regularly, spaced by a distance $d$.
+Let $theta$ be the angle that the X-rays make with the planes. The reflected light constructively interferes under the following condition:
+$
+  bold(2 d sin theta = n lambda)
+$
+This is known as *Bragg's condition*.
+
+#text(size:10pt)[( 反射前と後があるので$2 d sin theta$ )]
+#text(size:10pt)[( X-ray diffraction imageは3次元だから十分な情報量ってこと？ )]
+
+=== Compton Effect
+#align(center,box(width:16cm, height:6cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      rect((-0.5,-0.5),(0.5,0.5),fill:gray)
+
+      line((-5,-0),(-0.5,0),mark:(end:">",fill:black),stroke:(paint:black))
+
+    })
+  ]
+]),
 
 
 
