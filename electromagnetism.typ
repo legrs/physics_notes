@@ -3552,9 +3552,9 @@ Method : Let $m$ as measurable(large).
 
 == Particle-likeness of Light
 === Photoelectric Effect
-When a light is irradiated to metal, if it's frequency of the light is over a threshold, 
+When a light is irradiated to metal, if it's frequency is over a threshold, 
 electrons fly out from the metal.\
-(*not depend it's amplitude and irradiating time*)
+(*not depending it's amplitude and irradiating time*)
 
 
 === Light quantum Hypothesis
@@ -3716,7 +3716,7 @@ $1 "eV"$ equals to *" Kinetic energy of an electron gained by voltage $bold(V)$"
         content((-1.6,0.3),text(size:9pt)[thermoelelectron])
         line((0,0),(-1,2),mark:(end:">",fill:black),stroke:(dash:"dotted"))
         content((-0,2),[X-ray])
-        particle((-2,0),"-",1)
+        particle((-2,0),"-",1,blue)
       })
     ]
   ]),
@@ -3803,21 +3803,54 @@ $
 This is known as *Bragg's condition*.
 
 #text(size:10pt)[( 反射前と後があるので$2 d sin theta$ )]
-#text(size:10pt)[( X-ray diffraction imageは3次元だから十分な情報量ってこと？ )]
+#text(size:10pt)[( X-ray diffraction imageは3次元だから十分な情報量ってこと？すごいね )]
 
 === Compton Effect
+When X-rays are irradiated into a substance, 
+the wavelength of the scattered X-rays increases depending on $theta$.
 #align(center,box(width:16cm, height:6cm, clip:true)[
   #place(center + horizon)[
     #cetz.canvas({
       import cetz.draw: *
 
-      rect((-0.5,-0.5),(0.5,0.5),fill:gray)
+      rect((-0.5,-0.5),(0.5,0.5))
 
-      line((-5,-0),(-0.5,0),mark:(end:">",fill:black),stroke:(paint:black))
+      line((-5,-0),(-0,0),mark:(end:">",fill:black),stroke:(paint:black, dash:"dotted"))
+      line((0,0),(3,2),mark:(end:">",fill:black),stroke:(paint:black, dash:"dotted"))
+      line((0,0),(2,-3),mark:(end:">",fill:blue),stroke:(paint:blue))
+
+      line((0,0),(5,0))
+      arc((0.9,0),radius:9mm, start:0deg, stop:32deg)
+      arc((0.95,0),radius:9.5mm, start:0deg, stop:-54deg)
+      arc((0.85,0),radius:8.5mm, start:0deg, stop:-54deg)
+      content((1.1,0.3),$bold(theta)$)
+      content((1.1,-0.6),$bold(phi)$)
+
+      content((-3,0.3),$bold(lambda)$)
+      content((2,1.7),$bold(lambda')$)
+      particle((1,-3/2),"-",2,blue)
+      content((1.3,-2.5),text(fill:blue)[$bold(v)$])
 
     })
   ]
-]),
+])
+
+This phenomenon can be explained if we assume X-ray to have\
+*particle-likeness*.
+
+Photon is supposed to have momentum 
+$
+  bold(p = ( h nu )/c)
+$
+#text(size:10pt)[これマジですか]
+
+If this is elastic collision, letting $m$ be mass of an electron,\
+$bold(cases(vec(h/lambda, 0 )= vec(h/lambda' cos theta + m v cos phi , h/lambda' sin theta - m v sin phi),
+(h c)/lambda = (h c)/lambda' + 1/2 m v^2))\
+<=> $
+
+
+
 
 
 

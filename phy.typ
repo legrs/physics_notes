@@ -206,10 +206,10 @@
   content("z-axis.end", [$z$], anchor: "north-east")
 }
 
-#let particle(p,sign,r)={
+#let particle(p,sign,r,color)={
   import cetz.draw: *
 
   let (x,y) = p
-  circle((x,y),fill:white,radius:0.1*r)
-  content((x,y + 0.05*r),text(size:16pt * r)[#sign])
+  circle((x,y),fill:white,radius:0.1*r,stroke:(paint:color))
+  content((x,y + 0.05*r),text(size:16pt * r, fill:color)[#sign])
 }
