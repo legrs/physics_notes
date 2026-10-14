@@ -560,7 +560,7 @@
         "related": [
             "4e84b4eb-7eed-42c6-b55c-a892c2696292"
         ],
-        "updated_at": "2026-04-29",
+        "updated_at": "2026-10-14",
         "search_text": "保存力って何のこと？ 保存力とは？ その力がする**仕事**が経路によらず一定である(始点と終点のみに依存する)力 保存力の定義 保存力 仕事 経路 conservative force path independent 静電気 保存 って こと 保存 その する ** 仕事 ** 経路 よら 一定 ある 始点 終点 のみ 依存 する 保存 定義 保存 仕事 経路 conservative force path independent 静電気 ホゾンリョクッテナニノコト？ ホゾンリョクトハ？ ソノチカラガスル**シゴト**ガケイロニヨラズイッテイデアル(シテントシュウテンノミニイゾンスル)リョク ホゾンリョクノテイギ ホゾンリョク シゴト ケイロ conservative force path independent セイデンキ ほぞんりょくってなにのこと？ ほぞんりょくとは？ そのちからがする**しごと**がけいろによらずいっていである(してんとしゅうてんのみにいぞんする)りょく ほぞんりょくのていぎ ほぞんりょく しごと けいろ conservative force path independent せいでんき",
         "_note": ""
     },
@@ -8143,7 +8143,7 @@
         "questions": [
             "コンプトン散乱の現象はどう不思議なのか？"
         ],
-        "answer": "> ここで波長が変わるのは、ドップラー効果とは関係ない。\n\n",
+        "answer": "> ここで波長が変わるのは、ドップラー効果とは関係ない。\n\n光源が接近していないのに波長が変わる→波として考えると説明がつかない。\n\nもう一つの説明\n\n普通、反射しても波長は変わらないのに、Xが電子にあたると波長が変化する。",
         "description": "",
         "keywords": [],
         "synonyms": [],
@@ -8232,6 +8232,112 @@
         "related": [],
         "updated_at": "2026-10-13",
         "search_text": "波の反射・屈折の原理は？ > 教科書P40,41を見る。 光線が表しているのは、**平面波の波面**。 平面波の進行方向を矢印で表している。 波 反射 屈折 原理 教科書 P 40 41 見る 光線 表し いる ** 平面 波面 **。 平面 進行 方向 矢印 表し いる ナミノハンシャ・クッセツノゲンリハ？ > キョウカショP40,41ヲミル。 コウセンガアラワシテイルノハ、**ヘイメンハノハメン**。 ヘイメンハノシンコウホウコウヲヤジルシデアラワシテイル。 ナミ なみのはんしゃ・くっせつのげんりは？ > きょうかしょP40,41をみる。 こうせんがあらわしているのは、**へいめんはのはめん**。 へいめんはのしんこうほうこうをやじるしであらわしている。 なみ",
+        "_note": ""
+    },
+    {
+        "id": "5825f59f-9bd3-462f-89f9-730043e0b5ac",
+        "questions": [
+            "保存力がはたらく場合にエネルギー保存則が成り立つのはなぜ？"
+        ],
+        "answer": "保存力だけが働いている（or 保存力以外の力が仕事をしない）とき、エネルギーの出入りが無いため。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "原子"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-14",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "4392fe18-b8bd-4823-8126-9bdade7fe4b4",
+        "questions": [
+            "垂直に働く力が仕事をしないのはなぜ？"
+        ],
+        "answer": "$$ 仕事=力\\cdot 距離 $$\n$$ W=F\\cdot x\\cdot \\cos\\theta $$\n$$ W=\\vec{F}\\cdot\\vec{x} $$\n\n# 仕事は内積で表される\n\n進行方向に垂直な仕事は、内積が0より仕事をしない。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "力学"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-14",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "ae7130c7-f5f9-4ebf-83ed-b99de7f961b9",
+        "questions": [
+            "コンプトン効果でエネルギー保存則が適用できるのはなぜ？"
+        ],
+        "answer": "両者のもつエネルギーの和が、他に逃げようのないから。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-14",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "dcace4cb-a9f5-4f6f-9e38-cfe13f1c3b6c",
+        "questions": [
+            "コンプトン効果で、電子の位置エネルギーを考える必要がないのはなぜ？"
+        ],
+        "answer": "電場がないから。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-14",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "dfc5e4c0-7985-40c4-a9f8-91c632fdc04a",
+        "questions": [
+            "運動量保存則が適用されるのはどんなとき？"
+        ],
+        "answer": "$$ 運動量の変化=力積=力\\times 接触時間=F\\Delta t $$\n\n",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-14",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "140a15a1-9ec2-4175-903c-e2a571d02dc6",
+        "questions": [
+            "運動量と力の間の関係は？"
+        ],
+        "answer": "ボールを勢いよく打ちたいとき、「大きな力を加える」のではなく、\n\n運動量$ mv $を大きくするときは、$ v $を大きくする。\n\n運動量$ mv+F\\Delta t $より、**$ \\Delta t $を大きくすれば良い**。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-14",
+        "search_text": "",
         "_note": ""
     }
 ]
