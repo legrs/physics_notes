@@ -3808,7 +3808,7 @@ This is known as *Bragg's condition*.
 === Compton Effect
 When X-rays are irradiated into a substance, 
 the wavelength of the scattered X-rays increases depending on $theta$.
-#align(center,box(width:16cm, height:6cm, clip:true)[
+#align(center,box(width:16cm, height:5cm, clip:true)[
   #place(center + horizon)[
     #cetz.canvas({
       import cetz.draw: *
@@ -3840,14 +3840,41 @@ This phenomenon can be explained if we assume X-ray to have\
 
 Photon is supposed to have momentum 
 $
-  bold(p = ( h nu )/c)
+  bold(p = ( h nu )/c (= h/lambda))
 $
 #text(size:10pt)[これマジですか]
 
 If this is elastic collision, letting $m$ be mass of an electron,\
-$bold(cases(vec(h/lambda, 0 )= vec(h/lambda' cos theta + m v cos phi , h/lambda' sin theta - m v sin phi),
-(h c)/lambda = (h c)/lambda' + 1/2 m v^2))\
-<=> $
+$bold(cases(display(vec(h/lambda, 0 )= vec(h/lambda' cos theta + m v cos phi , h/lambda' sin theta - m v sin phi)),
+display((h c)/lambda = (h c)/lambda' + 1/2 m v^2)))\
+=> 
+cases(display(m^2 v^2 ( cos^2 phi + sin^2 phi ) = h^2/lambda^2 - (h^2 cos theta)/(lambda lambda') + h^2/lambda'^2 ( cos^2 theta + sin^2 theta )),
+display(v^2 = (2 h c)/m ( 1/lambda - 1/lambda' )))\
+<=>
+2 m c(1/lambda - 1/lambda') = h ( 1/lambda^2 + 1/lambda'^2 - (2 cos theta)/(lambda lambda') )\
+<=> 
+2 m c (lambda' - lambda)/(lambda lambda') = h ( lambda^2 + lambda'^2 + 2 lambda lambda' cos theta)/(lambda^2 lambda'^2) \
+//<=>
+//2 m c(lambda' - lambda)/(lambda lambda') = h ( lambda^2 + lambda'^2 + 2 lambda lambda' cos theta)/(lambda^2 lambda'^2) \
+<=>
+(2 m c)/h (lambda' - lambda) = lambda'/lambda + lambda/lambda' + 2 cos theta \
+quad quad quad quad quad quad thick thick med  approx 2 + 2 cos theta
+$
+$
+  bold(lambda' - lambda approx (1 + cos theta) dot h/(m c))
+$
+
+== Wave-Likeness of Particle
+
+*Wave-Particle Duality*\
+De Broglie's hypothesis : a particle which has mass $m$, velocity $v$ has wave-likeness.
+
+*De Broglie wavelength*:
+$
+  bold(lambda = h/p = h/(m v))
+$
+
+
 
 
 
