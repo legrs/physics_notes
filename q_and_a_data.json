@@ -8281,7 +8281,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "原子"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -8298,7 +8300,9 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "原子"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -8315,7 +8319,10 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "力学",
+            "原子"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
@@ -8332,12 +8339,91 @@
         "description": "",
         "keywords": [],
         "synonyms": [],
-        "category": [],
+        "category": [
+            "力学"
+        ],
         "difficulty": "",
         "priority": 2,
         "related": [],
         "updated_at": "2026-10-14",
         "search_text": "運動量と力の間の関係は？ ボールを勢いよく打ちたいとき、「大きな力を加える」のではなく、 運動量 を大きくするときは、 を大きくする。 運動量 より、** を大きくすれば良い**。 運動 関係 ボール 勢い よく 打ち たい とき 大きな 加える なく 運動 大きく する とき 大きく する 運動 より ** 大きく すれ 良い **。 ウンドウリョウトチカラノマノカンケイハ？ ボールヲイキオイヨクウチタイトキ、「オオキナチカラヲクワエル」ノデハナク、 ウンドウリョウ ヲオオキクスルトキハ、 ヲオオキクスル。 ウンドウリョウ ヨリ、** ヲオオキクスレバヨイ**。 うんどうりょうとちからのまのかんけいは？ ぼーるをいきおいよくうちたいとき、「おおきなちからをくわえる」のではなく、 うんどうりょう をおおきくするときは、 をおおきくする。 うんどうりょう より、** をおおきくすればよい**。",
+        "_note": ""
+    },
+    {
+        "id": "9212a4db-b75c-46d1-959f-5ab8b18c37aa",
+        "questions": [
+            "運動量保存則とエネルギー保存則からコンプトン効果について求めるとき、どの文字を消す？"
+        ],
+        "answer": "候補\n - 散乱X線の波長$ \\lambda' $\n - 散乱X線の角度$ \\theta $\n - 電子の角度$ \\phi $\n\n光は光子とも考えられる。\n\nX線は波長が短く、波動しか表さないが、結晶格子と波長が同じくらいだから、粒子性を発揮することがある。\n\nコンプトン効果は、波長が変わるという、波ならありえないことが起こるが、「そうか光電効果で光には粒子性もあるのか」と考えると、うまくいくかもしれない、と考える。\n\n波長$ \\lambda' $を決めつけるのは入射角$ \\theta $。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "原子"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-20",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "c21f7ca7-ad6b-42c4-9c60-08e3127f8099",
+        "questions": [
+            "$ \\cos^2\\theta+\\sin^2\\theta=1 $を示せ。"
+        ],
+        "answer": "単位円を作り、適当な$ \\theta $を設定すると、$$ 斜辺=縦\\times 横 $$であるから、$$ \\cos^2\\theta+\\sin^2\\theta=1 $$は成り立つ。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "数学"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-20",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "28f4a11b-e503-42be-b360-e5fb02026b84",
+        "questions": [
+            "コンプトン効果の計算から何がわかる？"
+        ],
+        "answer": "X線もまた波動性を持つし、粒子性も持つこと。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "原子"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-20",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "ce36af7a-f579-4618-97d5-2e8a56915a1d",
+        "questions": [
+            "二重性英語でなんて言いますか？"
+        ],
+        "answer": " - two\n - double\n - twin\n\ndoubleの意味合いは、**同じものが2つ**。\n\ntwinは双子。似てるけど**違う**。\n\n粒子と波動の二重性は、2つのものが合わさって全体を構成する。お互いを補う関係。\n\nduoはいい線行ってる。\n\n# 双対性：duality",
+        "description": "2って英語でなんて言いますか？",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "英語",
+            "原子"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-20",
+        "search_text": "",
         "_note": ""
     }
 ]
