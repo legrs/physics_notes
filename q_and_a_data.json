@@ -8425,5 +8425,177 @@
         "updated_at": "2026-10-20",
         "search_text": "二重性英語でなんて言いますか？ - two - double - twin doubleの意味合いは、**同じものが2つ**。 twinは双子。似てるけど**違う**。 粒子と波動の二重性は、2つのものが合わさって全体を構成する。お互いを補う関係。 duoはいい線行ってる。 # 双対性：duality 2って英語でなんて言いますか？ 英語 原子 英語 なんて 言い ます two double twin double 意味合い ** 同じ もの 2 **。 twin 双子 てる けど ** 違う **。 粒子 波動 2 もの 合わさっ 全体 構成 する お互い 補う 関係 duo いい 行っ てる 双対 duality 2 って 英語 なんて 言い ます 英語 原子 ニジュウセイエイゴデナンテイイマスカ？ - two - double - twin doubleノイミアイハ、**オナジモノガ2ツ**。 twinハフタゴ。ニテルケド**チガウ**。 リュウシトハドウノニジュウセイハ、2ツノモノガアワサッテゼンタイヲコウセイスル。オタガイヲオギナウカンケイ。 duoハイイセンイッテル。 # ソウツイセイ：duality 2ッテエイゴデナンテイイマスカ？ エイゴ ゲンシ にじゅうせいえいごでなんていいますか？ - two - double - twin doubleのいみあいは、**おなじものが2つ**。 twinはふたご。にてるけど**ちがう**。 りゅうしとはどうのにじゅうせいは、2つのものがあわさってぜんたいをこうせいする。おたがいをおぎなうかんけい。 duoはいいせんいってる。 # そうついせい：duality 2ってえいごでなんていいますか？ えいご げんし",
         "_note": ""
+    },
+    {
+        "id": "fc4e3c10-78b0-45dc-991a-8d2ebc479fe6",
+        "questions": [
+            "電磁波の波長を求めるには？"
+        ],
+        "answer": "電子のエネルギーについて考える。\n\n電子の位置エネルギーを求める。\n\nエネルギーについて式を立てる。\n\n位置エネルギーは$ eV $。",
+        "description": "例題5、どうやって解く？",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "原子"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-21",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "ca621745-d7cd-460e-9894-ab8fd4808203",
+        "questions": [
+            "電子のエネルギーは$ eV $だそうです。なぜ？"
+        ],
+        "answer": "電子は$ eE $の静電気力を受けている。\n\n",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "原子"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-21",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "f2b6a7b7-dbc7-4f06-8d35-22dd95721c16",
+        "questions": [
+            "$ eV=\\frac{1}{2}mv^2 $なのはなぜ？"
+        ],
+        "answer": "エネルギー保存則。\n\nなぜ成り立つかというと、「他にエネルギーを受け取ってもいないし、他にエネルギーの行きようがない」、だから運動エネルギーに全振りされている。\n\n保存力の定義：「保存力がした仕事が、その経路によらず、一位に定まる。」\n\npotential energyのした仕事は、経路によらない。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "原子"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-21",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "07dac37f-6031-441d-8549-39ebc2313471",
+        "questions": [
+            "なぜ、重力の場合には、位置エネルギーは経路によらない？"
+        ],
+        "answer": "重力は水平方向に仕事をしないから。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "力学"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-21",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "0af1db80-746f-4cd8-bc39-3641dd93e9cd",
+        "questions": [
+            "非保存力である垂直抗力があっても、力学的エネルギー保存則を使っていいのはなぜ？"
+        ],
+        "answer": "エネルギーを受け取ると、運動エネルギーが増えるが、移動方向に垂直な垂直抗力は仕事をしない。\n\n仕事をすると、エネルギーの受け渡しが発生する。\n\n# 力は加えられるんだけど、エネルギーはもらわない\n\nエネルギーの増減がない、つまりエネルギー保存則を変更するものではない。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "力学"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-21",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "e5874f16-014a-48ba-955f-d287fe21c771",
+        "questions": [
+            "アメフトの体当たりとサッカーの体当たりはどう違う？"
+        ],
+        "answer": "アメフトは全部OKだが、\n\nサッカーは仕事をしちゃだめ。運動方向を変えるならいい。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "体育"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-21",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "935ad7a7-7ba0-48ab-81b2-6d5ac552bbe8",
+        "questions": [
+            "向心力の役割は？"
+        ],
+        "answer": "力が「仕事をしない」と「働いていない」は違う。\n\n速度ベクトルの角度がちょっとずつ変わる。\n\n運動エネルギーは変わらないが、\n\n# 運動方向がちょっとずつちょっとずつ変えられる",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "力学"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-21",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "325088cb-a362-452f-bd88-054c44191fdb",
+        "questions": [
+            "ド・ブロイ波長を求めたときの、感動ポイントは？"
+        ],
+        "answer": "物理のユーザとしての視点\n\nラウエ斑点は結晶にX線を当てるが、電子線でも同じような模様が得られる。\n\n電磁波の場合は、**電圧を変えれば光の波長（色）を変えられる**。",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "原子"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-21",
+        "search_text": "",
+        "_note": ""
+    },
+    {
+        "id": "1cdcbc68-d21c-4bb3-bff7-4c0f3089df0b",
+        "questions": [
+            "光の波長を短くする手段は？"
+        ],
+        "answer": " - ドップラー効果\n - ド・ブロイ波長",
+        "description": "",
+        "keywords": [],
+        "synonyms": [],
+        "category": [
+            "波動",
+            "原子"
+        ],
+        "difficulty": "",
+        "priority": 2,
+        "related": [],
+        "updated_at": "2026-10-21",
+        "search_text": "",
+        "_note": ""
     }
 ]
