@@ -3868,11 +3868,25 @@ $
 
 *Wave-Particle Duality*\
 De Broglie's hypothesis : a particle which has mass $m$, velocity $v$ has wave-likeness.
+This wave is called *matter wave*.
 
-*De Broglie wavelength*:
+*De Broglie wavelength:*
 $
   bold(lambda = h/p = h/(m v))
 $
+
+wavelength of electron which has potential $V$
+is $display(bold(lambda = h/(sqrt(2 m e V))))$\
+#text(size:10pt)[wavelength can be changed by $V$ !]
+
+
+
+=== Uncertainty Principle
+*Uncertainty Principle* --- 
+
+
+#text(font:"Noto Serif CJK JP")[*Quantum Mechanics*]
+
 
 
 
