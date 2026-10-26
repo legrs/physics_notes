@@ -43,6 +43,8 @@
 #show figure.caption: set text(font: ("New Computer Modern"),weight: "bold", size: 12pt)
 
 
+#show strong: set text(font: "Noto Serif CJK JP")
+
 //#set enum(numbering: "1.",)
 #set heading(numbering: "1.1.a ",)
 #set page(numbering: "- 1 -")
@@ -3780,6 +3782,9 @@ $1 "eV"$ equals to *" Kinetic energy of an electron gained by voltage $bold(V)$"
       draw.line((4.5 + 0.05,5.5),(4.5 + 0.05,5.4),mark:(end:">",fill:black),stroke:(paint:black))
 
       content((4,6),text(fill:black,size:12pt)[characterictic X-rays])
+      content((1,4),text(fill:black,size:12pt)[bremsstrahlung])
+      draw.line((1,3.8),(2,2.2),stroke:(paint:black))
+
 })
     ]
   ])
@@ -3874,6 +3879,7 @@ This wave is called *matter wave*.
 $
   bold(lambda = h/p = h/(m v))
 $
+($bold(p)$ is momentum)
 
 wavelength of electron which has potential $V$
 is $display(bold(lambda = h/(sqrt(2 m e V))))$\
@@ -3881,17 +3887,60 @@ is $display(bold(lambda = h/(sqrt(2 m e V))))$\
 
 
 
-=== Uncertainty Principle
-*Uncertainty Principle* --- 
+=== Quantum Mechanics
+*Uncertainty Principle* --- Both position $x$ and momentum $m dot(x)$ of particle can not be decided accurately at the same time.\
+  Position and momentum is trade off.
+
+#pagebreak()
+== Atom and Nucleus
+
+=== Nucleus
+#align(center,box(width:16cm, height:7cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      circle((0,0),radius:3)
+
+      content((-4,0.5),[alpha particle beam])
+      line((-3,-3),(0,0),stroke:(paint:rgb("bbbb00")))
+      content((-3,-3),highlight(fill:white)[　])
+      content((-3,-3),text(fill:rgb("bbbb00"))[$bold("Au")$])
+      rect((-3 +0.5,-0.1),(-3.5,0.1),fill:white,stroke:none)
+      line((-4,0.1),(-3,0.1))
+      line((-4,-0.1),(-3,-0.1))
+      line((-6,0),(-1,0),mark:(end:">",fill:black),stroke:(paint:black, dash:"dotted",thickness:0.06))
+      line((-1,0),(2,0),mark:(end:">",fill:black),stroke:(paint:black, dash:"dotted",thickness:0.06))
+      line((2,0),(3,0),stroke:(paint:black, dash:"dotted",thickness:0.06))
+      let beam(theta)={
+        let c = calc.cos(theta)
+        let s = calc.sin(theta)
+        line((0,0),(3*c,3*s),stroke:(paint:black, dash:"dotted"))
+        line((0,0),(2*c,2*s),mark:(end:">",fill:black),stroke:(paint:black, dash:"dotted"))
+      }
+      beam(0.1)
+      beam(0.05)
+      beam(0.15)
+      beam(0.4)
+      beam(0.9)
+      beam(2)
+      beam(-0.03)
+      beam(-0.10)
+      beam(-0.23)
+      beam(-0.25)
+      beam(-0.3)
+      beam(-0.5)
+      beam(-1.7)
+      circle((0,0),radius:0.09,fill:yellow)
 
 
-#text(font:"Noto Serif CJK JP")[*Quantum Mechanics*]
+    })
+  ]
+])
+=== Spectrum of Hydrogen Atom
 
-
-
-
-
-
+#text(font:"Noto Serif CJK JP")[*Balmer series*] - 
+//Typstで，アスタリスクによる太字をしたときにそこだけfontを変えるのってできますか
 
 
 
