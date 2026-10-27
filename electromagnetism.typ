@@ -3905,7 +3905,7 @@ is $display(bold(lambda = h/(sqrt(2 m e V))))$\
       content((-4,0.5),[alpha particle beam])
       line((-3,-3),(0,0),stroke:(paint:rgb("bbbb00")))
       content((-3,-3),highlight(fill:white)[　])
-      content((-3,-3),text(fill:rgb("bbbb00"))[$bold("Au")$])
+      content((-3,-3),text(fill:rgb("bbbb00"))[$bold("Au")$ (gold leaf)])
       rect((-3 +0.5,-0.1),(-3.5,0.1),fill:white,stroke:none)
       line((-4,0.1),(-3,0.1))
       line((-4,-0.1),(-3,-0.1))
@@ -3937,15 +3937,32 @@ is $display(bold(lambda = h/(sqrt(2 m e V))))$\
     })
   ]
 ])
+
+The result implied that an atom have a small *nucleus* with a poisitive charge.
+Rutherford thought of *Rutherfords's model of the atom*.
+The model consists of a nucleus and electron revolving aroud the nucleus.
+
 === Spectrum of Hydrogen Atom
 
-#text(font:"Noto Serif CJK JP")[*Balmer series*] - 
+Balmer found regularity of line spectrums of hydrogen.
+This is called *Balmer series*.
+Other set of line spectrums in different wavelength region, *Lyman series* and *Paschen series* was found.
+$
+  bold(lambda^(-1) = R (n^(-2) - (n + 1)^(-2)) quad ( n in NN ))
+$
+=== Bohr's theory
+Rutherford's model of the atom had had a critical problem : 
+
+
+
 //Typstで，アスタリスクによる太字をしたときにそこだけfontを変えるのってできますか
 
 
 
 //仕事関数は，「自由電子を無限遠にもっていくのに必要な仕事」ですが，これって
 //金属結合による電子の位置エネルギーの-1倍と等しいですか？定義的にはpotentialそのものですよね
+//大学入試の数学で，「はさみうちの原理より」とは言わずに，「$0 <= \lim_{n to \infinity} I_n <= 0$ となるから，$\lim_{n to \infinity} I_n = 0$」
+//とするのはいいんでしょうか
 
 
 //#text(size:10pt)[( )]
