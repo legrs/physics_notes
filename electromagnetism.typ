@@ -55,7 +55,7 @@
 #show heading.where(level:3) : set text(size: 20pt,font: ("New Computer Modern"))
 #show heading.where(level:3) : set text(size: 18pt,font: ("New Computer Modern"))
 //#show heading : set text(font : "New Computer Modern Uncial")
-#set list(marker: [--],)
+#set list(marker: [*-*],)
 
 
 
@@ -3781,7 +3781,7 @@ $1 "eV"$ equals to *" Kinetic energy of an electron gained by voltage $bold(V)$"
       draw.line((3 + 0.05,5.5),(3 + 0.05,5.4),mark:(end:">",fill:black),stroke:(paint:black))
       draw.line((4.5 + 0.05,5.5),(4.5 + 0.05,5.4),mark:(end:">",fill:black),stroke:(paint:black))
 
-      content((4,6),text(fill:black,size:12pt)[characterictic X-rays])
+      content((4,6),text(fill:black,size:12pt)[characteristic X-rays])
       content((1,4),text(fill:black,size:12pt)[bremsstrahlung])
       draw.line((1,3.8),(2,2.2),stroke:(paint:black))
 
@@ -3948,14 +3948,34 @@ Balmer found regularity of line spectrums of hydrogen.
 This is called *Balmer series*.
 Other set of line spectrums in different wavelength region, *Lyman series* and *Paschen series* was found.
 $
-  bold(lambda^(-1) = R (n^(-2) - (n + 1)^(-2)) quad ( n in NN ))
+  bold(lambda^(-1) = R (n^(-2) - (n + 1)^(-2))) quad ( n in NN )quad ( R approx 1.10 dot 10^7 "m"^(-1) )
 $
 === Bohr's theory
-Rutherford's model of the atom had had a critical problem : 
+Rutherford's model of the atom had a critical problem : 
+
+- radiating bremsstrahlung, electron loses kinetic energy and slow down. 
+  This cause collision of electron and nucleus, showing consequence *Atom is Instable*.
+  ( This doesn't match the observation. )
+
+- The model cannot explain characteristic X-rays ( and other line spectrums )
+
+*Bohr* built a condition.
+$
+  bold( m v r = n dot h/(2 pi) )
+$
+( $m$ is mass of an electron. $v$ is speed of it, $r$ is radius of it's orbit. )
+
+This is called *quantum condition*.
 
 
+#text(size:10pt)[(  )]
+//perihelion, aphelion 
+//1/3
 
-//Typstで，アスタリスクによる太字をしたときにそこだけfontを変えるのってできますか
+//"ちょっと古典力学に，授業内容を変更する(原子理論の授業中)"
+//"まあもしかしたら，教えてる先生がよかったのかもしれない"
+//"まあちょっと独り言だけれども，"
+//"冥王星は惑星から降格処分されたので，でもまあ順当な処分かな"
 
 
 
