@@ -3953,7 +3953,7 @@ $
 === Bohr's theory
 Rutherford's model of the atom had a critical problem : 
 
-- radiating bremsstrahlung, electron loses kinetic energy and slow down. 
+- radiating electromagnetic wave, electron loses kinetic energy and slow down. 
   This cause collision of electron and nucleus, showing consequence *Atom is Instable*.
   ( This doesn't match the observation. )
 
@@ -3961,34 +3961,38 @@ Rutherford's model of the atom had a critical problem :
 
 *Bohr* built a condition.
 $
-  bold( m v r = n dot h/(2 pi) )
+  bold( m v r = n dot h/(2 pi)  quad ( n in NN ))
 $
-( $m$ is mass of an electron. $v$ is speed of it, $r$ is radius of it's orbit. )
-
+( $m$ is mass of an electron. $v$ is speed of it, $r$ is radius of it's orbit. )\
 This is called *quantum condition*.
 
+When this equation is satisfied, electron is state( steady state )
 
-#text(size:10pt)[(  )]
+
+$m v r$ : angular momentum of an electron
+
+
+
+→ *angluar momentum of electron is discrete.*
+
+=== Energy State
+
+When steady state, \
+$m v^2/r = k_0 e^2/r^2$
+
+
+
+
+
+
+//#text(size:10pt)[(  )]
+//"説明のために説明を加えるというのは，あんまり冴えた説明ではないというのがこの教員の見立て．"
 //perihelion, aphelion 
-//1/3
 
 //"ちょっと古典力学に，授業内容を変更する(原子理論の授業中)"
 //"まあもしかしたら，教えてる先生がよかったのかもしれない"
 //"まあちょっと独り言だけれども，"
 //"冥王星は惑星から降格処分されたので，でもまあ順当な処分かな"
-
-
-
-//仕事関数は，「自由電子を無限遠にもっていくのに必要な仕事」ですが，これって
-//金属結合による電子の位置エネルギーの-1倍と等しいですか？定義的にはpotentialそのものですよね
-//大学入試の数学で，「はさみうちの原理より」とは言わずに，「$0 <= \lim_{n to \infinity} I_n <= 0$ となるから，$\lim_{n to \infinity} I_n = 0$」
-//とするのはいいんでしょうか
-
-
-//#text(size:10pt)[( )]
-
-//光電効果の限界振動数がわかりません．もし1つあたりのphotonのエネルギーが小さくても，
-//1回目で電子を1段高いエネルギー準位にして，2回目で無限遠まで飛ばす，とすれば光電効果起きるんじゃないんですか
 
 //#text(size:10pt)[( )]
 
