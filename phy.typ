@@ -211,5 +211,10 @@
 
   let (x,y) = p
   circle((x,y),fill:white,radius:0.1*r,stroke:(paint:color))
-  content((x,y + 0.05*r),text(size:16pt * r, fill:color)[#sign])
+  if sign == "-" {
+    line((x -0.1*r,y),(x +0.1*r,y),stroke:(paint:color))
+    //content((x,y + 0.05*r),text(size:15pt * r, fill:color)[$#sign$])
+  }else{
+    content((x,y + 0.01*r),text(size:8pt * r, fill:color)[$#sign$])
+  }
 }

@@ -3953,16 +3953,18 @@ $
 === Bohr's theory
 Rutherford's model of the atom had a critical problem : 
 
-- radiating electromagnetic wave, electron loses kinetic energy and slow down. 
+- radiating electromagnetic wave(bremsstrahlung), electron loses kinetic energy and slow down. 
   This cause collision of electron and nucleus, showing consequence *Atom is Instable*.
   ( This doesn't match the observation. )
 
 - The model cannot explain characteristic X-rays ( and other line spectrums )
 
+#text(size:10pt)[( いまさらだけどもしかして電子って仕事0で曲げられないのか )]
+
 *Bohr* built a condition.
 $
   bold( m v r = n dot h/(2 pi)  quad ( n in NN ))
-$
+$<quantum_condigion>
 ( $m$ is mass of an electron. $v$ is speed of it, $r$ is radius of it's orbit. )\
 This is called *quantum condition*.
 
@@ -3977,17 +3979,51 @@ $m v r$ : angular momentum of an electron
 
 === Energy State
 
+
+#align(center,box(width:16cm, height:6cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+      circle((0,0),radius:3)
+
+      line((3,0),(3,2),mark:(end:">",fill:blue),stroke:(thickness:0.1,paint:blue))
+      content((3.5,2),text(fill:blue)[$bold(v)$])
+      line((0,-0.5),(3,-0.5),mark:(start:">",end:">",fill:black))
+      line((0,0),(0,-1))
+      line((3,0),(3,-1))
+      content((1.5,-0.5),highlight(fill:white)[　])
+      content((1.5,-0.5),[$bold(r)$])
+      particle((3,0),"-",1.5,blue)
+      particle((0,0),"+",2,red)
+      content((3.5,0.2),text(fill:blue)[$bold(-e)$])
+      content((0.5,0.2),text(fill:red)[$bold(+e)$])
+
+    })
+  ]
+])
+
 When steady state, \
-$m v^2/r = k_0 e^2/r^2$
+$\
+display(m v^2/r = k_0 e^2/r^2)\
+v^2 = k_0 e^2/(r m) = (n^2 h^2)/(4 pi^2 m^2 r^2)) quad (because #ref(<quantum_condigion>))\
+(k_0 e^2)/(m) = (n^2 h^2)/(4 pi^2 m^2 r)$
+$
+bold(display(r = h^2/(4 pi^2 k_0 m e^2) dot n) quad ( n in NN ))
+$<radius_of_electron_orbit>
+Consider about energy,\
+$\
+bold(E) = 1/2 m v^2 - k_0 e^2/r = 1/2 k_0 e^2/r - k_0 e^2/r = bold(display(- (k_0 e^2)/(2 r)))\
+display(quad thin = - (2 pi^2 k_0^2 m e^4)/(n^2 h^2) quad (because #ref(<radius_of_electron_orbit>)))
+$
+$
+  bold(display(E_n = - (2 pi^2 k_0^2 m e^4)/h^2 dot n^(-2)  quad ( n in NN ) ))
+$
+$(n=1)$ --- *ground state*
 
-
-
-
-
-
-//#text(size:10pt)[(  )]
 //"説明のために説明を加えるというのは，あんまり冴えた説明ではないというのがこの教員の見立て．"
 //perihelion, aphelion 
+//
 
 //"ちょっと古典力学に，授業内容を変更する(原子理論の授業中)"
 //"まあもしかしたら，教えてる先生がよかったのかもしれない"
