@@ -4019,11 +4019,24 @@ $
 $
   bold(display(E_n = - (2 pi^2 k_0^2 m e^4)/h^2 dot n^(-2)  quad ( n in NN ) ))
 $
-$(n=1)$ --- *ground state*
+
+$(n=1)$ --- *ground state*\
+$(n >= 2)$ --- *exiteed state*\
+
+Energy of electron is proportional to $n^(-2)$.
+Line spectrum of hydrogen atom can be explained with this.
+
+
+$\
+Delta E = h c/lambda = (2 pi^2 k_0^2 m e^4)/h^2 ( n^(-2) - (n+1)^(-2) )\
+lambda^(-1) = (2 pi^2 k_0^2 m e^4)/(h^3 c) ( n^(-2) - (n+1)^(-2) )= R ( n^(-2) - (n+1)^(-2) )
+$
+
 
 //"説明のために説明を加えるというのは，あんまり冴えた説明ではないというのがこの教員の見立て．"
 //perihelion, aphelion 
 //
+//"一応AIに取って変わられるつもりはまだない"
 
 //"ちょっと古典力学に，授業内容を変更する(原子理論の授業中)"
 //"まあもしかしたら，教えてる先生がよかったのかもしれない"
