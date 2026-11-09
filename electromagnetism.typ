@@ -3894,7 +3894,7 @@ is $display(bold(lambda = h/(sqrt(2 m e V))))$\
 #pagebreak()
 == Atom and Nucleus
 
-=== Nucleus
+=== Model of the Atom
 #align(center,box(width:16cm, height:7cm, clip:true)[
   #place(center + horizon)[
     #cetz.canvas({
@@ -4031,6 +4031,21 @@ $\
 Delta E = h c/lambda = (2 pi^2 k_0^2 m e^4)/h^2 ( n^(-2) - (n+1)^(-2) )\
 lambda^(-1) = (2 pi^2 k_0^2 m e^4)/(h^3 c) ( n^(-2) - (n+1)^(-2) )= R ( n^(-2) - (n+1)^(-2) )
 $
+
+#text(size:10pt)[( おお(line spectrumを説明するためにquantum conditionを導入した感があって感動はあまりない人) )]
+
+\
+
+
+#text(size:10pt)[20261106の分は試験をうけるために授業を休んだため教科書から補完]
+=== Nucleus
+
+*nuclear force* --- strong force between nucleons(proton and neutron). This cluster nucleons together in narrow space(nucleus).
+
+
+
+
+
 
 
 //"説明のために説明を加えるというのは，あんまり冴えた説明ではないというのがこの教員の見立て．"
