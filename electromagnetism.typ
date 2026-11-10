@@ -4037,11 +4037,14 @@ $
 \
 
 
-#text(size:10pt)[20261106の分は試験をうけるために授業を休んだため教科書から補完]
+#text(size:10pt)[20261106の分は試験をうけるために授業を休んだため，教科書から補完]
 === Nucleus
 
 *nuclear force* --- strong force between nucleons(proton and neutron). This cluster nucleons together in narrow space(nucleus).
 
+*unified atomic mass unit*  --- $1/12$ of mass of #super[12]#h(-2mm)#sub[6]C
+
+//その割合の14Cが，我がbodyを構成する
 
 
 
