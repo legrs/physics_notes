@@ -4042,7 +4042,36 @@ $
 
 *nuclear force* --- strong force between nucleons(proton and neutron). This cluster nucleons together in narrow space(nucleus).
 
-*unified atomic mass unit*  --- $1/12$ of mass of #super[12]#h(-2mm)#sub[6]C
+*unified atomic mass unit*  --- $1/12$ of mass of #super[12]#h(-2mm)#sub[6]C.  This is equivalent to the sum of the masses of half of a proton, a neutron, and an electron.
+
+#pagebreak()
+=== Radiation
+
+An unstable atom do *radioactive decay*, changing it's atomic \
+number.
+This kind of atom is called *radio isotope*.\
+radio isotope has *radioactivity*.
+
+
+#table(
+  columns:4,
+  rows:4,
+  fill:(x,y)=>
+    if y == 0 {rgb("bbeeee")},
+  align: horizon,
+  [*type*],[*substance*],[*ionization*],[*permeability*],
+  [α-rays],[nucleus of #super[4]#h(-2mm)#sub[2]He],[strong],[weak],
+  [β-rays],[electron],[medium],[medium],
+  [γ-rays],[electromagnetic wave\
+  wavelength $< 10^(-12) "m"$],[weak],[strong],
+  [neutron beam],[neutron],[weak],[strong],
+)
+
+*β-decay* : a neutron transforms into a proton and an electron \
+#h(5em) ( and an antineutrino )(  $n -> p + e^- + macron(nu_e)$ )
+
+
+
 
 //その割合の14Cが，我がbodyを構成する
 
