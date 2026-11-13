@@ -4020,8 +4020,8 @@ $
   bold(display(E_n = - (2 pi^2 k_0^2 m e^4)/h^2 dot n^(-2)  quad ( n in NN ) ))
 $
 
-$(n=1)$ --- *ground state*\
-$(n >= 2)$ --- *exiteed state*\
+$(n=1)$ : *ground state*\
+$(n >= 2)$ : *exiteed state*\
 
 Energy of electron is proportional to $n^(-2)$.
 Line spectrum of hydrogen atom can be explained with this.
@@ -4060,19 +4060,54 @@ radio isotope has *radioactivity*.
     if y == 0 {rgb("bbeeee")},
   align: horizon,
   [*type*],[*substance*],[*ionization*],[*permeability*],
-  [α-rays],[nucleus of #super[4]#h(-2mm)#sub[2]He],[strong],[weak],
+  [α-rays],[nucleus of #super[4]#h(-2mm)#sub[2]He],[*strong*],[weak],
   [β-rays],[electron],[medium],[medium],
   [γ-rays],[electromagnetic wave\
-  wavelength $< 10^(-12) "m"$],[weak],[strong],
-  [neutron beam],[neutron],[weak],[strong],
+  wavelength $< 10^(-12) "m"$],[weak],[*strong*],
+  [neutron beam],[neutron],[weak],[*strong*],
 )
+*α-decay* : a #super[4]#h(-2mm)#sub[2]He flies out from nucleus.
 
 *β-decay* : a neutron transforms into a proton and an electron \
-#h(5em) ( and an antineutrino )(  $n -> p + e^- + macron(nu_e)$ )
+#h(4.5em) ( and an antineutrino )(  $n -> p + e^- + macron(nu_e)$ )\
+#h(4.5em) and the electron flies out.
+
+=== Half Time
+The probability of an atom decaying is constant.\
+→ half of a radio isotope group dacay in certain time( *half-life* ).
+
+half-life depends on type of atom.
+
+$
+  bold(N(t) = N(0) (1/2)^display(t/T))
+$
+$N(t)$ : the number of atoms remaining at time $t$.\
+$T$  : half-life
 
 
+#pagebreak()
+=== Unit of Radiation
 
+#table(
+  columns:3,
+  rows:4,
+  fill:(x,y)=>
+    if y == 0 {rgb("bbeeee")},
+  align: horizon,
+  [],[*unit*],[*content*],
+  [strength of radiation],[becquerel $bold("Bq")$],[$1 "Bq"$ : strength of radiation when one atom decay per $1 "s"$.],
+  [absorbed dose],[gray $bold("Gy")$],[$1 "Gy"$ : absorbed energy per substance $1 "kg"$ ],
+  [equicalent dose],[sievert $bold("Sv")$],[weighted value with the effect by type of radiation],
+  [effective dose],[sievert $bold("Sv")$],[weighted value with the effect by type of radiation and by type of tissue],
+)
 
+== Nuclear Reaction
+
+typstで,質量数と陽子数付きの原子の表記ってどうしたらいいでしょう 
+#super[4]#h(-2mm)#sub[2]He 
+これだと4と2が若干被った表記になってしまうんです
+
+//ちなみに，それを業界用語でscannerお姉さんと読んでいる．
 //その割合の14Cが，我がbodyを構成する
 
 
