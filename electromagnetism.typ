@@ -57,6 +57,14 @@
 //#show heading : set text(font : "New Computer Modern Uncial")
 #set list(marker: [*-*],)
 
+#let nuc(sym, a, z) = context {
+  let ch = measure(text(top-edge: "cap-height", bottom-edge: "baseline")[#sym]).height
+  let num(x) = text(weight:"bold",size: 0.55em, top-edge: "cap-height", bottom-edge: "baseline")[#x]
+
+  box(height: ch+0.05em,inset:-0.05em, stack(dir: ttb, align(right, num(a)), 1fr, align(right, num(z))))
+  h(0.05em)
+  sym
+}
 
 
 // title部分積分
@@ -4042,7 +4050,7 @@ $
 
 *nuclear force* --- strong force between nucleons(proton and neutron). This cluster nucleons together in narrow space(nucleus).
 
-*unified atomic mass unit*  --- $1/12$ of mass of #super[12]#h(-2mm)#sub[6]C.  This is equivalent to the sum of the masses of half of a proton, a neutron, and an electron.
+*unified atomic mass unit*  --- $1/12$ of mass of #nuc("C", 12, 6).  This is equivalent to the sum of the masses of half of a proton, a neutron, and an electron.
 
 #pagebreak()
 === Radiation
@@ -4060,13 +4068,13 @@ radio isotope has *radioactivity*.
     if y == 0 {rgb("bbeeee")},
   align: horizon,
   [*type*],[*substance*],[*ionization*],[*permeability*],
-  [α-rays],[nucleus of #super[4]#h(-2mm)#sub[2]He],[*strong*],[weak],
+  [α-rays],[nucleus of #nuc("He", 4, 2)],[*strong*],[weak],
   [β-rays],[electron],[medium],[medium],
   [γ-rays],[electromagnetic wave\
   wavelength $< 10^(-12) "m"$],[weak],[*strong*],
   [neutron beam],[neutron],[weak],[*strong*],
 )
-*α-decay* : a #super[4]#h(-2mm)#sub[2]He flies out from nucleus.
+*α-decay* : a #nuc("He", 4, 2) flies out from nucleus.
 
 *β-decay* : a neutron transforms into a proton and an electron \
 #h(4.5em) ( and an antineutrino )(  $n -> p + e^- + macron(nu_e)$ )\
@@ -4101,11 +4109,20 @@ $T$  : half-life
   [effective dose],[sievert $bold("Sv")$],[weighted value with the effect by type of radiation and by type of tissue],
 )
 
-== Nuclear Reaction
+== Nuclear Reaction and Energy
+$nuc("N",14,7) + nuc("He",4,2) -> nuc("O",17,8) + nuc("H",1,1)$
 
-typstで,質量数と陽子数付きの原子の表記ってどうしたらいいでしょう 
-#super[4]#h(-2mm)#sub[2]He 
-これだと4と2が若干被った表記になってしまうんです
+*nuclear reaction* : reaction with nucleus change
+
+=== Equivalence of Mass and Energy
+$
+  bold(E = m c^2)
+$
+- *energy and mass is equivalence*
+
+
+
+
 
 //ちなみに，それを業界用語でscannerお姉さんと読んでいる．
 //その割合の14Cが，我がbodyを構成する
@@ -4132,62 +4149,6 @@ typstで,質量数と陽子数付きの原子の表記ってどうしたらい�
   #place(center + horizon)[
     #cetz.canvas({
       import cetz.draw: *
-    })
-  ]
-])
-*/
-
-/*
-
-#let angl = 30deg
-#let step = 1
-#let n = 1.5
-
-#figure(
-  align(center,box(width:5cm, height:5cm, clip:true)[
-    #place(center + horizon)[
-      #cetz.canvas({
-        import cetz.draw: *
-      
-        
-        rect((-1,-1),(1,1),stroke:none)
-
-        //centerに影響しない
-        floating({
-          line((-2.5, 0), (2.5, 0), stroke: (paint: black, thickness: 2pt))
-          for i in range(-10,10){
-            lined((-i*step/calc.sin(angl), 0), (1, angl), stroke: (paint: black, thickness: 1pt))
-            //line((-i*step/calc.sin(angl), 0), (-i*step/calc.sin(angl) + 3/calc.tan(angl), 3), stroke: (paint: black, thickness: 1pt))
-            // 1/n
-            //line((-i*step/calc.sin(angl), 0), (-i*step/calc.sin(angl) - 3/calc.tan(calc.asin(calc.sin(angl)/n)), -3), stroke: (paint: black, thickness: 1pt))
-          }
-          content((0.7,0.2), $ i $)
-          content((1.0,-0.2), $ r $)
-          circle((0,0), radius:0.2)
-        })
-      })
-    ]
-  ])
-  ,caption: []
-)
-*/
-
-/*
-
-#align(center,box(width:15cm, height:5cm, clip:true)[
-  #place(center + horizon)[
-    #cetz.canvas({
-      import cetz.draw: *
-
-      ortho(x:30deg, y:150deg,{
-        let AXIS_LENGTH = 2.5
-        //line((0, 0, 0), (AXIS_LENGTH, 0, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "x-axis")
-        //line((0, 0, 0), (0, AXIS_LENGTH, 0), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "y-axis")
-        //line((0, 0, 0), (0, 0, AXIS_LENGTH), mark: (end: ">", fill:black),stroke:(thickness:0.02), name: "z-axis")
-        //content("x-axis.end", [$x$], anchor: "west")
-        //content("y-axis.end", [$y$], anchor: "south")
-        //content("z-axis.end", [$z$], anchor: "north-east")
-      })
     })
   ]
 ])
