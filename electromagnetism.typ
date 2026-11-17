@@ -4115,10 +4115,114 @@ $nuc("N",14,7) + nuc("He",4,2) -> nuc("O",17,8) + nuc("H",1,1)$
 *nuclear reaction* : reaction with nucleus change
 
 === Equivalence of Mass and Energy
+
 $
   bold(E = m c^2)
 $
-- *energy and mass is equivalence*
+#align(center,box(width:16cm, height:6cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+
+      rect((-100,100),(100,-100))
+      content((0.5,-1),[*ENERGY AND MASS IS EQUIVALENCE*])
+
+      content((-7,1),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[共テでますか？])
+
+      content((-1,1.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[！？])
+      content((2.5,1.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[ん？])
+      content((4.5,0.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[！？])
+      content((2,1),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[え！！])
+      content((1,1.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[おお])
+      content((1,1.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[おお])
+      content((4,2),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[おお…])
+      content((-2,1.8),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[いいえ。])
+
+      content((-1,0.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[俺もそう思ってた])
+      content((3,0.3),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[これはおお…だろ])
+      content((2,-0.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[ソースは？])
+
+      content((6.8,0),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[←俺はケチャップ])
+      content((5.5,1.3),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[嘘松wwwww])
+      content((6.4,-2.3),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[])
+
+      content((4.4,-1.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[これまだ信じてない])
+
+      content((3,-2.8),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[なんか爆弾とかに使えそう])
+      content((6,-2),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[←あ])
+      content((6.8,-2.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[まずい])
+      content((7,-2.9),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[人類さぁ…])
+      content((8,-1.5),text(size:11pt,fill:rgb("ffffffdd"),weight:900,stroke:rgb("#444444")+0.1pt)[発電だけで頼む])
+    })
+  ]
+])
+
+
+
+Assume an atom (atomicnumber $Z$ , massnumber $A$)
+
+proton(mass $m_p$) : $Z$,\
+neutron(mass $m_n$) : $A - Z$,
+
+However, if we let $m_0$ be mass of nucleus of the atom,
+
+$m_0 eq.not Z m_p + (A - Z) m_n$
+
+In the truth,
+
+$
+  bold(m_0 + Delta m = Z m_p + (A - Z) m_n)
+$
+$Delta m$ is called *mass defect*.
+
+$Z p + (A-Z) n -> nuc("Atom",A,Z) quad Delta H = - Delta m c^2$
+
+This $Delta m c^2$ is *binding energy*.
+
+The binding energy per one nucleous depends on type of nucleus.
+It takes the maximum number at $"Fe"$ nucleus. ( $~ 9 "MeV"$ )
+
+#text(size:10pt)[( だんだん意味わからん．原子核の質量は$m_p$と$m_n$の自然数倍っぽいのに結合でmass defectがおきてそうなりません．ってこと？ )]
+
+This means:
+
+- *nuclear fission*  : energy released when a heavy atom divided into lighter atoms. (From heavy atom to #nuc("Fe",56,26))\
+- *nuclear fusion*  : energy released when light atoms fusion into a heavier atom. (From #nuc("H",1,2) to #nuc("Fe",56,26))
+
+#align(center,box(width:16cm, height:9.5cm, clip:true)[
+  #place(center + horizon)[
+    #cetz.canvas({
+      import cetz.draw: *
+
+
+      let f = 6
+      line((0,0),(15,0),mark:(end:">",fill:black))
+      line((0,0),(0,8),mark:(end:">",fill:black))
+
+      content((14.5,0.5),[$A$])
+      content((0,8.5),[$Delta m$])
+
+      content((0.01 * f,1.2),highlight(fill:white)[#nuc("H",1,2)])
+      content((0.02 * f,2.5),highlight(fill:white)[#nuc("He",2,4)])
+      content((0.03 * f,5.3),highlight(fill:white)[#nuc("Li",6,3)])
+      content((0.7,7),[・])
+      content((1.0,7.5),[・])
+      content((1.5,8),[・])
+      content((0.56* f,8.8),[#nuc("Fe",56,26)])
+      content((5.5,8.5),[・])
+      content((6.5,8.4),[・])
+      content((7.5,8.3),[・])
+      content((2.04 *f,7.8),[#nuc("Pb",208,82)])
+      content((2.22 *f,7.6),[#nuc("Rn",222,86)])
+      content((2.38 *f,7.5),[#nuc("U",235,92)])
+
+    })
+  ]
+])
+
+#pagebreak()
+== Elementary Particle
 
 
 
